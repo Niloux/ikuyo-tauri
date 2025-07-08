@@ -65,7 +65,6 @@ impl BangumiService {
             url.push_str(&format!("?{}", params.join("&")));
         }
 
-        tracing::info!("请求URL: {}", url);
         let response = self.client.get(&url).send().await.map_err(|e| e.to_string())?;
 
         if response.status().is_success() {

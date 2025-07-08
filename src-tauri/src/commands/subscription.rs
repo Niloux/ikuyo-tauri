@@ -29,6 +29,13 @@ pub async fn subscribe(
     anime_air_weekday: Option<i64>,
 ) -> Result<UserSubscription, String> {
     let repo = SubscriptionRepository::new(&pool);
+
+    // 检查是否已订阅
+    let existing_subscription = repo.get_by_user_and_bangumi(&user_id, bangumi_id).await.map_err(|e| e.to_string())?;
+    if existing_subscription.is_some() {
+        return Err("番剧已订阅".to_string());
+    }
+
     let new_subscription = UserSubscription {
         id: None, // Will be set by the database
         user_id,

@@ -34,6 +34,10 @@ pub fn run() {
             update_scheduled_job,
             get_scheduled_jobs,
             // Subscription commands
+            subscribe,
+            unsubscribe,
+            get_subscriptions,
+            check_subscription,
             get_all_subscription_ids,
         ])
         .run(tauri::generate_context!())

@@ -40,44 +40,71 @@ class SubscriptionApiService {
     /**
      * 添加订阅
      */
-    async subscribe(bangumiId: number): Promise<UserSubscription> {
-        return apiClient.post(`${this.baseURL}/${bangumiId}`)
+    async subscribe(bangumi_id: number, anime_name: string, anime_name_cn: string, anime_rating?: number, anime_air_date?: string, anime_air_weekday?: number): Promise<UserSubscription> {
+        return invoke('subscribe', {
+            user_id: UserManager.getUserId(),
+            bangumi_id,
+            anime_name,
+            anime_name_cn,
+            anime_rating,
+            anime_air_date,
+            anime_air_weekday,
+        })
     }
 
     /**
      * 取消订阅
      */
-    async unsubscribe(bangumiId: number): Promise<void> {
-        await apiClient.delete(`${this.baseURL}/${bangumiId}`)
+    async unsubscribe(bangumi_id: number): Promise<void> {
+        await invoke('unsubscribe', {
+            user_id: UserManager.getUserId(),
+            bangumi_id,
+        })
     }
 
     /**
      * 获取订阅列表
      */
     async getSubscriptions(params: GetSubscriptionsParams = {}): Promise<SubscriptionsResponse> {
-        const searchParams = new URLSearchParams()
-        if (params.sort) searchParams.set('sort', params.sort)
-        if (params.order) searchParams.set('order', params.order)
-        if (params.search) searchParams.set('search', params.search)
-        if (params.page) searchParams.set('page', params.page.toString())
-        if (params.limit) searchParams.set('limit', params.limit.toString())
-        const url = `${this.baseURL}?${searchParams.toString()}`
-        return apiClient.get(url)
+        const rawResponse: { data: UserSubscription[], total: number, page: number, limit: number } = await invoke('get_subscriptions', {
+            user_id: UserManager.getUserId(),
+            sort: params.sort,
+            order: params.order,
+            search: params.search,
+            page: params.page,
+            limit: params.limit,
+        });
+
+        const totalPages = Math.ceil(rawResponse.total / rawResponse.limit);
+
+        return {
+            subscriptions: rawResponse.data,
+            pagination: {
+                page: rawResponse.page,
+                limit: rawResponse.limit,
+                total: rawResponse.total,
+                pages: totalPages,
+            },
+        };
     }
 
     /**
      * 检查订阅状态
      */
-    async checkSubscription(bangumiId: number): Promise<SubscriptionStatus> {
-        return apiClient.get(`${this.baseURL}/${bangumiId}`)
+    async checkSubscription(bangumi_id: number): Promise<SubscriptionStatus> {
+        const response: SubscriptionStatus = await invoke('check_subscription', {
+            user_id: UserManager.getUserId(),
+            bangumi_id,
+        });
+        return response
     }
 
     /**
      * 安全的订阅操作（带错误处理）
      */
-    async safeSubscribe(bangumiId: number): Promise<SubscriptionResult> {
+    async safeSubscribe(bangumi_id: number, anime_name: string, anime_name_cn: string, anime_rating?: number, anime_air_date?: string, anime_air_weekday?: number): Promise<SubscriptionResult> {
         try {
-            const data = await this.subscribe(bangumiId)
+            const data = await this.subscribe(bangumi_id, anime_name, anime_name_cn, anime_rating, anime_air_date, anime_air_weekday)
             return { success: true, data }
         } catch (error) {
             return {
@@ -92,9 +119,9 @@ class SubscriptionApiService {
     /**
      * 安全的取消订阅操作（带错误处理）
      */
-    async safeUnsubscribe(bangumiId: number): Promise<SubscriptionResult> {
+    async safeUnsubscribe(bangumi_id: number): Promise<SubscriptionResult> {
         try {
-            await this.unsubscribe(bangumiId)
+            await this.unsubscribe(bangumi_id)
             return { success: true }
         } catch (error) {
             return {

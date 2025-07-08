@@ -144,7 +144,14 @@ export const useSubscriptionStore = defineStore('subscription', () => {
 
         try {
             // 调用API确认订阅
-            await subscriptionApiService.subscribe(anime.id)
+            await subscriptionApiService.subscribe(
+                anime.id,
+                anime.name,
+                anime.name_cn,
+                anime.rating?.score,
+                anime.air_date,
+                anime.air_weekday
+            )
             feedbackStore.showToast('订阅成功', 'success')
         } catch (err) {
             // 如果失败，移除乐观添加的项目
@@ -198,7 +205,8 @@ export const useSubscriptionStore = defineStore('subscription', () => {
      */
     const subscribe = async (bangumiId: number) => {
         try {
-            await subscriptionApiService.subscribe(bangumiId)
+            // 注意：这个方法只有bangumiId，缺少其他必需参数，建议使用optimisticSubscribe
+            await subscriptionApiService.subscribe(bangumiId, '', '')
             feedbackStore.showToast('订阅成功', 'success')
             // 重新获取列表以确保数据一致性
             await fetchSubscriptions()

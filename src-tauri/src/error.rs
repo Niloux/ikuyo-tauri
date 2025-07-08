@@ -14,8 +14,6 @@ pub enum Error {
     #[error("HTML parsing error: {0}")]
     Scraper(String),
 
-    #[error("Tauri SQL plugin error: {0}")]
-    TauriSql(String),
 }
 
 impl Serialize for Error {

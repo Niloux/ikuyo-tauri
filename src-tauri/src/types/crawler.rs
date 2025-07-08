@@ -29,26 +29,43 @@ pub enum SeasonName {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CrawlerTaskCreate {
     pub mode: CrawlerMode,
-    pub year: Option<u32>,
+    pub year: Option<i64>,
     pub season: Option<SeasonName>,
-    pub limit: Option<u32>,
+    pub limit: Option<i64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "lowercase")]
+pub enum CrawlerTaskType {
+    Manual,
+    Schedule,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "lowercase")]
+pub enum CrawlerTaskStatus {
+    Pending,
+    Running,
+    Completed,
+    Failed,
+    Cancelled,
 }
 
 // 爬虫任务相关类型
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TaskResponse {
-    pub id: u32,
-    pub task_type: String,
-    pub status: String,
+    pub id: i64,
+    pub task_type: CrawlerTaskType,
+    pub status: CrawlerTaskStatus,
     pub parameters: Option<String>,
     pub result_summary: Option<String>,
-    pub created_at: Option<String>,
-    pub started_at: Option<String>,
-    pub completed_at: Option<String>,
+    pub created_at: Option<i64>,
+    pub started_at: Option<i64>,
+    pub completed_at: Option<i64>,
     pub error_message: Option<String>,
-    pub percentage: Option<f32>,
-    pub processed_items: Option<u32>,
-    pub total_items: Option<u32>,
-    pub processing_speed: Option<f32>,
-    pub estimated_remaining: Option<f32>,
+    pub percentage: Option<f64>,
+    pub processed_items: Option<i64>,
+    pub total_items: Option<i64>,
+    pub processing_speed: Option<f64>,
+    pub estimated_remaining: Option<f64>,
 }

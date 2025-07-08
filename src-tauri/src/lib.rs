@@ -3,6 +3,7 @@ mod db;
 mod error;
 mod models;
 mod types;
+mod services;
 
 use commands::{ bangumi::*, crawler::*, scheduler::*, subscription::*, };
 
@@ -16,8 +17,7 @@ pub fn run() {
         .plugin(db_builder.build())
         .invoke_handler(tauri::generate_handler![
             // Bangumi commands
-            get_bangumi_calendar,
-            get_bangumi_subject,
+            get_calendar,
             // Crawler commands
             create_crawler_task,
             get_crawler_task_status,
@@ -26,6 +26,7 @@ pub fn run() {
             update_scheduled_job,
             get_scheduled_jobs,
             // Subscription commands
+            get_all_subscription_ids,
             add_subscription,
             get_subscriptions
         ])

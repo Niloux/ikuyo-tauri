@@ -2,8 +2,8 @@
 // Bangumi API Service
 // =============================================================================
 
-import { apiClient } from '../common/common';
-import type { ApiResponse } from '../common/common';
+import { invoke } from '@tauri-apps/api/core';
+import { apiClient, ApiResponse } from '../common/common';
 import type { BangumiCalendarItem, BangumiSubject, BangumiWeekday, EpisodeAvailabilityData, BangumiEpisodesData, BangumiEpisode, EpisodeResourcesData } from './bangumiTypes';
 import { debounceRequest, throttleRequest, debounceAsync, throttleAsync } from '../common/common'
 
@@ -33,9 +33,8 @@ export class BangumiApiService {
      * 获取每日放送
      */
     static async getCalendar(): Promise<BangumiWeekday[]> {
-        const response: ApiResponse<BangumiWeekday[]> =
-            await apiClient.get('/animes/calendar')
-        return response.data
+        const response: BangumiWeekday[] = await invoke('get_calendar');
+        return response;
     }
 
     /**

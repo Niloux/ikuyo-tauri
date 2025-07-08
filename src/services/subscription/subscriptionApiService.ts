@@ -2,7 +2,7 @@
  * 订阅API服务
  * 封装所有订阅相关的后端API调用
  */
-
+import { invoke } from '@tauri-apps/api/core'
 import { UserManager } from '../../utils/userManager'
 import type {
     UserSubscription,
@@ -110,7 +110,7 @@ class SubscriptionApiService {
      * 获取所有已订阅bangumi_id（轻量接口）
      */
     async getAllSubscriptionIds(): Promise<number[]> {
-        const res: { ids: number[] } = await apiClient.get('/subscriptions/ids')
+        const res: { ids: number[] } = await invoke('get_all_subscription_ids')
         return res.ids || []
     }
 }

@@ -1,10 +1,16 @@
-use crate::repositories::{
-    anime::AnimeRepository, resource::ResourceRepository, subtitle_group::SubtitleGroupRepository,
-};
-use crate::services::bangumi_service::BangumiService;
-use crate::types::bangumi::{
-    BangumiSubject, BangumiWeekday, EpisodeAvailabilityData, EpisodeResource, EpisodeResourcesData,
-    SubtitleGroupResource, BangumiEpisodesData, SearchLibraryResponse, Pagination
+use crate::{
+    repositories::{
+        anime::AnimeRepository,
+        base::Repository, // <--- 导入 trait
+        resource::ResourceRepository,
+        subtitle_group::SubtitleGroupRepository,
+    },
+    services::bangumi_service::BangumiService,
+    types::bangumi::{
+        BangumiEpisodesData, BangumiSubject, BangumiWeekday, EpisodeAvailabilityData,
+        EpisodeResource, EpisodeResourcesData, Pagination, SearchLibraryResponse,
+        SubtitleGroupResource,
+    },
 };
 use sqlx::SqlitePool;
 use tauri::{command, State};
@@ -32,7 +38,6 @@ pub async fn get_episodes(
     service
         .get_episodes(subject_id, episode_type, limit, offset)
         .await
-        .map_err(|e| e.to_string())
 }
 
 #[command(rename_all = "snake_case")]
@@ -40,19 +45,13 @@ pub async fn get_episode_availability(
     bangumi_id: i64,
     pool: State<'_, SqlitePool>,
 ) -> Result<Option<EpisodeAvailabilityData>, String> {
-    let anime_repo = AnimeRepository::new(&*pool);
-    let resource_repo = ResourceRepository::new(&*pool);
+    let anime_repo = AnimeRepository::new(&pool);
+    let resource_repo = ResourceRepository::new(&pool);
 
-    let anime = anime_repo
-        .get_by_bangumi_id(bangumi_id)
-        .await
-        .map_err(|e| e.to_string())?;
+    let anime = anime_repo.get_by_bangumi_id(bangumi_id).await.map_err(|e| e.to_string())?;
 
     if let Some(anime) = anime {
-        let episode_counts = resource_repo
-            .count_by_episode(anime.mikan_id)
-            .await
-            .map_err(|e| e.to_string())?;
+        let episode_counts = resource_repo.count_by_episode(anime.mikan_id).await.map_err(|e| e.to_string())?;
 
         let mut episodes_map = std::collections::HashMap::new();
         for count in episode_counts {
@@ -80,14 +79,11 @@ pub async fn get_episode_resources(
     episode: i64,
     pool: State<'_, SqlitePool>,
 ) -> Result<Option<EpisodeResourcesData>, String> {
-    let anime_repo = AnimeRepository::new(&*pool);
-    let resource_repo = ResourceRepository::new(&*pool);
-    let subtitle_group_repo = SubtitleGroupRepository::new(&*pool);
+    let anime_repo = AnimeRepository::new(&pool);
+    let resource_repo = ResourceRepository::new(&pool);
+    let subtitle_group_repo = SubtitleGroupRepository::new(&pool);
 
-    let anime = anime_repo
-        .get_by_bangumi_id(bangumi_id)
-        .await
-        .map_err(|e| e.to_string())?;
+    let anime = anime_repo.get_by_bangumi_id(bangumi_id).await.map_err(|e| e.to_string())?;
 
     if let Some(anime) = anime {
         let resources = resource_repo
@@ -120,17 +116,17 @@ pub async fn get_episode_resources(
 
             entry.resource_count += 1;
             entry.resources.push(EpisodeResource {
-                id: res.id.unwrap_or(0),
-                episode_number: res.episode_number.unwrap_or(0) as i64,
+                id: res.id.unwrap_or_default(),
+                episode_number: res.episode_number.unwrap_or_default() as i64,
                 title: res.title,
-                resolution: res.resolution.unwrap_or("".to_string()),
-                subtitle_type: res.subtitle_type.unwrap_or("".to_string()),
-                magnet_url: res.magnet_url.unwrap_or("".to_string()),
-                torrent_url: res.torrent_url.unwrap_or("".to_string()),
-                release_date: res.release_date.unwrap_or(0).to_string(),
-                size: res.file_size.unwrap_or("".to_string()),
+                resolution: res.resolution.unwrap_or_default(),
+                subtitle_type: res.subtitle_type.unwrap_or_default(),
+                magnet_url: res.magnet_url.unwrap_or_default(),
+                torrent_url: res.torrent_url.unwrap_or_default(),
+                release_date: res.release_date.unwrap_or_default().to_string(),
+                size: res.file_size.unwrap_or_default(),
                 group_id: res.subtitle_group_id,
-                group_name: group_name,
+                group_name,
             });
         }
 
@@ -150,18 +146,12 @@ pub async fn search_library(
     limit: i64,
     pool: State<'_, SqlitePool>,
 ) -> Result<SearchLibraryResponse, String> {
-    let anime_repo = AnimeRepository::new(&*pool);
+    let anime_repo = AnimeRepository::new(&pool);
 
     let offset = (page - 1) * limit;
-    let animes = anime_repo
-        .search_by_title(&query, limit, offset)
-        .await
-        .map_err(|e| e.to_string())?;
+    let animes = anime_repo.search_by_title(&query, limit, offset).await.map_err(|e| e.to_string())?;
 
-    let total_animes = anime_repo
-        .count_by_title(&query)
-        .await
-        .map_err(|e| e.to_string())?;
+    let total_animes = anime_repo.count_by_title(&query).await.map_err(|e| e.to_string())?;
 
     let bangumi_ids: Vec<i64> = animes.into_iter().map(|anime| anime.bangumi_id).collect();
 
@@ -191,14 +181,11 @@ pub async fn get_anime_resources(
     offset: Option<i64>,
     pool: State<'_, SqlitePool>,
 ) -> Result<Option<EpisodeResourcesData>, String> {
-    let anime_repo = AnimeRepository::new(&*pool);
-    let resource_repo = ResourceRepository::new(&*pool);
-    let subtitle_group_repo = SubtitleGroupRepository::new(&*pool);
+    let anime_repo = AnimeRepository::new(&pool);
+    let resource_repo = ResourceRepository::new(&pool);
+    let subtitle_group_repo = SubtitleGroupRepository::new(&pool);
 
-    let anime = anime_repo
-        .get_by_bangumi_id(bangumi_id)
-        .await
-        .map_err(|e| e.to_string())?;
+    let anime = anime_repo.get_by_bangumi_id(bangumi_id).await.map_err(|e| e.to_string())?;
 
     if let Some(anime) = anime {
         let resources = resource_repo
@@ -238,17 +225,17 @@ pub async fn get_anime_resources(
 
             entry.resource_count += 1;
             entry.resources.push(EpisodeResource {
-                id: res.id.unwrap_or(0),
-                episode_number: res.episode_number.unwrap_or(0) as i64,
+                id: res.id.unwrap_or_default(),
+                episode_number: res.episode_number.unwrap_or_default() as i64,
                 title: res.title,
-                resolution: res.resolution.unwrap_or("".to_string()),
-                subtitle_type: res.subtitle_type.unwrap_or("".to_string()),
-                magnet_url: res.magnet_url.unwrap_or("".to_string()),
-                torrent_url: res.torrent_url.unwrap_or("".to_string()),
-                release_date: res.release_date.unwrap_or(0).to_string(),
-                size: res.file_size.unwrap_or("".to_string()),
+                resolution: res.resolution.unwrap_or_default(),
+                subtitle_type: res.subtitle_type.unwrap_or_default(),
+                magnet_url: res.magnet_url.unwrap_or_default(),
+                torrent_url: res.torrent_url.unwrap_or_default(),
+                release_date: res.release_date.unwrap_or_default().to_string(),
+                size: res.file_size.unwrap_or_default(),
                 group_id: res.subtitle_group_id,
-                group_name: group_name,
+                group_name,
             });
         }
 

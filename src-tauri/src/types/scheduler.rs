@@ -26,7 +26,7 @@ pub struct ScheduledJobUpdate {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ScheduledJobResponse {
-    pub id: Option<u32>,
+    pub id: Option<i64>,
     pub job_id: String,
     pub name: String,
     pub cron_expression: String,

@@ -1,7 +1,7 @@
 // 数据库模型,时间信息统一用unix时间戳
+use crate::types::subscription as types_subscription;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Type};
-use crate::types::subscription as types_subscription;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[sqlx(type_name = "TEXT")]
@@ -46,7 +46,6 @@ pub struct Anime {
     pub created_at: Option<i64>,
     pub updated_at: Option<i64>,
 }
-
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, FromRow)]
 pub struct AnimeSubtitleGroup {
@@ -145,7 +144,6 @@ pub struct EpisodeResourceCount {
     pub episode_number: i32,
     pub resource_count: i64,
 }
-
 
 // 实现前端struct到后端struct的转换
 impl From<types_subscription::UserSubscription> for UserSubscription {

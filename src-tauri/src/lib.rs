@@ -5,18 +5,22 @@ mod models;
 mod types;
 mod services;
 mod repositories;
+mod config;
 
 use commands::{ bangumi::*, crawler::*, scheduler::*, subscription::*, };
 use tauri::async_runtime::block_on;
 use sqlx::SqlitePool;
+use crate::error::Result;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() {
-    let pool: SqlitePool = block_on(crate::db::init_pool());
+pub fn run() -> Result<()> {
+    let config = config::Config::load();
+    let pool: SqlitePool = block_on(crate::db::init_pool(&config))?;
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(pool)
+        .manage(config) // 将 config 也注入
         .invoke_handler(tauri::generate_handler![
             // Bangumi commands
             get_calendar,
@@ -49,4 +53,6 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+
+    Ok(())
 }

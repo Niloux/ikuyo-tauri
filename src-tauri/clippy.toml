@@ -1,0 +1,15 @@
+# clippy.toml
+
+# 允许在代码中出现 TODO 注释
+allow-expect-in-tests = true
+allow-unwrap-in-tests = true
+
+# 禁用一些过于严格或在某些情况下不必要的 lint
+disallowed-methods = []
+disallowed-types = []
+
+# 单行 if 语句的复杂性阈值
+cognitive-complexity-threshold = 15
+
+# 检查 match 语句中是否有过多的分支
+too-many-lines-threshold = 150 

@@ -41,6 +41,15 @@ pub enum CrawlerTaskType {
     Schedule,
 }
 
+impl From<crate::models::CrawlerTaskType> for CrawlerTaskType {
+    fn from(value: crate::models::CrawlerTaskType) -> Self {
+        match value {
+            crate::models::CrawlerTaskType::Manual => Self::Manual,
+            crate::models::CrawlerTaskType::Scheduled => Self::Schedule,
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum CrawlerTaskStatus {
@@ -49,6 +58,18 @@ pub enum CrawlerTaskStatus {
     Completed,
     Failed,
     Cancelled,
+}
+
+impl From<crate::models::CrawlerTaskStatus> for CrawlerTaskStatus {
+    fn from(value: crate::models::CrawlerTaskStatus) -> Self {
+        match value {
+            crate::models::CrawlerTaskStatus::Pending => Self::Pending,
+            crate::models::CrawlerTaskStatus::Running => Self::Running,
+            crate::models::CrawlerTaskStatus::Completed => Self::Completed,
+            crate::models::CrawlerTaskStatus::Failed => Self::Failed,
+            crate::models::CrawlerTaskStatus::Cancelled => Self::Cancelled,
+        }
+    }
 }
 
 // 爬虫任务相关类型

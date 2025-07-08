@@ -1,29 +1,15 @@
-use serde::{Serialize, ser::Serializer};
+use thiserror::Error;
 
-#[derive(Debug, thiserror::Error)]
+pub type Result<T, E = anyhow::Error> = anyhow::Result<T, E>;
+
+#[derive(Debug, Error)]
 pub enum Error {
-    #[error(transparent)]
-    Io(#[from] std::io::Error),
+    #[error("数据库初始化失败")]
+    DatabaseInitialization,
 
-    #[error("Database error: {0}")]
-    Database(String),
+    #[error("数据库迁移失败")]
+    DatabaseMigration,
 
-    #[error("Network request error: {0}")]
-    Reqwest(#[from] reqwest::Error),
-
-    #[error("HTML parsing error: {0}")]
-    Scraper(String),
-
+    #[error("读取 SQL 文件失败")]
+    SqlFileRead,
 }
-
-impl Serialize for Error {
-    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(self.to_string().as_ref())
-    }
-}
-
-// Define a specific result type for our application
-pub type Result<T> = std::result::Result<T, Error>;

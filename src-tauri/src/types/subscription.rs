@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
-use crate::types::bangumi::BangumiCalendarItem; // Import from bangumi types
+use crate::types::bangumi::BangumiCalendarItem;
+use serde::{Deserialize, Serialize}; // Import from bangumi types
 
 /**
  * 订阅功能相关类型定义
@@ -10,7 +10,7 @@ use crate::types::bangumi::BangumiCalendarItem; // Import from bangumi types
 pub struct UserSubscription {
     pub id: Option<i64>, // u32 -> i64
     pub user_id: String,
-    pub bangumi_id: i64, // u32 -> i64
+    pub bangumi_id: i64,    // u32 -> i64
     pub subscribed_at: i64, // u64 -> i64
     pub notes: Option<String>,
     // 缓存的番剧数据
@@ -46,7 +46,7 @@ pub struct SubscriptionStatus {
 // 获取订阅列表的请求参数
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GetSubscriptionsParams {
-    pub sort: Option<String>, // Can be an enum if values are fixed
+    pub sort: Option<String>,  // Can be an enum if values are fixed
     pub order: Option<String>, // Can be an enum if values are fixed
     pub search: Option<String>,
     pub page: Option<u32>,

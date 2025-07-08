@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 // 对应前端的 BangumiCalendarItem
@@ -84,7 +84,7 @@ pub struct BangumiSubject {
     pub rank: Option<i64>,
     pub images: Option<BangumiImages>,
     pub collection: Option<BangumiCollection>,
-    pub tags: Option<Vec<BangumiTag>>
+    pub tags: Option<Vec<BangumiTag>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

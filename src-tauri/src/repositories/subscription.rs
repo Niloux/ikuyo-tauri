@@ -1,4 +1,5 @@
 use crate::models::UserSubscription;
+use crate::error::Result;
 use sqlx::SqlitePool;
 
 pub struct SubscriptionRepository<'a> {
@@ -10,8 +11,8 @@ impl<'a> SubscriptionRepository<'a> {
         Self { pool }
     }
 
-    pub async fn create(&self, subscription: &UserSubscription) -> Result<i64, sqlx::Error> {
-        let result = sqlx::query(
+    pub async fn create(&self, subscription: &UserSubscription) -> Result<()> {
+        sqlx::query(
             "INSERT INTO user_subscriptions (user_id, bangumi_id, subscribed_at, notes, anime_name, anime_name_cn, anime_rating, anime_air_date, anime_air_weekday, url, item_type, summary, rank, images)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
@@ -24,7 +25,6 @@ impl<'a> SubscriptionRepository<'a> {
         .bind(subscription.anime_rating)
         .bind(&subscription.anime_air_date)
         .bind(subscription.anime_air_weekday)
-        // 新增字段绑定
         .bind(&subscription.url)
         .bind(subscription.item_type)
         .bind(&subscription.summary)
@@ -32,21 +32,21 @@ impl<'a> SubscriptionRepository<'a> {
         .bind(&subscription.images)
         .execute(self.pool)
         .await?;
-        Ok(result.last_insert_rowid())
+        Ok(())
     }
 
     pub async fn get_by_user_and_bangumi(
         &self,
         user_id: &str,
         bangumi_id: i64,
-    ) -> Result<Option<UserSubscription>, sqlx::Error> {
-        sqlx::query_as::<_, UserSubscription>(
+    ) -> Result<Option<UserSubscription>> {
+        Ok(sqlx::query_as::<_, UserSubscription>(
             "SELECT * FROM user_subscriptions WHERE user_id = ? AND bangumi_id = ?",
         )
         .bind(user_id)
         .bind(bangumi_id)
         .fetch_optional(self.pool)
-        .await
+        .await?)
     }
 
     pub async fn list_with_sort_search_page(
@@ -57,10 +57,9 @@ impl<'a> SubscriptionRepository<'a> {
         search: Option<&str>,
         page: i64,
         limit: i64,
-    ) -> Result<(Vec<UserSubscription>, i64), sqlx::Error> {
+    ) -> Result<(Vec<UserSubscription>, i64)> {
         let search_pattern = search.map(|s| format!("%{}%", s.to_lowercase()));
 
-        // First, get the total count
         let count_query = {
             let mut q = String::from("SELECT COUNT(*) FROM user_subscriptions WHERE user_id = ?");
             if search.is_some() {
@@ -75,7 +74,6 @@ impl<'a> SubscriptionRepository<'a> {
         }
         let total: i64 = count_query_builder.fetch_one(self.pool).await?;
 
-        // Then, get the paginated data
         let sort_field = match sort {
             "rating" => "anime_rating",
             "air_date" => "anime_air_date",
@@ -83,15 +81,9 @@ impl<'a> SubscriptionRepository<'a> {
             _ => "subscribed_at",
         };
 
-        let order_direction = if order.eq_ignore_ascii_case("desc") {
-            "DESC"
-        } else {
-            "ASC"
-        };
+        let order_direction = if order.eq_ignore_ascii_case("desc") { "DESC" } else { "ASC" };
 
-        let mut data_query = format!(
-            "SELECT * FROM user_subscriptions WHERE user_id = ? ",
-        );
+        let mut data_query = "SELECT * FROM user_subscriptions WHERE user_id = ? ".to_string();
         if search.is_some() {
             data_query.push_str("AND (lower(anime_name) LIKE ? OR lower(anime_name_cn) LIKE ?) ");
         }
@@ -102,8 +94,9 @@ impl<'a> SubscriptionRepository<'a> {
         } else {
             data_query.push_str("OFFSET ?");
         }
-        
-        let mut data_query_builder = sqlx::query_as::<_, UserSubscription>(&data_query).bind(user_id);
+
+        let mut data_query_builder =
+            sqlx::query_as::<_, UserSubscription>(&data_query).bind(user_id);
         if let Some(ref pattern) = search_pattern {
             data_query_builder = data_query_builder.bind(pattern).bind(pattern);
         }
@@ -117,19 +110,27 @@ impl<'a> SubscriptionRepository<'a> {
         Ok((subscriptions, total))
     }
 
-    pub async fn delete_by_user_and_bangumi(&self, user_id: &str, bangumi_id: i64) -> Result<u64, sqlx::Error> {
-        let result = sqlx::query("DELETE FROM user_subscriptions WHERE user_id = ? AND bangumi_id = ?")
-            .bind(user_id)
-            .bind(bangumi_id)
-            .execute(self.pool)
-            .await?;
+    pub async fn delete_by_user_and_bangumi(
+        &self,
+        user_id: &str,
+        bangumi_id: i64,
+    ) -> Result<u64> {
+        let result =
+            sqlx::query("DELETE FROM user_subscriptions WHERE user_id = ? AND bangumi_id = ?")
+                .bind(user_id)
+                .bind(bangumi_id)
+                .execute(self.pool)
+                .await?;
         Ok(result.rows_affected())
     }
 
-    pub async fn get_all_bangumi_ids_by_user(&self, user_id: &str) -> Result<Vec<i64>, sqlx::Error> {
-        sqlx::query_scalar("SELECT bangumi_id FROM user_subscriptions WHERE user_id = ?")
+    pub async fn get_all_bangumi_ids_by_user(
+        &self,
+        user_id: &str,
+    ) -> Result<Vec<i64>> {
+        Ok(sqlx::query_scalar("SELECT bangumi_id FROM user_subscriptions WHERE user_id = ?")
             .bind(user_id)
             .fetch_all(self.pool)
-            .await
+            .await?)
     }
 }

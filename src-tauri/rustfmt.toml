@@ -1,0 +1,10 @@
+# rustfmt.toml
+
+# 使用 Unix 风格的换行符 (\n)
+newline_style = "Unix"
+
+# 缩进大小
+tab_spaces = 4
+
+# 每行最大宽度
+max_width = 100 

@@ -1,6 +1,10 @@
-use crate::repositories::subscription::SubscriptionRepository;
-use crate::models::UserSubscription;
-use crate::types::subscription::{SubscriptionIdsResponse, SubscriptionsResponse, SubscriptionStatus};
+use crate::{
+    models::UserSubscription,
+    repositories::subscription::SubscriptionRepository,
+    types::subscription::{
+        SubscriptionIdsResponse, SubscriptionStatus, SubscriptionsResponse,
+    },
+};
 use sqlx::SqlitePool;
 use tauri::{command, State};
 
@@ -35,9 +39,13 @@ pub async fn subscribe(
     images: Option<String>, // 存储 BangumiImages 的 JSON 字符串
 ) -> Result<UserSubscription, String> {
     let repo = SubscriptionRepository::new(&pool);
+    let user_id_clone = user_id.clone();
 
     // 检查是否已订阅
-    let existing_subscription = repo.get_by_user_and_bangumi(&user_id, bangumi_id).await.map_err(|e| e.to_string())?;
+    let existing_subscription = repo
+        .get_by_user_and_bangumi(&user_id, bangumi_id)
+        .await
+        .map_err(|e| e.to_string())?;
     if existing_subscription.is_some() {
         return Err("番剧已订阅".to_string());
     }
@@ -50,9 +58,9 @@ pub async fn subscribe(
         notes: None,
         anime_name: Some(anime_name),
         anime_name_cn: Some(anime_name_cn),
-        anime_rating: anime_rating,
-        anime_air_date: anime_air_date,
-        anime_air_weekday: anime_air_weekday,
+        anime_rating,
+        anime_air_date,
+        anime_air_weekday,
         // 新增字段赋值
         url,
         item_type,
@@ -61,8 +69,18 @@ pub async fn subscribe(
         images,
     };
 
-    repo.create(&new_subscription).await.map_err(|e| e.to_string())?;
-    Ok(new_subscription)
+    repo.create(&new_subscription)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // 创建成功后，重新获取完整的订阅信息
+    let created_subscription = repo
+        .get_by_user_and_bangumi(&user_id_clone, bangumi_id)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "创建订阅后无法立即找到该订阅".to_string())?;
+
+    Ok(created_subscription)
 }
 
 #[command(rename_all = "snake_case")]
@@ -72,7 +90,9 @@ pub async fn unsubscribe(
     bangumi_id: i64,
 ) -> Result<(), String> {
     let repo = SubscriptionRepository::new(&pool);
-    repo.delete_by_user_and_bangumi(&user_id, bangumi_id).await.map_err(|e| e.to_string())?;
+    repo.delete_by_user_and_bangumi(&user_id, bangumi_id)
+        .await
+        .map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -89,16 +109,22 @@ pub async fn get_subscriptions(
     let repo = SubscriptionRepository::new(&pool);
     let current_page = page.unwrap_or(1);
     let current_limit = limit.unwrap_or(10);
-    let (subscriptions_from_db, total) = repo.list_with_sort_search_page(
-        &user_id,
-        sort.as_deref().unwrap_or("subscribed_at"),
-        order.as_deref().unwrap_or("desc"),
-        search.as_deref(),
-        current_page,
-        current_limit,
-    ).await.map_err(|e| e.to_string())?;
+    let (subscriptions_from_db, total) = repo
+        .list_with_sort_search_page(
+            &user_id,
+            sort.as_deref().unwrap_or("subscribed_at"),
+            order.as_deref().unwrap_or("desc"),
+            search.as_deref(),
+            current_page,
+            current_limit,
+        )
+        .await
+        .map_err(|e| e.to_string())?;
 
-    let subscriptions: Vec<crate::types::subscription::UserSubscription> = subscriptions_from_db.into_iter().map(|sub| sub.into()).collect();
+    let subscriptions: Vec<crate::types::subscription::UserSubscription> = subscriptions_from_db
+        .into_iter()
+        .map(|sub| sub.into())
+        .collect();
 
     let total_pages = (total as f64 / current_limit as f64).ceil() as u32;
 
@@ -120,7 +146,10 @@ pub async fn check_subscription(
     bangumi_id: i64,
 ) -> Result<SubscriptionStatus, String> {
     let repo = SubscriptionRepository::new(&pool);
-    let subscription = repo.get_by_user_and_bangumi(&user_id, bangumi_id).await.map_err(|e| e.to_string())?;
+    let subscription = repo
+        .get_by_user_and_bangumi(&user_id, bangumi_id)
+        .await
+        .map_err(|e| e.to_string())?;
     let response = if let Some(subscription) = subscription {
         SubscriptionStatus {
             subscribed: true,

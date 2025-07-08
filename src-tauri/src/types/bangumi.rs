@@ -51,3 +51,38 @@ pub struct WeekdayInfo {
     pub ja: String,
     pub id: u32,
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct BangumiCollection {
+    pub wish: u32,
+    pub collect: u32,
+    pub doing: u32,
+    pub on_hold: u32,
+    pub dropped: u32,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct BangumiTag {
+    pub name: String,
+    pub count: u32,
+    #[serde(rename = "total_cont")]
+    pub total_cont: u32,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct BangumiSubject {
+    pub id: i64,
+    pub name: String,
+    pub name_cn: String,
+    pub summary: String,
+    #[serde(rename = "date")]
+    pub air_date: Option<String>,
+    pub air_weekday: Option<u32>,
+    pub eps: Option<u32>,
+    pub total_episodes: Option<u32>,
+    pub rating: Option<BangumiRating>,
+    pub rank: Option<u32>,
+    pub images: Option<BangumiImages>,
+    pub collection: Option<BangumiCollection>,
+    pub tags: Option<Vec<BangumiTag>>,
+}

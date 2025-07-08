@@ -20,6 +20,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             // Bangumi commands
             get_calendar,
+            get_subject,
             // Crawler commands
             create_crawler_task,
             get_crawler_task_status,

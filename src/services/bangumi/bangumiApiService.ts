@@ -41,9 +41,8 @@ export class BangumiApiService {
      * 获取番剧详情
      */
     static async getSubject(bangumiId: number): Promise<BangumiSubject> {
-        const response: ApiResponse<BangumiSubject> =
-            await apiClient.get(`/animes/${bangumiId}`)
-        return response.data
+        const response: BangumiSubject = await invoke('get_subject', { id: bangumiId })
+        return response
     }
 
     /**

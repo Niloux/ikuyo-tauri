@@ -1,4 +1,4 @@
-use crate::types::bangumi::BangumiWeekday;
+use crate::types::bangumi::{BangumiSubject, BangumiWeekday};
 
 pub struct BangumiService {
     base_url: String,
@@ -29,5 +29,12 @@ impl BangumiService {
         } else {
             Err(format!("请求失败: {}", response.status()))
         }
+    }
+
+    pub async fn get_subject(&self, id: i64) -> Result<BangumiSubject, String> {
+        let url = format!("{}/subject/{}", self.base_url, id);
+        let response = self.client.get(&url).send().await.map_err(|e| e.to_string())?;
+        let data: BangumiSubject = response.json().await.map_err(|e| e.to_string())?;
+        Ok(data)
     }
 }

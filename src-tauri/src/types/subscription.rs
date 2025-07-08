@@ -8,17 +8,17 @@ use crate::types::bangumi::BangumiCalendarItem; // Import from bangumi types
 // 基础订阅记录
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UserSubscription {
-    pub id: Option<u32>,
+    pub id: Option<i64>, // u32 -> i64
     pub user_id: String,
-    pub bangumi_id: u32,
-    pub subscribed_at: u64, // Using u64 for timestamp
+    pub bangumi_id: i64, // u32 -> i64
+    pub subscribed_at: i64, // u64 -> i64
     pub notes: Option<String>,
     // 缓存的番剧数据
     pub anime_name: Option<String>,
     pub anime_name_cn: Option<String>,
-    pub anime_rating: Option<f32>,
+    pub anime_rating: Option<f64>, // f32 -> f64
     pub anime_air_date: Option<String>,
-    pub anime_air_weekday: Option<u32>,
+    pub anime_air_weekday: Option<i64>, // u32 -> i64
     // 新增字段
     pub url: Option<String>,
     pub item_type: Option<i64>,

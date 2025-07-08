@@ -151,17 +151,16 @@ pub struct EpisodeResourceCount {
 impl From<types_subscription::UserSubscription> for UserSubscription {
     fn from(item: types_subscription::UserSubscription) -> Self {
         UserSubscription {
-            id: item.id.map(|id| id as i64),
+            id: item.id,
             user_id: item.user_id,
-            bangumi_id: item.bangumi_id as i64,
-            subscribed_at: item.subscribed_at as i64,
+            bangumi_id: item.bangumi_id,
+            subscribed_at: item.subscribed_at,
             notes: item.notes,
             anime_name: item.anime_name,
             anime_name_cn: item.anime_name_cn,
-            anime_rating: item.anime_rating.map(|r| r as f64),
+            anime_rating: item.anime_rating,
             anime_air_date: item.anime_air_date,
-            anime_air_weekday: item.anime_air_weekday.map(|w| w as i64),
-            // 新增字段转换
+            anime_air_weekday: item.anime_air_weekday,
             url: item.url,
             item_type: item.item_type,
             summary: item.summary,
@@ -175,21 +174,20 @@ impl From<types_subscription::UserSubscription> for UserSubscription {
 impl From<UserSubscription> for types_subscription::UserSubscription {
     fn from(item: UserSubscription) -> Self {
         types_subscription::UserSubscription {
-            id: item.id.map(|id| id as u32),
+            id: item.id,
             user_id: item.user_id,
-            bangumi_id: item.bangumi_id as u32,
-            subscribed_at: item.subscribed_at as u64,
+            bangumi_id: item.bangumi_id,
+            subscribed_at: item.subscribed_at,
             notes: item.notes,
             anime_name: item.anime_name,
             anime_name_cn: item.anime_name_cn,
-            anime_rating: item.anime_rating.map(|r| r as f32),
+            anime_rating: item.anime_rating,
             anime_air_date: item.anime_air_date,
-            anime_air_weekday: item.anime_air_weekday.map(|w| w as u32),
-            // 新增字段转换
+            anime_air_weekday: item.anime_air_weekday,
             url: item.url,
-            item_type: item.item_type.map(|t| t as i64),
+            item_type: item.item_type,
             summary: item.summary,
-            rank: item.rank.map(|r| r as i64),
+            rank: item.rank,
             images: item.images,
         }
     }

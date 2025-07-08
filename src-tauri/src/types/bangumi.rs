@@ -4,7 +4,7 @@ use std::collections::HashMap;
 // 对应前端的 BangumiCalendarItem
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BangumiCalendarItem {
-    pub id: u32,
+    pub id: i64,
     pub url: String,
     #[serde(rename = "type")]
     pub item_type: i64, // 避免与 Rust 关键字冲突
@@ -12,7 +12,7 @@ pub struct BangumiCalendarItem {
     pub name_cn: String,
     pub summary: String,
     pub air_date: String,
-    pub air_weekday: u32,
+    pub air_weekday: i64,
     pub rating: Option<BangumiRating>,
     pub rank: Option<i64>,
     pub images: Option<BangumiImages>,
@@ -21,9 +21,9 @@ pub struct BangumiCalendarItem {
 // 对应前端的 BangumiRating
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BangumiRating {
-    pub total: u32,
-    pub count: HashMap<String, u32>,
-    pub score: f32,
+    pub total: i64,
+    pub count: HashMap<String, i64>,
+    pub score: f64,
 }
 
 // 对应前端的 BangumiImages
@@ -49,24 +49,24 @@ pub struct WeekdayInfo {
     pub en: String,
     pub cn: String,
     pub ja: String,
-    pub id: u32,
+    pub id: i64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BangumiCollection {
-    pub wish: u32,
-    pub collect: u32,
-    pub doing: u32,
-    pub on_hold: u32,
-    pub dropped: u32,
+    pub wish: i64,
+    pub collect: i64,
+    pub doing: i64,
+    pub on_hold: i64,
+    pub dropped: i64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BangumiTag {
     pub name: String,
-    pub count: u32,
+    pub count: i64,
     #[serde(rename = "total_cont")]
-    pub total_cont: u32,
+    pub total_cont: i64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -77,9 +77,9 @@ pub struct BangumiSubject {
     pub summary: String,
     #[serde(rename = "date")]
     pub air_date: Option<String>,
-    pub air_weekday: Option<u32>,
-    pub eps: Option<u32>,
-    pub total_episodes: Option<u32>,
+    pub air_weekday: Option<i64>,
+    pub eps: Option<i64>,
+    pub total_episodes: Option<i64>,
     pub rating: Option<BangumiRating>,
     pub rank: Option<i64>,
     pub images: Option<BangumiImages>,

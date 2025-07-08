@@ -44,16 +44,22 @@ impl<'a> ScheduledJobRepository<'a> {
     }
 
     pub async fn list(&self, limit: i64, offset: i64) -> Result<Vec<ScheduledJob>, sqlx::Error> {
-        let query = if limit > 0 {
-            "SELECT * FROM scheduled_job ORDER BY created_at DESC LIMIT ? OFFSET ?"
-        } else {
-            "SELECT * FROM scheduled_job ORDER BY created_at DESC OFFSET ?"
-        };
-        sqlx::query_as::<_, ScheduledJob>(query)
+        if limit > 0 {
+            sqlx::query_as::<_, ScheduledJob>(
+                "SELECT * FROM scheduled_job ORDER BY created_at DESC LIMIT ? OFFSET ?"
+            )
             .bind(limit)
             .bind(offset)
             .fetch_all(self.pool)
             .await
+        } else {
+            // 当limit为0时，获取所有记录，忽略offset
+            sqlx::query_as::<_, ScheduledJob>(
+                "SELECT * FROM scheduled_job ORDER BY created_at DESC"
+            )
+            .fetch_all(self.pool)
+            .await
+        }
     }
 
     pub async fn update(&self, job: &ScheduledJob) -> Result<(), sqlx::Error> {
@@ -87,17 +93,23 @@ impl<'a> ScheduledJobRepository<'a> {
         limit: i64,
         offset: i64,
     ) -> Result<Vec<ScheduledJob>, sqlx::Error> {
-        let query = if limit > 0 {
-            "SELECT * FROM scheduled_job WHERE enabled = ? ORDER BY created_at DESC LIMIT ? OFFSET ?"
-        } else {
-            "SELECT * FROM scheduled_job WHERE enabled = ? ORDER BY created_at DESC OFFSET ?"
-        };
-        sqlx::query_as::<_, ScheduledJob>(query)
+        if limit > 0 {
+            sqlx::query_as::<_, ScheduledJob>(
+                "SELECT * FROM scheduled_job WHERE enabled = ? ORDER BY created_at DESC LIMIT ? OFFSET ?"
+            )
             .bind(enabled)
             .bind(limit)
             .bind(offset)
             .fetch_all(self.pool)
             .await
+        } else {
+            sqlx::query_as::<_, ScheduledJob>(
+                "SELECT * FROM scheduled_job WHERE enabled = ? ORDER BY created_at DESC"
+            )
+            .bind(enabled)
+            .fetch_all(self.pool)
+            .await
+        }
     }
 
     pub async fn list_by_time_range(
@@ -107,17 +119,24 @@ impl<'a> ScheduledJobRepository<'a> {
         limit: i64,
         offset: i64,
     ) -> Result<Vec<ScheduledJob>, sqlx::Error> {
-        let query = if limit > 0 {
-            "SELECT * FROM scheduled_job WHERE created_at >= ? AND created_at <= ? ORDER BY created_at DESC LIMIT ? OFFSET ?"
-        } else {
-            "SELECT * FROM scheduled_job WHERE created_at >= ? AND created_at <= ? ORDER BY created_at DESC OFFSET ?"
-        };
-        sqlx::query_as::<_, ScheduledJob>(query)
+        if limit > 0 {
+            sqlx::query_as::<_, ScheduledJob>(
+                "SELECT * FROM scheduled_job WHERE created_at >= ? AND created_at <= ? ORDER BY created_at DESC LIMIT ? OFFSET ?"
+            )
             .bind(start)
             .bind(end)
             .bind(limit)
             .bind(offset)
             .fetch_all(self.pool)
             .await
+        } else {
+            sqlx::query_as::<_, ScheduledJob>(
+                "SELECT * FROM scheduled_job WHERE created_at >= ? AND created_at <= ? ORDER BY created_at DESC"
+            )
+            .bind(start)
+            .bind(end)
+            .fetch_all(self.pool)
+            .await
+        }
     }
 }

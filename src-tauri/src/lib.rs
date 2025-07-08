@@ -29,10 +29,17 @@ pub fn run() {
             // Crawler commands
             create_crawler_task,
             get_crawler_task_status,
+            list_crawler_tasks,
+            get_crawler_task,
+            cancel_crawler_task,
+            delete_crawler_task,
             // Scheduler commands
             create_scheduled_job,
             update_scheduled_job,
             get_scheduled_jobs,
+            get_scheduled_job,
+            delete_scheduled_job,
+            toggle_scheduled_job,
             // Subscription commands
             subscribe,
             unsubscribe,

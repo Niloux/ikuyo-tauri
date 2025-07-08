@@ -41,16 +41,22 @@ impl<'a> CrawlerTaskRepository<'a> {
     }
 
     pub async fn list(&self, limit: i64, offset: i64) -> Result<Vec<CrawlerTask>, sqlx::Error> {
-        let query = if limit > 0 {
-            "SELECT * FROM crawler_task ORDER BY created_at DESC LIMIT ? OFFSET ?"
-        } else {
-            "SELECT * FROM crawler_task ORDER BY created_at DESC OFFSET ?"
-        };
-        sqlx::query_as::<_, CrawlerTask>(query)
+        if limit > 0 {
+            sqlx::query_as::<_, CrawlerTask>(
+                "SELECT * FROM crawler_task ORDER BY created_at DESC LIMIT ? OFFSET ?"
+            )
             .bind(limit)
             .bind(offset)
             .fetch_all(self.pool)
             .await
+        } else {
+            // 当limit为0时，获取所有记录，忽略offset
+            sqlx::query_as::<_, CrawlerTask>(
+                "SELECT * FROM crawler_task ORDER BY created_at DESC"
+            )
+            .fetch_all(self.pool)
+            .await
+        }
     }
 
     pub async fn update(&self, task: &CrawlerTask) -> Result<(), sqlx::Error> {
@@ -89,17 +95,23 @@ impl<'a> CrawlerTaskRepository<'a> {
         limit: i64,
         offset: i64,
     ) -> Result<Vec<CrawlerTask>, sqlx::Error> {
-        let query = if limit > 0 {
-            "SELECT * FROM crawler_task WHERE status = ? LIMIT ? OFFSET ?"
-        } else {
-            "SELECT * FROM crawler_task WHERE status = ? OFFSET ?"
-        };
-        sqlx::query_as::<_, CrawlerTask>(query)
+        if limit > 0 {
+            sqlx::query_as::<_, CrawlerTask>(
+                "SELECT * FROM crawler_task WHERE status = ? ORDER BY created_at DESC LIMIT ? OFFSET ?"
+            )
             .bind(status)
             .bind(limit)
             .bind(offset)
             .fetch_all(self.pool)
             .await
+        } else {
+            sqlx::query_as::<_, CrawlerTask>(
+                "SELECT * FROM crawler_task WHERE status = ? ORDER BY created_at DESC"
+            )
+            .bind(status)
+            .fetch_all(self.pool)
+            .await
+        }
     }
 
     pub async fn list_by_type(
@@ -108,17 +120,23 @@ impl<'a> CrawlerTaskRepository<'a> {
         limit: i64,
         offset: i64,
     ) -> Result<Vec<CrawlerTask>, sqlx::Error> {
-        let query = if limit > 0 {
-            "SELECT * FROM crawler_task WHERE task_type = ? LIMIT ? OFFSET ?"
-        } else {
-            "SELECT * FROM crawler_task WHERE task_type = ? OFFSET ?"
-        };
-        sqlx::query_as::<_, CrawlerTask>(query)
+        if limit > 0 {
+            sqlx::query_as::<_, CrawlerTask>(
+                "SELECT * FROM crawler_task WHERE task_type = ? ORDER BY created_at DESC LIMIT ? OFFSET ?"
+            )
             .bind(task_type)
             .bind(limit)
             .bind(offset)
             .fetch_all(self.pool)
             .await
+        } else {
+            sqlx::query_as::<_, CrawlerTask>(
+                "SELECT * FROM crawler_task WHERE task_type = ? ORDER BY created_at DESC"
+            )
+            .bind(task_type)
+            .fetch_all(self.pool)
+            .await
+        }
     }
 
     pub async fn list_by_time_range(
@@ -128,17 +146,24 @@ impl<'a> CrawlerTaskRepository<'a> {
         limit: i64,
         offset: i64,
     ) -> Result<Vec<CrawlerTask>, sqlx::Error> {
-        let query = if limit > 0 {
-            "SELECT * FROM crawler_task WHERE created_at >= ? AND created_at <= ? LIMIT ? OFFSET ?"
+        if limit > 0 {
+            sqlx::query_as::<_, CrawlerTask>(
+                "SELECT * FROM crawler_task WHERE created_at >= ? AND created_at <= ? ORDER BY created_at DESC LIMIT ? OFFSET ?"
+            )
+            .bind(start)
+            .bind(end)
+            .bind(limit)
+            .bind(offset)
+            .fetch_all(self.pool)
+            .await
         } else {
-            "SELECT * FROM crawler_task WHERE created_at >= ? AND created_at <= ? OFFSET ?"
-        };
-        sqlx::query_as::<_, CrawlerTask>(query)
-        .bind(start)
-        .bind(end)
-        .bind(limit)
-        .bind(offset)
-        .fetch_all(self.pool)
-        .await
+            sqlx::query_as::<_, CrawlerTask>(
+                "SELECT * FROM crawler_task WHERE created_at >= ? AND created_at <= ? ORDER BY created_at DESC"
+            )
+            .bind(start)
+            .bind(end)
+            .fetch_all(self.pool)
+            .await
+        }
     }
 }

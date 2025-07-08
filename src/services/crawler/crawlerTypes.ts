@@ -9,16 +9,19 @@ export interface CrawlerTaskCreate {
     limit?: number;
 }
 
+export type CrawlerTaskType = 'manual' | 'schedule';
+export type CrawlerTaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+
 // 爬虫任务相关类型
 export interface TaskResponse {
     id: number;
-    task_type: string;
-    status: string;
+    task_type: CrawlerTaskType;
+    status: CrawlerTaskStatus;
     parameters?: string;
     result_summary?: string;
-    created_at?: string;
-    started_at?: string;
-    completed_at?: string;
+    created_at?: number; // Unix timestamp in milliseconds
+    started_at?: number;
+    completed_at?: number;
     error_message?: string;
     percentage?: number;
     processed_items?: number;

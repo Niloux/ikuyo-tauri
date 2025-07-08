@@ -2,7 +2,7 @@
 // Crawler API Service
 // =============================================================================
 
-import { apiClient } from '../common/common';
+import { invoke } from '@tauri-apps/api/core';
 import type { CrawlerTaskCreate, TaskResponse } from './crawlerTypes';
 
 export class CrawlerApiService {
@@ -11,7 +11,7 @@ export class CrawlerApiService {
      * @param data 任务创建数据
      */
     static async createTask(data: CrawlerTaskCreate): Promise<TaskResponse> {
-        return await apiClient.post('/crawler/tasks', data)
+        return await invoke('create_crawler_task', { task: data });
     }
 
     /**
@@ -21,8 +21,10 @@ export class CrawlerApiService {
      */
     static async listTasks(page: number = 1, pageSize: number = 10):
         Promise<TaskResponse[]> {
-        return await apiClient.get(
-            '/crawler/tasks', { params: { page, page_size: pageSize } })
+        return await invoke('list_crawler_tasks', {
+            page,
+            page_size: pageSize
+        });
     }
 
     /**
@@ -30,7 +32,7 @@ export class CrawlerApiService {
      * @param taskId 任务ID
      */
     static async getTask(taskId: number): Promise<TaskResponse> {
-        return await apiClient.get(`/crawler/tasks/${taskId}`)
+        return await invoke('get_crawler_task', { task_id: taskId });
     }
 
     /**
@@ -38,37 +40,27 @@ export class CrawlerApiService {
      * @param taskId 任务ID
      */
     static async cancelTask(taskId: number): Promise<TaskResponse> {
-        return await apiClient.delete(`/crawler/tasks/${taskId}`)
+        return await invoke('cancel_crawler_task', { task_id: taskId });
     }
 
     /**
-     * 获取特定爬虫任务的进度 (HTTP轮询方式，不推荐用于实时更新)
+     * 删除特定爬虫任务
      * @param taskId 任务ID
      */
-    static async getTaskProgress(taskId: number): Promise<any> {
-        return await apiClient.get(`/crawler/tasks/${taskId}/progress`)
+    static async deleteTask(taskId: number): Promise<void> {
+        return await invoke('delete_crawler_task', { task_id: taskId });
     }
 
     /**
-     * 连接到特定爬虫任务的WebSocket进度更新
+     * 获取特定爬虫任务的进度状态
      * @param taskId 任务ID
-     * @returns WebSocket实例
      */
-    static connectTaskProgressWs(taskId: number): WebSocket {
-        // 优先使用VITE_WS_BASE_URL环境变量
-        const wsBase = import.meta.env.VITE_WS_BASE_URL;
-        let wsUrl: string;
-        if (wsBase && wsBase.trim() !== '') {
-            // 确保结尾无斜杠
-            const base = wsBase.replace(/\/$/, '');
-            wsUrl = `${base}/crawler/tasks/${taskId}/ws`;
-        } else {
-            // 回退到当前host
-            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            wsUrl = `${wsProtocol}//${window.location.host}/crawler/tasks/${taskId}/ws`;
-        }
-        return new WebSocket(wsUrl);
+    static async getTaskProgress(taskId: number): Promise<TaskResponse> {
+        return await invoke('get_crawler_task_status', { task_id: taskId });
     }
+
+    // 注意：WebSocket功能在Tauri中可以用事件系统替代
+    // 如果需要实时更新，建议使用Tauri的事件监听机制
 }
 
 export default CrawlerApiService;

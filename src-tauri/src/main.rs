@@ -32,5 +32,5 @@ fn main() {
         .init();
 
     tracing::info!("main入口启动，日志系统已初始化并验证");
-    ikuyo_app_lib::run()
+    ikuyo_app_lib::run();
 }

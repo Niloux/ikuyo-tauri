@@ -1,11 +1,34 @@
+// 数据库模型,时间信息统一用unix时间戳
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use crate::types::subscription as types_subscription;
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize,)]
+pub enum AnimeStatus {
+    Unknown,
+    Airing,
+    Finished,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize,)]
+pub enum CrawlerTaskStatus {
+    Pending,
+    Running,
+    Completed,
+    Failed,
+    Cancelled,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize,)]
+pub enum CrawlerTaskType {
+    Manual,
+    Scheduled,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, FromRow)]
 pub struct Anime {
-    pub mikan_id: Option<i64>,
-    pub bangumi_id: Option<i64>,
+    pub mikan_id: i64,
+    pub bangumi_id: i64,
     pub title: String,
     pub original_title: Option<String>,
     pub broadcast_day: Option<String>,
@@ -13,10 +36,11 @@ pub struct Anime {
     pub official_website: Option<String>,
     pub bangumi_url: Option<String>,
     pub description: Option<String>,
-    pub status: Option<String>,
+    pub status: Option<AnimeStatus>,
     pub created_at: Option<i64>,
     pub updated_at: Option<i64>,
 }
+
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, FromRow)]
 pub struct AnimeSubtitleGroup {
@@ -26,7 +50,7 @@ pub struct AnimeSubtitleGroup {
     pub first_release_date: Option<i64>,
     pub last_update_date: Option<i64>,
     pub resource_count: Option<i64>,
-    pub is_active: Option<i64>,
+    pub is_active: Option<bool>,
     pub created_at: Option<i64>,
     pub updated_at: Option<i64>,
 }
@@ -34,15 +58,14 @@ pub struct AnimeSubtitleGroup {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, FromRow)]
 pub struct CrawlerTask {
     pub id: Option<i64>,
-    pub task_type: String,
-    pub status: String,
+    pub task_type: CrawlerTaskType,
+    pub status: CrawlerTaskStatus,
     pub parameters: Option<String>,
     pub result_summary: Option<String>,
     pub created_at: Option<i64>,
     pub started_at: Option<i64>,
     pub completed_at: Option<i64>,
     pub error_message: Option<String>,
-    pub worker_pid: Option<i64>,
     pub percentage: Option<f64>,
     pub processed_items: Option<i64>,
     pub total_items: Option<i64>,

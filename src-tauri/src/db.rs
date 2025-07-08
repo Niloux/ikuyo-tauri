@@ -1,22 +1,17 @@
-use tauri_plugin_sql::{Migration, MigrationKind};
-use sqlx::SqlitePool;
-use crate::models::UserSubscription;
 use crate::error::{Error, Result};
-
-const DB_VERSION: u64 = 1;
+use crate::models::UserSubscription;
+use sqlx::SqlitePool;
+use tauri_plugin_sql::{Migration, MigrationKind};
 
 pub fn init_db() -> tauri_plugin_sql::Builder {
-    let migrations = vec![
-        Migration {
-            version: 1,
-            description: "create_initial_tables",
-            sql: include_str!("../migrations/001_create_tables.sql"),
-            kind: MigrationKind::Up,
-        }
-    ];
+    let migrations = vec![Migration {
+        version: 1,
+        description: "create_initial_tables",
+        sql: include_str!("../migrations/001_create_tables.sql"),
+        kind: MigrationKind::Up,
+    }];
 
-    tauri_plugin_sql::Builder::new()
-        .add_migrations("sqlite:ikuyo.db", migrations)
+    tauri_plugin_sql::Builder::new().add_migrations("sqlite:ikuyo.db?foreign_keys=true", migrations)
 }
 
 // 获取数据库连接池
@@ -25,8 +20,14 @@ pub async fn get_pool(pool: tauri::State<'_, SqlitePool>) -> Result<&SqlitePool>
 }
 
 // 插入用户订阅
-pub async fn insert_user_subscription(pool: &SqlitePool, subscription: UserSubscription) -> Result<UserSubscription> {
-    let mut conn = pool.acquire().await.map_err(|e| Error::Database(e.to_string()))?;
+pub async fn insert_user_subscription(
+    pool: &SqlitePool,
+    subscription: UserSubscription,
+) -> Result<UserSubscription> {
+    let mut conn = pool
+        .acquire()
+        .await
+        .map_err(|e| Error::Database(e.to_string()))?;
 
     let query = "INSERT INTO user_subscriptions (user_id, bangumi_id, subscribed_at, notes, anime_name, anime_name_cn, anime_rating, anime_air_date, anime_air_weekday) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
@@ -50,7 +51,10 @@ pub async fn insert_user_subscription(pool: &SqlitePool, subscription: UserSubsc
 
 // 获取用户订阅列表
 pub async fn get_user_subscriptions_from_db(pool: &SqlitePool) -> Result<Vec<UserSubscription>> {
-    let mut conn = pool.acquire().await.map_err(|e| Error::Database(e.to_string()))?;
+    let mut conn = pool
+        .acquire()
+        .await
+        .map_err(|e| Error::Database(e.to_string()))?;
 
     let subscriptions = sqlx::query_as::<_, UserSubscription>("SELECT * FROM user_subscriptions")
         .fetch_all(&mut *conn)

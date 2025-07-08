@@ -40,7 +40,20 @@ class SubscriptionApiService {
     /**
      * 添加订阅
      */
-    async subscribe(bangumi_id: number, anime_name: string, anime_name_cn: string, anime_rating?: number, anime_air_date?: string, anime_air_weekday?: number): Promise<UserSubscription> {
+    async subscribe(
+        bangumi_id: number,
+        anime_name: string,
+        anime_name_cn: string,
+        anime_rating?: number,
+        anime_air_date?: string,
+        anime_air_weekday?: number,
+        // 新增参数
+        url?: string,
+        item_type?: number,
+        summary?: string,
+        rank?: number,
+        images?: string, // 存储 BangumiImages 的 JSON 字符串
+    ): Promise<UserSubscription> {
         return invoke('subscribe', {
             user_id: UserManager.getUserId(),
             bangumi_id,
@@ -49,6 +62,12 @@ class SubscriptionApiService {
             anime_rating,
             anime_air_date,
             anime_air_weekday,
+            // 新增参数传递
+            url,
+            item_type,
+            summary,
+            rank,
+            images,
         })
     }
 

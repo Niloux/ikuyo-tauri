@@ -19,6 +19,12 @@ pub struct UserSubscription {
     pub anime_rating: Option<f32>,
     pub anime_air_date: Option<String>,
     pub anime_air_weekday: Option<u32>,
+    // 新增字段
+    pub url: Option<String>,
+    pub item_type: Option<i64>,
+    pub summary: Option<String>,
+    pub rank: Option<i64>,
+    pub images: Option<String>,
 }
 
 // 包含完整番剧信息的订阅记录

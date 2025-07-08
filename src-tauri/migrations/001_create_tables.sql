@@ -87,7 +87,13 @@ CREATE TABLE IF NOT EXISTS user_subscriptions (
     anime_name_cn TEXT,
     anime_rating REAL,
     anime_air_date TEXT,
-    anime_air_weekday INTEGER
+    anime_air_weekday INTEGER,
+    -- 新增字段
+    url TEXT,
+    item_type INTEGER,
+    summary TEXT,
+    rank INTEGER,
+    images TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_user_subscriptions_user_id ON user_subscriptions (user_id);

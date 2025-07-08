@@ -27,6 +27,12 @@ pub async fn subscribe(
     anime_rating: Option<f64>,
     anime_air_date: Option<String>,
     anime_air_weekday: Option<i64>,
+    // 新增参数
+    url: Option<String>,
+    item_type: Option<i64>,
+    summary: Option<String>,
+    rank: Option<i64>,
+    images: Option<String>, // 存储 BangumiImages 的 JSON 字符串
 ) -> Result<UserSubscription, String> {
     let repo = SubscriptionRepository::new(&pool);
 
@@ -47,6 +53,12 @@ pub async fn subscribe(
         anime_rating: anime_rating,
         anime_air_date: anime_air_date,
         anime_air_weekday: anime_air_weekday,
+        // 新增字段赋值
+        url,
+        item_type,
+        summary,
+        rank,
+        images,
     };
 
     repo.create(&new_subscription).await.map_err(|e| e.to_string())?;
@@ -86,20 +98,7 @@ pub async fn get_subscriptions(
         current_limit,
     ).await.map_err(|e| e.to_string())?;
 
-    let subscriptions: Vec<crate::types::subscription::UserSubscription> = subscriptions_from_db.into_iter().map(|sub| {
-        crate::types::subscription::UserSubscription {
-            id: sub.id.map(|id| id as u32),
-            user_id: sub.user_id,
-            bangumi_id: sub.bangumi_id as u32,
-            subscribed_at: sub.subscribed_at as u64,
-            notes: sub.notes,
-            anime_name: sub.anime_name,
-            anime_name_cn: sub.anime_name_cn,
-            anime_rating: sub.anime_rating.map(|r| r as f32),
-            anime_air_date: sub.anime_air_date,
-            anime_air_weekday: sub.anime_air_weekday.map(|w| w as u32),
-        }
-    }).collect();
+    let subscriptions: Vec<crate::types::subscription::UserSubscription> = subscriptions_from_db.into_iter().map(|sub| sub.into()).collect();
 
     let total_pages = (total as f64 / current_limit as f64).ceil() as u32;
 

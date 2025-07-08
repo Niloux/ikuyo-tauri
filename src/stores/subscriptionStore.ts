@@ -86,24 +86,29 @@ export const useSubscriptionStore = defineStore('subscription', () => {
             // 获取订阅列表
             const response = await subscriptionApiService.getSubscriptions(finalParams)
 
-            // 批量获取番剧详情
-            const animeDetails = await Promise.all(
-                response.subscriptions.map(sub =>
-                    bangumiApiService.getSubject(sub.bangumi_id).catch(() => null)
-                )
-            )
-
-            // 组合数据
+            // 直接使用缓存的番剧数据构建 subscriptionsWithAnime
             const subscriptionsWithAnime: SubscriptionWithAnime[] = response.subscriptions
-                .map((sub, index) => {
-                    const anime = animeDetails[index]
-                    if (!anime) return null
+                .map(sub => {
+                    // 将 UserSubscription 转换为 SubscriptionWithAnime
+                    // 注意：这里假设 UserSubscription 已经包含了所有 BangumiCalendarItem 的必要字段
+                    // 如果有缺失，需要在这里进行处理或补充默认值
                     return {
                         ...sub,
-                        anime: anime as unknown as BangumiCalendarItem  // 类型断言
+                        anime: {
+                            id: sub.bangumi_id,
+                            url: sub.url || '', // 提供默认值
+                            type: sub.item_type || 0, // 提供默认值
+                            name: sub.anime_name || '', // 提供默认值
+                            name_cn: sub.anime_name_cn || '', // 提供默认值
+                            summary: sub.summary || '', // 提供默认值
+                            air_date: sub.anime_air_date || '', // 提供默认值
+                            air_weekday: sub.anime_air_weekday || 0, // 提供默认值
+                            rating: sub.anime_rating ? { total: 0, count: {}, score: sub.anime_rating } : { total: 0, count: {}, score: 0 }, // 提供默认值
+                            rank: sub.rank || 0, // 提供默认值
+                            images: sub.images ? JSON.parse(sub.images) : { large: '', common: '', medium: '', small: '', grid: '' }, // 解析 JSON 字符串
+                        } as BangumiCalendarItem
                     }
                 })
-                .filter(Boolean) as SubscriptionWithAnime[]
 
             subscriptions.value = subscriptionsWithAnime
             pagination.value = response.pagination
@@ -131,7 +136,13 @@ export const useSubscriptionStore = defineStore('subscription', () => {
             anime_name_cn: anime.name_cn,
             anime_rating: anime.rating?.score,
             anime_air_date: anime.air_date,
-            anime_air_weekday: anime.air_weekday
+            anime_air_weekday: anime.air_weekday,
+            // 新增字段
+            url: anime.url,
+            item_type: anime.type,
+            summary: anime.summary,
+            rank: anime.rank,
+            images: JSON.stringify(anime.images), // 将 BangumiImages 转换为 JSON 字符串
         }
 
         subscriptions.value.unshift(optimisticSubscription)
@@ -151,7 +162,13 @@ export const useSubscriptionStore = defineStore('subscription', () => {
                 anime.name_cn,
                 anime.rating?.score,
                 anime.air_date,
-                anime.air_weekday
+                anime.air_weekday,
+                // 新增参数传递
+                anime.url,
+                anime.type,
+                anime.summary,
+                anime.rank,
+                JSON.stringify(anime.images),
             )
             feedbackStore.showToast('订阅成功', 'success')
         } catch (err) {

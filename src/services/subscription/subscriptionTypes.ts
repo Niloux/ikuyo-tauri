@@ -17,6 +17,12 @@ export interface UserSubscription {
     anime_rating?: number
     anime_air_date?: string
     anime_air_weekday?: number
+    // 新增字段
+    url?: string
+    item_type?: number
+    summary?: string
+    rank?: number
+    images?: string // 存储 BangumiImages 的 JSON 字符串
 }
 
 // 包含完整番剧信息的订阅记录

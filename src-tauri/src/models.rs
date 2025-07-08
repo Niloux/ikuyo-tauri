@@ -113,6 +113,12 @@ pub struct UserSubscription {
     pub anime_rating: Option<f64>,
     pub anime_air_date: Option<String>,
     pub anime_air_weekday: Option<i64>,
+    // 新增字段
+    pub url: Option<String>,
+    pub item_type: Option<i64>, // 对应 BangumiCalendarItem 的 type
+    pub summary: Option<String>,
+    pub rank: Option<i64>,
+    pub images: Option<String>, // 存储 BangumiImages 的 JSON 字符串
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, FromRow)]
@@ -155,6 +161,12 @@ impl From<types_subscription::UserSubscription> for UserSubscription {
             anime_rating: item.anime_rating.map(|r| r as f64),
             anime_air_date: item.anime_air_date,
             anime_air_weekday: item.anime_air_weekday.map(|w| w as i64),
+            // 新增字段转换
+            url: item.url,
+            item_type: item.item_type,
+            summary: item.summary,
+            rank: item.rank,
+            images: item.images,
         }
     }
 }
@@ -173,6 +185,12 @@ impl From<UserSubscription> for types_subscription::UserSubscription {
             anime_rating: item.anime_rating.map(|r| r as f32),
             anime_air_date: item.anime_air_date,
             anime_air_weekday: item.anime_air_weekday.map(|w| w as u32),
+            // 新增字段转换
+            url: item.url,
+            item_type: item.item_type.map(|t| t as i64),
+            summary: item.summary,
+            rank: item.rank.map(|r| r as i64),
+            images: item.images,
         }
     }
 }

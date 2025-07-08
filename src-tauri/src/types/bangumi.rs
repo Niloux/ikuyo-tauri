@@ -7,14 +7,14 @@ pub struct BangumiCalendarItem {
     pub id: u32,
     pub url: String,
     #[serde(rename = "type")]
-    pub item_type: u32, // 避免与 Rust 关键字冲突
+    pub item_type: i64, // 避免与 Rust 关键字冲突
     pub name: String,
     pub name_cn: String,
     pub summary: String,
     pub air_date: String,
     pub air_weekday: u32,
     pub rating: Option<BangumiRating>,
-    pub rank: Option<u32>,
+    pub rank: Option<i64>,
     pub images: Option<BangumiImages>,
 }
 
@@ -81,7 +81,7 @@ pub struct BangumiSubject {
     pub eps: Option<u32>,
     pub total_episodes: Option<u32>,
     pub rating: Option<BangumiRating>,
-    pub rank: Option<u32>,
+    pub rank: Option<i64>,
     pub images: Option<BangumiImages>,
     pub collection: Option<BangumiCollection>,
     pub tags: Option<Vec<BangumiTag>>

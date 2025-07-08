@@ -12,8 +12,8 @@ impl<'a> SubscriptionRepository<'a> {
 
     pub async fn create(&self, subscription: &UserSubscription) -> Result<i64, sqlx::Error> {
         let result = sqlx::query(
-            "INSERT INTO user_subscriptions (user_id, bangumi_id, subscribed_at, notes, anime_name, anime_name_cn, anime_rating, anime_air_date, anime_air_weekday)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO user_subscriptions (user_id, bangumi_id, subscribed_at, notes, anime_name, anime_name_cn, anime_rating, anime_air_date, anime_air_weekday, url, item_type, summary, rank, images)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
         .bind(&subscription.user_id)
         .bind(subscription.bangumi_id)
@@ -24,6 +24,12 @@ impl<'a> SubscriptionRepository<'a> {
         .bind(subscription.anime_rating)
         .bind(&subscription.anime_air_date)
         .bind(subscription.anime_air_weekday)
+        // 新增字段绑定
+        .bind(&subscription.url)
+        .bind(subscription.item_type)
+        .bind(&subscription.summary)
+        .bind(subscription.rank)
+        .bind(&subscription.images)
         .execute(self.pool)
         .await?;
         Ok(result.last_insert_rowid())

@@ -219,39 +219,6 @@ export const useSubscriptionStore = defineStore('subscription', () => {
     }
 
     /**
-     * 标准订阅（等待API响应）
-     */
-    const subscribe = async (bangumiId: number) => {
-        try {
-            // 注意：这个方法只有bangumiId，缺少其他必需参数，建议使用optimisticSubscribe
-            await subscriptionApiService.subscribe(bangumiId, '', '')
-            feedbackStore.showToast('订阅成功', 'success')
-            // 重新获取列表以确保数据一致性
-            await fetchSubscriptions()
-        } catch (err) {
-            const errorMsg = err instanceof Error ? err.message : '订阅失败'
-            feedbackStore.showError(errorMsg)
-            throw err
-        }
-    }
-
-    /**
-     * 标准取消订阅（等待API响应）
-     */
-    const unsubscribe = async (bangumiId: number) => {
-        try {
-            await subscriptionApiService.unsubscribe(bangumiId)
-            feedbackStore.showToast('取消订阅成功', 'success')
-            // 重新获取列表以确保数据一致性
-            await fetchSubscriptions()
-        } catch (err) {
-            const errorMsg = err instanceof Error ? err.message : '取消订阅失败'
-            feedbackStore.showError(errorMsg)
-            throw err
-        }
-    }
-
-    /**
      * 切换订阅状态
      */
     const toggleSubscription = async (anime: BangumiCalendarItem) => {
@@ -320,8 +287,6 @@ export const useSubscriptionStore = defineStore('subscription', () => {
         fetchAllSubscriptionIds,
         optimisticSubscribe,
         optimisticUnsubscribe,
-        subscribe,
-        unsubscribe,
         toggleSubscription,
         searchSubscriptions,
         sortSubscriptions,

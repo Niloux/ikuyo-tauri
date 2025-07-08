@@ -14,28 +14,6 @@ import type {
 } from './subscriptionTypes'
 
 class SubscriptionApiService {
-    private readonly baseURL = '/subscriptions'
-
-    /**
-     * 获取HTTP请求头，包含用户ID
-     */
-    private getHeaders(): HeadersInit {
-        return {
-            'Content-Type': 'application/json',
-            'X-User-Id': UserManager.getUserId()
-        }
-    }
-
-    /**
-     * 处理API响应
-     */
-    private async handleResponse<T>(response: Response): Promise<T> {
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}))
-            throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`)
-        }
-        return response.json()
-    }
 
     /**
      * 添加订阅

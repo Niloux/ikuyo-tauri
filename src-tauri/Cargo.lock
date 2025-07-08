@@ -2014,7 +2014,6 @@ dependencies = [
  "tauri",
  "tauri-build",
  "tauri-plugin-opener",
- "tauri-plugin-sql",
  "thiserror 1.0.69",
  "tokio",
  "tracing",
@@ -4178,7 +4177,6 @@ dependencies = [
  "sha2",
  "smallvec",
  "thiserror 2.0.12",
- "time",
  "tokio",
  "tokio-stream",
  "tracing",
@@ -4261,7 +4259,6 @@ dependencies = [
  "sqlx-core",
  "stringprep",
  "thiserror 2.0.12",
- "time",
  "tracing",
  "whoami",
 ]
@@ -4299,7 +4296,6 @@ dependencies = [
  "sqlx-core",
  "stringprep",
  "thiserror 2.0.12",
- "time",
  "tracing",
  "whoami",
 ]
@@ -4324,7 +4320,6 @@ dependencies = [
  "serde_urlencoded",
  "sqlx-core",
  "thiserror 2.0.12",
- "time",
  "tracing",
  "url",
 ]
@@ -4688,24 +4683,6 @@ dependencies = [
  "url",
  "windows",
  "zbus",
-]
-
-[[package]]
-name = "tauri-plugin-sql"
-version = "2.3.0"
-source = "git+https://github.com/tauri-apps/plugins-workspace?branch=v2#989470f0d7b45d58a222414110355b1d63320589"
-dependencies = [
- "futures-core",
- "indexmap 2.10.0",
- "log",
- "serde",
- "serde_json",
- "sqlx",
- "tauri",
- "tauri-plugin",
- "thiserror 2.0.12",
- "time",
- "tokio",
 ]
 
 [[package]]

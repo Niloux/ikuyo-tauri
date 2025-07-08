@@ -1,4 +1,4 @@
-use tauri::{command, State};
+use tauri::{command};
 use crate::types::bangumi::BangumiWeekday;
 use crate::services::bangumi_service::BangumiService;
 

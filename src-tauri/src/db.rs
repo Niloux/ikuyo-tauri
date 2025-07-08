@@ -1,22 +1,10 @@
-use crate::error::Result;
 use sqlx::SqlitePool;
-use tauri_plugin_sql::{Migration, MigrationKind};
+use std::fs;
 
-pub fn init_db() -> tauri_plugin_sql::Builder {
-    let migrations = vec![Migration {
-        version: 1,
-        description: "create_initial_tables",
-        sql: include_str!("../migrations/001_create_tables.sql"),
-        kind: MigrationKind::Up,
-    }];
-
-    tauri_plugin_sql::Builder::new().add_migrations(
-        "sqlite:ikuyo.db?foreign_keys=true&max_connections=8",
-        migrations,
-    )
-}
-
-// 获取数据库连接池
-pub async fn get_pool(pool: tauri::State<'_, SqlitePool>) -> Result<&SqlitePool> {
-    Ok(pool.inner())
+pub async fn init_pool() -> SqlitePool {
+    let pool = SqlitePool::connect("sqlite:ikuyo.db?mode=rwc").await.expect("数据库连接失败");
+    // 自动执行建表 SQL
+    let sql = fs::read_to_string("migrations/001_create_tables.sql").expect("无法读取建表SQL");
+    sqlx::query(&sql).execute(&pool).await.expect("建表SQL执行失败");
+    pool
 }

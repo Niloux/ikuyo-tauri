@@ -110,7 +110,9 @@ class SubscriptionApiService {
      * 获取所有已订阅bangumi_id（轻量接口）
      */
     async getAllSubscriptionIds(): Promise<number[]> {
-        const res: { ids: number[] } = await invoke('get_all_subscription_ids')
+        const res: { ids: number[] } = await invoke('get_all_subscription_ids', {
+            user_id: UserManager.getUserId()
+        })
         return res.ids || []
     }
 }

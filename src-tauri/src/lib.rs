@@ -22,6 +22,10 @@ pub fn run() {
             get_calendar,
             get_subject,
             get_episodes,
+            get_episode_availability,
+            get_episode_resources,
+            search_library,
+            get_anime_resources,
             // Crawler commands
             create_crawler_task,
             get_crawler_task_status,

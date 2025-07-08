@@ -3,9 +3,8 @@
 // =============================================================================
 
 import { invoke } from '@tauri-apps/api/core';
-import { apiClient, ApiResponse } from '../common/common';
-import type { BangumiCalendarItem, BangumiSubject, BangumiWeekday, EpisodeAvailabilityData, BangumiEpisodesData, BangumiEpisode, EpisodeResourcesData } from './bangumiTypes';
-import { debounceRequest, throttleRequest, debounceAsync, throttleAsync } from '../common/common'
+import type { BangumiCalendarItem, BangumiSubject, BangumiWeekday, EpisodeAvailabilityData, BangumiEpisodesData, EpisodeResourcesData } from './bangumiTypes';
+import { debounceAsync, throttleAsync } from '../common/common'
 
 /**
  * 数据转换工具：BangumiSubject 转换为 BangumiCalendarItem
@@ -48,18 +47,9 @@ export class BangumiApiService {
     /**
      * 获取集数可用性状态
      */
-    static async getEpisodeAvailability(bangumiId: number): Promise<EpisodeAvailabilityData | null> {
-        try {
-            const response: ApiResponse<EpisodeAvailabilityData> =
-                await apiClient.get(`/animes/${bangumiId}/episodes/availability`)
-            return response.data
-        } catch (err: any) {
-            if (err?.response?.status === 404) {
-                // 404视为无资源，返回null
-                return null
-            }
-            throw err
-        }
+    static async getEpisodeAvailability(bangumi_id: number): Promise<EpisodeAvailabilityData | null> {
+        const response: EpisodeAvailabilityData | null = await invoke('get_episode_availability', { bangumi_id });
+        return response;
     }
 
     /**
@@ -80,39 +70,28 @@ export class BangumiApiService {
     /**
      * 获取特定集数的资源列表
      */
-    static async getEpisodeResources(bangumiId: number, episode: number): Promise<EpisodeResourcesData | null> {
-        try {
-            const response: ApiResponse<EpisodeResourcesData> = await apiClient.get(
-                `/animes/${bangumiId}/resources?episode=${episode}`);
-            return response.data;
-        } catch (err: any) {
-            if (err?.response?.status === 404) {
-                // 404视为无资源，返回null
-                return null;
-            }
-            throw err;
-        }
+    static async getEpisodeResources(bangumi_id: number, episode: number): Promise<EpisodeResourcesData | null> {
+        const response: EpisodeResourcesData | null = await invoke('get_episode_resources', { bangumi_id, episode });
+        return response;
     }
 
     /**
      * 获取番剧的所有资源列表
      */
-    static async getAnimeResources(bangumiId: number, options?: {
+    static async getAnimeResources(bangumi_id: number, options?: {
         resolution?: string,
         subtitle_type?: string,
         limit?: number,
         offset?: number
     }): Promise<EpisodeResourcesData> {
-        const params: Record<string, any> = {};
-
-        if (options?.resolution) params.resolution = options.resolution;
-        if (options?.subtitle_type) params.subtitle_type = options.subtitle_type;
-        if (options?.limit) params.limit = options.limit;
-        if (options?.offset) params.offset = options.offset;
-
-        const response: ApiResponse<EpisodeResourcesData> =
-            await apiClient.get(`/animes/${bangumiId}/resources`, { params });
-        return response.data;
+        const response: EpisodeResourcesData | null = await invoke('get_anime_resources', {
+            bangumi_id,
+            resolution: options?.resolution,
+            subtitle_type: options?.subtitle_type,
+            limit: options?.limit,
+            offset: options?.offset,
+        });
+        return response!;
     }
 
     /**
@@ -133,13 +112,11 @@ export class BangumiApiService {
         }
     }> => {
         const fn = async (q: string, p: number, l: number) => {
-            const response: ApiResponse<{
+            const response: {
                 bangumi_ids: number[]
                 pagination: any
-            }> = await apiClient.get('/animes/search', {
-                params: { q, page: p, limit: l }
-            });
-            return response.data;
+            } = await invoke('search_library', { query: q, page: p, limit: l });
+            return response;
         }
         if (options?.debounce) {
             return debounceAsync(fn, options.delay)(query, page, limit)

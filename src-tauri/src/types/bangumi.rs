@@ -86,3 +86,44 @@ pub struct BangumiSubject {
     pub collection: Option<BangumiCollection>,
     pub tags: Option<Vec<BangumiTag>>,
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct EpisodeAvailability {
+    pub available: bool,
+    pub resource_count: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct EpisodeAvailabilityData {
+    pub bangumi_id: i64,
+    pub episodes: HashMap<String, EpisodeAvailability>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct EpisodeResource {
+    pub id: i64,
+    pub episode_number: i64,
+    pub title: String,
+    pub resolution: String,
+    pub subtitle_type: String,
+    pub magnet_url: String,
+    pub torrent_url: String,
+    pub release_date: String,
+    pub size: String,
+    pub group_id: i64,
+    pub group_name: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SubtitleGroupResource {
+    pub id: i64,
+    pub name: String,
+    pub resource_count: i64,
+    pub resources: Vec<EpisodeResource>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct EpisodeResourcesData {
+    pub total_resources: i64,
+    pub subtitle_groups: Vec<SubtitleGroupResource>,
+}

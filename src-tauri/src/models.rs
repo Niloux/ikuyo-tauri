@@ -1,9 +1,10 @@
 // 数据库模型,时间信息统一用unix时间戳
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
+use sqlx::{FromRow, Type};
 use crate::types::subscription as types_subscription;
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize,)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[sqlx(type_name = "TEXT")]
 #[serde(rename_all = "lowercase")]
 pub enum AnimeStatus {
     Unknown,
@@ -11,7 +12,8 @@ pub enum AnimeStatus {
     Finished,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize,)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[sqlx(type_name = "TEXT")]
 #[serde(rename_all = "lowercase")]
 pub enum CrawlerTaskStatus {
     Pending,
@@ -21,7 +23,8 @@ pub enum CrawlerTaskStatus {
     Cancelled,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize,)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[sqlx(type_name = "TEXT")]
 #[serde(rename_all = "lowercase")]
 pub enum CrawlerTaskType {
     Manual,
@@ -111,6 +114,32 @@ pub struct UserSubscription {
     pub anime_air_date: Option<String>,
     pub anime_air_weekday: Option<i64>,
 }
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, FromRow)]
+pub struct Resource {
+    pub id: Option<i64>,
+    pub mikan_id: i64,
+    pub subtitle_group_id: i64,
+    pub episode_number: Option<i32>,
+    pub title: String,
+    pub file_size: Option<String>,
+    pub resolution: Option<String>,
+    pub subtitle_type: Option<String>,
+    pub magnet_url: Option<String>,
+    pub torrent_url: Option<String>,
+    pub play_url: Option<String>,
+    pub magnet_hash: Option<String>,
+    pub release_date: Option<i64>,
+    pub created_at: Option<i64>,
+    pub updated_at: Option<i64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, FromRow)]
+pub struct EpisodeResourceCount {
+    pub episode_number: i32,
+    pub resource_count: i64,
+}
+
 
 // 实现前端struct到后端struct的转换
 impl From<types_subscription::UserSubscription> for UserSubscription {

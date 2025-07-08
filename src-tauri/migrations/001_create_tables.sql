@@ -92,3 +92,32 @@ CREATE TABLE IF NOT EXISTS user_subscriptions (
 
 CREATE INDEX IF NOT EXISTS idx_user_subscriptions_user_id ON user_subscriptions (user_id);
 CREATE INDEX IF NOT EXISTS idx_user_subscriptions_bangumi_id ON user_subscriptions (bangumi_id);
+
+-- Resource表
+CREATE TABLE IF NOT EXISTS resource (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    mikan_id INTEGER NOT NULL,
+    subtitle_group_id INTEGER NOT NULL,
+    episode_number INTEGER,
+    title TEXT NOT NULL,
+    file_size TEXT,
+    resolution TEXT,
+    subtitle_type TEXT,
+    magnet_url TEXT,
+    torrent_url TEXT,
+    play_url TEXT,
+    magnet_hash TEXT,
+    release_date INTEGER,
+    created_at INTEGER,
+    updated_at INTEGER,
+    FOREIGN KEY (mikan_id) REFERENCES anime (mikan_id),
+    FOREIGN KEY (subtitle_group_id) REFERENCES subtitle_group (id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_resource_mikan_id ON resource (mikan_id);
+CREATE INDEX IF NOT EXISTS idx_resource_subtitle_group_id ON resource (subtitle_group_id);
+CREATE INDEX IF NOT EXISTS idx_resource_episode_number ON resource (episode_number);
+CREATE INDEX IF NOT EXISTS idx_resource_title ON resource (title);
+CREATE INDEX IF NOT EXISTS idx_resource_resolution ON resource (resolution);
+CREATE INDEX IF NOT EXISTS idx_resource_subtitle_type ON resource (subtitle_type);
+CREATE INDEX IF NOT EXISTS idx_release_date_desc ON resource (release_date DESC);

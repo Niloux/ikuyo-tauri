@@ -11,7 +11,10 @@ pub fn init_db() -> tauri_plugin_sql::Builder {
         kind: MigrationKind::Up,
     }];
 
-    tauri_plugin_sql::Builder::new().add_migrations("sqlite:ikuyo.db?foreign_keys=true", migrations)
+    tauri_plugin_sql::Builder::new().add_migrations(
+        "sqlite:ikuyo.db?foreign_keys=true&max_connections=8",
+        migrations,
+    )
 }
 
 // 获取数据库连接池

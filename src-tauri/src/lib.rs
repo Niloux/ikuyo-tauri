@@ -21,6 +21,7 @@ pub fn run() {
             // Bangumi commands
             get_calendar,
             get_subject,
+            get_episodes,
             // Crawler commands
             create_crawler_task,
             get_crawler_task_status,

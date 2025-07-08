@@ -66,18 +66,15 @@ export class BangumiApiService {
      * 获取Bangumi章节信息
      */
     static async getBangumiEpisodes(
-        subjectId: number, episodeType?: number, limit: number = 100,
+        subject_id: number, episode_type?: number, limit: number = 100,
         offset: number = 0): Promise<BangumiEpisodesData> {
-        const params: Record<string, any> = { limit, offset };
-        if (episodeType !== undefined) {
-            params.episode_type = episodeType;
-        }
-
-        const response: ApiResponse<BangumiEpisode[]> =
-            await apiClient.get(`/animes/${subjectId}/episodes`, { params });
-
-        // 若total为通用字段，直接返回
-        return { data: response.data, total: response.total ?? 0 };
+        const response: BangumiEpisodesData = await invoke('get_episodes', {
+            subject_id,
+            episode_type: episode_type !== undefined ? episode_type : null,
+            limit,
+            offset
+        });
+        return response;
     }
 
     /**

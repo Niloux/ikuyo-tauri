@@ -3,7 +3,7 @@
 // =============================================================================
 
 import { invoke } from '@tauri-apps/api/core';
-import type { BangumiCalendarItem, BangumiSubject, BangumiWeekday, EpisodeAvailabilityData, BangumiEpisodesData, EpisodeResourcesData } from './bangumiTypes';
+import type { BangumiCalendarItem, BangumiSubject, BangumiWeekday, EpisodeAvailabilityData, BangumiEpisodesData, EpisodeResourcesData, SearchLibraryResponse } from './bangumiTypes';
 import { debounceAsync, throttleAsync } from '../common/common'
 
 /**
@@ -100,22 +100,9 @@ export class BangumiApiService {
     static searchLibrary = (
         query: string, page: number = 1, limit: number = 12,
         options?: { debounce?: boolean, throttle?: boolean, delay?: number }
-    ): Promise<{
-        bangumi_ids: number[]
-        pagination: {
-            current_page: number
-            per_page: number
-            total: number
-            total_pages: number
-            has_next: boolean
-            has_prev: boolean
-        }
-    }> => {
+    ): Promise<SearchLibraryResponse> => {
         const fn = async (q: string, p: number, l: number) => {
-            const response: {
-                bangumi_ids: number[]
-                pagination: any
-            } = await invoke('search_library', { query: q, page: p, limit: l });
+            const response: SearchLibraryResponse = await invoke('search_library', { query: q, page: p, limit: l });
             return response;
         }
         if (options?.debounce) {

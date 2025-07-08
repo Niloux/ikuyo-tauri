@@ -9,9 +9,9 @@ import type {
     SubscriptionStatus,
     GetSubscriptionsParams,
     SubscriptionsResponse,
-    SubscriptionResult
+    SubscriptionResult,
+    SubscriptionIdsResponse
 } from './subscriptionTypes'
-import { apiClient } from '../common/common'
 
 class SubscriptionApiService {
     private readonly baseURL = '/subscriptions'
@@ -66,7 +66,7 @@ class SubscriptionApiService {
      * 获取订阅列表
      */
     async getSubscriptions(params: GetSubscriptionsParams = {}): Promise<SubscriptionsResponse> {
-        const rawResponse: { data: UserSubscription[], total: number, page: number, limit: number } = await invoke('get_subscriptions', {
+        const response: SubscriptionsResponse = await invoke('get_subscriptions', {
             user_id: UserManager.getUserId(),
             sort: params.sort,
             order: params.order,
@@ -74,18 +74,7 @@ class SubscriptionApiService {
             page: params.page,
             limit: params.limit,
         });
-
-        const totalPages = Math.ceil(rawResponse.total / rawResponse.limit);
-
-        return {
-            subscriptions: rawResponse.data,
-            pagination: {
-                page: rawResponse.page,
-                limit: rawResponse.limit,
-                total: rawResponse.total,
-                pages: totalPages,
-            },
-        };
+        return response;
     }
 
     /**
@@ -136,11 +125,11 @@ class SubscriptionApiService {
     /**
      * 获取所有已订阅bangumi_id（轻量接口）
      */
-    async getAllSubscriptionIds(): Promise<number[]> {
-        const res: { ids: number[] } = await invoke('get_all_subscription_ids', {
+    async getAllSubscriptionIds(): Promise<SubscriptionIdsResponse> {
+        const res: SubscriptionIdsResponse = await invoke('get_all_subscription_ids', {
             user_id: UserManager.getUserId()
         })
-        return res.ids || []
+        return res
     }
 }
 

@@ -100,4 +100,11 @@ impl<'a> AnimeRepository<'a> {
         .fetch_all(self.pool)
         .await
     }
+
+    pub async fn count_by_title(&self, title: &str) -> Result<i64, sqlx::Error> {
+        sqlx::query_scalar("SELECT COUNT(*) FROM anime WHERE lower(title) LIKE ?")
+            .bind(format!("%{}%", title.to_lowercase()))
+            .fetch_one(self.pool)
+            .await
+    }
 }

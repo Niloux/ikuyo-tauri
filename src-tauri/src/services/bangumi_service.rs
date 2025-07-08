@@ -1,4 +1,4 @@
-use crate::types::bangumi::{BangumiSubject, BangumiWeekday};
+use crate::types::bangumi::{BangumiSubject, BangumiWeekday, BangumiEpisodesData};
 
 pub struct BangumiService {
     base_url: String,
@@ -45,7 +45,7 @@ impl BangumiService {
         episode_type: Option<i64>,
         limit: Option<i64>,
         offset: Option<i64>,
-    ) -> Result<serde_json::Value, String> {
+    ) -> Result<BangumiEpisodesData, String> {
         let mut url = format!("{}/v0/episodes", self.base_url);
         let mut params = Vec::new();
 
@@ -69,7 +69,7 @@ impl BangumiService {
         let response = self.client.get(&url).send().await.map_err(|e| e.to_string())?;
 
         if response.status().is_success() {
-            let data: serde_json::Value = response.json().await.map_err(|e| e.to_string())?;
+            let data: BangumiEpisodesData = response.json().await.map_err(|e| e.to_string())?;
             Ok(data)
         } else {
             Err(format!("请求失败: {}", response.status()))

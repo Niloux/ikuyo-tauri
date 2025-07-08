@@ -84,7 +84,7 @@ pub struct BangumiSubject {
     pub rank: Option<u32>,
     pub images: Option<BangumiImages>,
     pub collection: Option<BangumiCollection>,
-    pub tags: Option<Vec<BangumiTag>>,
+    pub tags: Option<Vec<BangumiTag>>
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -126,4 +126,44 @@ pub struct SubtitleGroupResource {
 pub struct EpisodeResourcesData {
     pub total_resources: i64,
     pub subtitle_groups: Vec<SubtitleGroupResource>,
+}
+
+// Bangumi章节相关类型定义
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct BangumiEpisode {
+    pub id: i64,
+    #[serde(rename = "type")]
+    pub episode_type: i64, // 0:正片, 1:SP, 2:OP, 3:ED, 4:PV, 6:其他
+    pub name: String,
+    pub name_cn: String,
+    pub sort: i64,
+    pub ep: Option<i64>,
+    pub airdate: Option<String>,
+    pub comment: i64,
+    pub duration: String,
+    pub desc: String,
+    pub disc: i64,
+    pub duration_seconds: Option<i64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct BangumiEpisodesData {
+    pub data: Vec<BangumiEpisode>,
+    pub total: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Pagination {
+    pub current_page: i64,
+    pub per_page: i64,
+    pub total: i64,
+    pub total_pages: i64,
+    pub has_next: bool,
+    pub has_prev: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SearchLibraryResponse {
+    pub bangumi_ids: Vec<i64>,
+    pub pagination: Pagination,
 }

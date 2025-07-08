@@ -72,3 +72,7 @@ export interface SubscriptionResult {
     error?: SubscriptionError
     data?: any
 }
+
+export interface SubscriptionIdsResponse {
+    ids: number[]
+}

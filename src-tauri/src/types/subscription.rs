@@ -84,3 +84,8 @@ pub struct SubscriptionResult {
     pub error: Option<SubscriptionError>,
     pub data: Option<serde_json::Value>, // Use serde_json::Value for 'any' type
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SubscriptionIdsResponse {
+    pub ids: Vec<i64>,
+}

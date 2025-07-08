@@ -134,3 +134,17 @@ export interface EpisodeResourcesData {
     total_resources: number;
     subtitle_groups: SubtitleGroupResource[];
 }
+
+export interface Pagination {
+    current_page: number;
+    per_page: number;
+    total: number;
+    total_pages: number;
+    has_next: boolean;
+    has_prev: boolean;
+}
+
+export interface SearchLibraryResponse {
+    bangumi_ids: number[];
+    pagination: Pagination;
+}

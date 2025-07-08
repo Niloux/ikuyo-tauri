@@ -1,5 +1,6 @@
 use crate::repositories::subscription::SubscriptionRepository;
 use crate::models::UserSubscription;
+use crate::types::subscription::{SubscriptionIdsResponse, SubscriptionsResponse, SubscriptionStatus};
 use sqlx::SqlitePool;
 use tauri::{command, State};
 
@@ -7,13 +8,13 @@ use tauri::{command, State};
 pub async fn get_all_subscription_ids(
     pool: State<'_, SqlitePool>,
     user_id: String,
-) -> Result<Vec<i64>, String> {
+) -> Result<SubscriptionIdsResponse, String> {
     let repo = SubscriptionRepository::new(&pool);
     let ids = repo
         .get_all_bangumi_ids_by_user(&user_id)
         .await
         .map_err(|e| e.to_string())?;
-    Ok(ids)
+    Ok(SubscriptionIdsResponse { ids })
 }
 
 #[command(rename_all = "snake_case")]
@@ -65,25 +66,45 @@ pub async fn get_subscriptions(
     search: Option<String>,
     page: Option<i64>,
     limit: Option<i64>,
-) -> Result<serde_json::Value, String> {
+) -> Result<SubscriptionsResponse, String> {
     let repo = SubscriptionRepository::new(&pool);
-    let (subscriptions, total) = repo.list_with_sort_search_page(
+    let current_page = page.unwrap_or(1);
+    let current_limit = limit.unwrap_or(10);
+    let (subscriptions_from_db, total) = repo.list_with_sort_search_page(
         &user_id,
         sort.as_deref().unwrap_or("subscribed_at"),
         order.as_deref().unwrap_or("desc"),
         search.as_deref(),
-        page.unwrap_or(1),
-        limit.unwrap_or(10),
+        current_page,
+        current_limit,
     ).await.map_err(|e| e.to_string())?;
 
-    let response = serde_json::json!({
-        "data": subscriptions,
-        "total": total,
-        "page": page.unwrap_or(1),
-        "limit": limit.unwrap_or(10),
-    });
+    let subscriptions: Vec<crate::types::subscription::UserSubscription> = subscriptions_from_db.into_iter().map(|sub| {
+        crate::types::subscription::UserSubscription {
+            id: sub.id.map(|id| id as u32),
+            user_id: sub.user_id,
+            bangumi_id: sub.bangumi_id as u32,
+            subscribed_at: sub.subscribed_at as u64,
+            notes: sub.notes,
+            anime_name: sub.anime_name,
+            anime_name_cn: sub.anime_name_cn,
+            anime_rating: sub.anime_rating.map(|r| r as f32),
+            anime_air_date: sub.anime_air_date,
+            anime_air_weekday: sub.anime_air_weekday.map(|w| w as u32),
+        }
+    }).collect();
 
-    Ok(response)
+    let total_pages = (total as f64 / current_limit as f64).ceil() as u32;
+
+    Ok(SubscriptionsResponse {
+        subscriptions,
+        pagination: crate::types::subscription::PaginationInfo {
+            page: current_page as u32,
+            limit: current_limit as u32,
+            total: total as u32,
+            pages: total_pages,
+        },
+    })
 }
 
 #[command(rename_all = "snake_case")]
@@ -91,19 +112,21 @@ pub async fn check_subscription(
     pool: State<'_, SqlitePool>,
     user_id: String,
     bangumi_id: i64,
-) -> Result<serde_json::Value, String> {
+) -> Result<SubscriptionStatus, String> {
     let repo = SubscriptionRepository::new(&pool);
     let subscription = repo.get_by_user_and_bangumi(&user_id, bangumi_id).await.map_err(|e| e.to_string())?;
     let response = if let Some(subscription) = subscription {
-        serde_json::json!({
-            "subscribed": true,
-            "subscribed_at": subscription.subscribed_at,
-            "notes": subscription.notes
-        })
+        SubscriptionStatus {
+            subscribed: true,
+            subscribed_at: Some(subscription.subscribed_at as u64),
+            notes: subscription.notes,
+        }
     } else {
-        serde_json::json!({
-            "subscribed": false
-        })
+        SubscriptionStatus {
+            subscribed: false,
+            subscribed_at: None,
+            notes: None,
+        }
     };
     Ok(response)
 }

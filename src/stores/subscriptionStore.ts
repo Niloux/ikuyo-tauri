@@ -12,7 +12,8 @@ import type {
     SubscriptionWithAnime,
     GetSubscriptionsParams,
     PaginationInfo,
-    UserSubscription
+    UserSubscription,
+    SubscriptionIdsResponse
 } from '../services/subscription/subscriptionTypes'
 import type { BangumiCalendarItem } from '../services/bangumi/bangumiTypes'
 
@@ -53,8 +54,8 @@ export const useSubscriptionStore = defineStore('subscription', () => {
      */
     const fetchAllSubscriptionIds = async () => {
         try {
-            const ids = await subscriptionApiService.getAllSubscriptionIds()
-            allSubscribedBangumiIds.value = new Set(ids)
+            const response = await subscriptionApiService.getAllSubscriptionIds()
+            allSubscribedBangumiIds.value = new Set(response.ids)
         } catch (err) {
             feedbackStore.showError('获取全部订阅ID失败')
         }

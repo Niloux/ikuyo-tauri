@@ -4,7 +4,7 @@ use crate::repositories::{
 use crate::services::bangumi_service::BangumiService;
 use crate::types::bangumi::{
     BangumiSubject, BangumiWeekday, EpisodeAvailabilityData, EpisodeResource, EpisodeResourcesData,
-    SubtitleGroupResource,
+    SubtitleGroupResource, BangumiEpisodesData, SearchLibraryResponse, Pagination
 };
 use sqlx::SqlitePool;
 use tauri::{command, State};
@@ -27,11 +27,12 @@ pub async fn get_episodes(
     episode_type: Option<i64>,
     limit: Option<i64>,
     offset: Option<i64>,
-) -> Result<serde_json::Value, String> {
+) -> Result<BangumiEpisodesData, String> {
     let service = BangumiService::new();
     service
         .get_episodes(subject_id, episode_type, limit, offset)
         .await
+        .map_err(|e| e.to_string())
 }
 
 #[command(rename_all = "snake_case")]
@@ -148,7 +149,7 @@ pub async fn search_library(
     page: i64,
     limit: i64,
     pool: State<'_, SqlitePool>,
-) -> Result<serde_json::Value, String> {
+) -> Result<SearchLibraryResponse, String> {
     let anime_repo = AnimeRepository::new(&*pool);
 
     let offset = (page - 1) * limit;
@@ -157,25 +158,28 @@ pub async fn search_library(
         .await
         .map_err(|e| e.to_string())?;
 
-    // For simplicity, let's assume total count is not directly available from search_by_title
-    // In a real scenario, you might need a separate count method in the repository.
-    let total_animes = animes.len() as i64; // This is incorrect for pagination, but for now.
+    let total_animes = anime_repo
+        .count_by_title(&query)
+        .await
+        .map_err(|e| e.to_string())?;
 
     let bangumi_ids: Vec<i64> = animes.into_iter().map(|anime| anime.bangumi_id).collect();
 
-    let pagination = serde_json::json!({
-        "current_page": page,
-        "per_page": limit,
-        "total": total_animes,
-        "total_pages": (total_animes as f64 / limit as f64).ceil() as i64,
-        "has_next": (page * limit) < total_animes,
-        "has_prev": page > 1,
-    });
+    let total_pages = (total_animes as f64 / limit as f64).ceil() as i64;
 
-    Ok(serde_json::json!({
-        "bangumi_ids": bangumi_ids,
-        "pagination": pagination,
-    }))
+    let pagination = Pagination {
+        current_page: page,
+        per_page: limit,
+        total: total_animes,
+        total_pages,
+        has_next: (page * limit) < total_animes,
+        has_prev: page > 1,
+    };
+
+    Ok(SearchLibraryResponse {
+        bangumi_ids,
+        pagination,
+    })
 }
 
 #[command(rename_all = "snake_case")]

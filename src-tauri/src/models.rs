@@ -4,6 +4,7 @@ use sqlx::FromRow;
 use crate::types::subscription as types_subscription;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize,)]
+#[serde(rename_all = "lowercase")]
 pub enum AnimeStatus {
     Unknown,
     Airing,
@@ -11,6 +12,7 @@ pub enum AnimeStatus {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize,)]
+#[serde(rename_all = "lowercase")]
 pub enum CrawlerTaskStatus {
     Pending,
     Running,
@@ -20,6 +22,7 @@ pub enum CrawlerTaskStatus {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize,)]
+#[serde(rename_all = "lowercase")]
 pub enum CrawlerTaskType {
     Manual,
     Scheduled,

@@ -66,27 +66,63 @@ impl<'a> ResourceRepository<'a> {
         tx: &mut Transaction<'_, sqlx::Sqlite>,
         resources: &[Resource],
     ) -> Result<()> {
-        for resource in resources {
-            sqlx::query(
-                "INSERT OR IGNORE INTO resource (mikan_id, subtitle_group_id, episode_number, title, file_size, resolution, subtitle_type, magnet_url, torrent_url, play_url, magnet_hash, release_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-            )
-            .bind(resource.mikan_id)
-            .bind(resource.subtitle_group_id)
-            .bind(&resource.episode_number)
-            .bind(&resource.title)
-            .bind(&resource.file_size)
-            .bind(&resource.resolution)
-            .bind(&resource.subtitle_type)
-            .bind(&resource.magnet_url)
-            .bind(&resource.torrent_url)
-            .bind(&resource.play_url)
-            .bind(&resource.magnet_hash)
-            .bind(&resource.release_date)
-            .bind(&resource.created_at)
-            .bind(&resource.updated_at)
-            .execute(&mut **tx)
-            .await?;
+        use sqlx::QueryBuilder;
+        if resources.is_empty() {
+            return Ok(());
         }
+        let mut builder = QueryBuilder::new(
+            "INSERT INTO resource (mikan_id, subtitle_group_id, episode_number, title, file_size, resolution, subtitle_type, magnet_url, torrent_url, play_url, magnet_hash, release_date, created_at, updated_at) "
+        );
+        builder.push("VALUES ");
+        for (i, resource) in resources.iter().enumerate() {
+            if i > 0 {
+                builder.push(", ");
+            }
+            builder.push("(")
+                .push_bind(resource.mikan_id)
+                .push(", ")
+                .push_bind(resource.subtitle_group_id)
+                .push(", ")
+                .push_bind(&resource.episode_number)
+                .push(", ")
+                .push_bind(&resource.title)
+                .push(", ")
+                .push_bind(&resource.file_size)
+                .push(", ")
+                .push_bind(&resource.resolution)
+                .push(", ")
+                .push_bind(&resource.subtitle_type)
+                .push(", ")
+                .push_bind(&resource.magnet_url)
+                .push(", ")
+                .push_bind(&resource.torrent_url)
+                .push(", ")
+                .push_bind(&resource.play_url)
+                .push(", ")
+                .push_bind(&resource.magnet_hash)
+                .push(", ")
+                .push_bind(&resource.release_date)
+                .push(", ")
+                .push_bind(&resource.created_at)
+                .push(", ")
+                .push_bind(&resource.updated_at)
+                .push(")");
+        }
+        builder.push(
+            " ON CONFLICT(magnet_hash) DO UPDATE SET \
+                mikan_id = excluded.mikan_id,\
+                subtitle_group_id = excluded.subtitle_group_id,\
+                episode_number = excluded.episode_number,\
+                title = excluded.title,\
+                file_size = excluded.file_size,\
+                resolution = excluded.resolution,\
+                subtitle_type = excluded.subtitle_type,\
+                magnet_url = excluded.magnet_url,\
+                torrent_url = excluded.torrent_url,\
+                release_date = excluded.release_date,\
+                updated_at = excluded.updated_at"
+        );
+        builder.build().execute(&mut **tx).await?;
         Ok(())
     }
 }

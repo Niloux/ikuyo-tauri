@@ -28,17 +28,34 @@ impl<'a> SubtitleGroupRepository<'a> {
         tx: &mut Transaction<'_, sqlx::Sqlite>,
         groups: &[SubtitleGroup],
     ) -> Result<()> {
-        for group in groups {
-            sqlx::query(
-                "INSERT OR IGNORE INTO subtitle_group (id, name, last_update, created_at) VALUES (?, ?, ?, ?)"
-            )
-            .bind(group.id)
-            .bind(&group.name)
-            .bind(&group.last_update)
-            .bind(&group.created_at)
-            .execute(&mut **tx)
-            .await?;
+        use sqlx::QueryBuilder;
+        if groups.is_empty() {
+            return Ok(());
         }
+        let mut builder = QueryBuilder::new(
+            "INSERT INTO subtitle_group (id, name, last_update, created_at) "
+        );
+        builder.push("VALUES ");
+        for (i, group) in groups.iter().enumerate() {
+            if i > 0 {
+                builder.push(", ");
+            }
+            builder.push("(")
+                .push_bind(group.id)
+                .push(", ")
+                .push_bind(&group.name)
+                .push(", ")
+                .push_bind(&group.last_update)
+                .push(", ")
+                .push_bind(&group.created_at)
+                .push(")");
+        }
+        builder.push(
+            " ON CONFLICT(id) DO UPDATE SET \
+                name = excluded.name,\
+                last_update = excluded.last_update"
+        );
+        builder.build().execute(&mut **tx).await?;
         Ok(())
     }
 }

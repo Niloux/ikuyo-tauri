@@ -8,6 +8,7 @@ use crate::types::crawler::{CrawlerMode, CrawlerTaskCreate};
 use sqlx::SqlitePool;
 use std::collections::HashSet;
 use std::sync::Arc;
+use futures_util::stream::{self, StreamExt};
 
 pub struct CrawlerService {
     pub pool: Arc<SqlitePool>,
@@ -77,11 +78,11 @@ impl CrawlerService {
         
         let fetcher = MikanFetcher::new(base_url, proxy);
         let limit = params.limit.map(|v| v as i64);
-        let detail_urls = match fetcher.fetch_and_parse_list(&list_url, limit).await {
+        let detail_urls: Vec<String> = match fetcher.fetch_and_parse_list(&list_url, limit).await {
             Ok(urls) => {
                 self.total_items = urls.len() as i64;
                 self.update_task_status(CrawlerTaskStatus::Running, 0.0, None).await; // Update total_items
-                urls
+                urls.into_iter().collect()
             }
             Err(e) => {
                 let error_msg = format!("Failed to fetch list page: {}", e);
@@ -91,36 +92,74 @@ impl CrawlerService {
             }
         };
 
-        for (i, url) in detail_urls.iter().enumerate() {
+        let max_concurrent = 10;
+        let mut processed = 0;
+        let mut anime_data_buffer = Vec::new();
+        let mut subtitle_group_buffer = Vec::new();
+        let mut resource_buffer = Vec::new();
+
+        let mut stream = stream::iter(detail_urls.into_iter().enumerate())
+            .map(|(i, url)| {
+                let fetcher = &fetcher;
+                async move {
+                    match fetcher.fetch_and_parse_detail(&url).await {
+                        Ok(anime_data) => Some((i, anime_data)),
+                        Err(e) => {
+                            tracing::warn!("Failed to parse detail page {}: {}", url, e);
+                            None
+                        }
+                    }
+                }
+            })
+            .buffer_unordered(max_concurrent);
+
+        while let Some(result) = stream.next().await {
             if self.is_task_cancelled().await {
-                self.update_task_status(CrawlerTaskStatus::Cancelled, (i as f64) / (self.total_items as f64), Some("Task was cancelled".to_string())).await;
+                self.update_task_status(CrawlerTaskStatus::Cancelled, (processed as f64) / (self.total_items as f64), Some("Task was cancelled".to_string())).await;
                 return;
             }
-
-            match fetcher.fetch_and_parse_detail(url).await {
-                Ok(anime_data) => self.process_anime_data(anime_data),
-                Err(e) => {
-                    tracing::warn!("Failed to parse detail page {}: {}", url, e);
-                    continue; // Skip this item and continue with the next
+            if let Some((_, anime_data)) = result {
+                // 合并到本地缓冲区
+                if let Some(anime) = anime_data.anime {
+                    if self.anime_ids.insert(anime.mikan_id) {
+                        anime_data_buffer.push(anime);
+                    }
+                }
+                for group in anime_data.subtitle_groups {
+                    if let Some(id) = group.id {
+                        if self.subtitle_group_ids.insert(id) {
+                            subtitle_group_buffer.push(group);
+                        }
+                    }
+                }
+                for res in anime_data.resources {
+                    if let Some(hash) = &res.magnet_hash {
+                        if self.resource_hashes.insert(hash.clone()) {
+                            resource_buffer.push(res);
+                        }
+                    }
                 }
             }
-            self.processed_items += 1;
-
-            if i % 10 == 0 || i + 1 == detail_urls.len() {
-                let percent = (i + 1) as f64 / (self.total_items as f64);
-                self.update_task_status(CrawlerTaskStatus::Running, percent, None)
-                    .await;
+            processed += 1;
+            self.processed_items = processed;
+            // 每10条写入一次
+            if processed % 10 == 0 || processed as i64 == self.total_items {
+                // 将缓冲区数据写入self
+                self.anime_buffer.append(&mut anime_data_buffer);
+                self.subtitle_group_buffer.append(&mut subtitle_group_buffer);
+                self.resource_buffer.append(&mut resource_buffer);
+                if let Err(e) = self.flush_buffers().await {
+                    let error_msg = format!("Failed to save data to database: {}", e);
+                    self.update_task_status(CrawlerTaskStatus::Failed, processed as f64 / self.total_items as f64, Some(error_msg)).await;
+                    return;
+                }
+                let percent = (processed as f64) / (self.total_items as f64);
+                self.update_task_status(CrawlerTaskStatus::Running, percent, None).await;
             }
         }
 
-        if let Err(e) = self.flush_buffers().await {
-            let error_msg = format!("Failed to save data to database: {}", e);
-            self.update_task_status(CrawlerTaskStatus::Failed, 1.0, Some(error_msg))
-                .await;
-        } else {
-            self.update_task_status(CrawlerTaskStatus::Completed, 1.0, None)
-                .await;
-        }
+        self.update_task_status(CrawlerTaskStatus::Completed, 1.0, None)
+            .await;
     }
 
     fn process_anime_data(&mut self, anime_data: AnimeData) {
@@ -146,22 +185,16 @@ impl CrawlerService {
     }
 
     async fn flush_buffers(&mut self) -> anyhow::Result<()> {
-        let tx = self.pool.begin().await?;
+        let mut tx = self.pool.begin().await?;
         
         let anime_repo = AnimeRepository::new(&self.pool);
-        for anime in &self.anime_buffer {
-            anime_repo.create(anime).await?;
-        }
+        anime_repo.insert_many_animes(&mut tx, &self.anime_buffer).await?;
 
         let subtitle_repo = SubtitleGroupRepository::new(&self.pool);
-        for group in &self.subtitle_group_buffer {
-            subtitle_repo.create(group).await?;
-        }
+        subtitle_repo.insert_many_subtitle_groups(&mut tx, &self.subtitle_group_buffer).await?;
 
         let resource_repo = ResourceRepository::new(&self.pool);
-        for res in &self.resource_buffer {
-            resource_repo.create(res).await?;
-        }
+        resource_repo.insert_many_resources(&mut tx, &self.resource_buffer).await?;
 
         tx.commit().await?;
 

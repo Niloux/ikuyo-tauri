@@ -80,7 +80,6 @@ pub async fn get_crawler_task_status(
     task_id: i64,
     pool: State<'_, Arc<SqlitePool>>,
 ) -> Result<TaskResponse, String> {
-    tracing::info!("Getting status for crawler task ID: {}", task_id);
 
     let repo = CrawlerTaskRepository::new(&pool);
     let task = repo.get_by_id(task_id).await.map_err(|e| e.to_string())?;

@@ -25,9 +25,9 @@ export function getParameter(parameters: string | undefined, key: string): strin
   }
 }
 
-export function formatDateTime(dateTimeStr: string | undefined): string {
-  if (!dateTimeStr) return '-'
-  const date = new Date(dateTimeStr)
+export function formatDateTime(dateTime: number | undefined): string {
+  if (!dateTime) return '-'
+  const date = new Date(dateTime)
   return date.toLocaleString()
 }
 

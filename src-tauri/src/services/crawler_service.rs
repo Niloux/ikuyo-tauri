@@ -1,10 +1,10 @@
-use crate::core::mikan_fetcher::{AnimeData, MikanFetcher};
+use crate::core::mikan_fetcher::{MikanFetcher};
 use crate::models::{Anime, CrawlerTaskStatus, Resource, SubtitleGroup};
 use crate::repositories::{
     anime::AnimeRepository, base::Repository, crawler_task::CrawlerTaskRepository,
     resource::ResourceRepository, subtitle_group::SubtitleGroupRepository,
 };
-use crate::types::crawler::{CrawlerMode, CrawlerTaskCreate};
+use crate::types::crawler::{CrawlerMode, CrawlerTaskCreate, SeasonName};
 use sqlx::SqlitePool;
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -63,47 +63,93 @@ impl CrawlerService {
 
         let base_url = "https://mikanani.me"; // TODO: Get from config
         let proxy = Some("http://127.0.0.1:7890"); // TODO: Get from config
-
-        tracing::info!("params: {:?}", params);
-        let list_url = match params.mode {
-            CrawlerMode::Year => format!(
-                "{}/Home/Bangumi?year={}",
-                base_url,
-                params.year.unwrap_or_default()
-            ),
-            CrawlerMode::Season => format!(
-                "{}/Home/BangumiCoverFlowByDayOfWeek?year={}&seasonStr={}",
-                base_url,
-                params.year.unwrap_or_default(),
-                params.season.as_ref().map_or("春", |s| s.as_str())
-            ),
-            CrawlerMode::Homepage => format!("{}/Home", base_url),
-        };
-        tracing::info!("list_url: {:?}", list_url);
-        
         let fetcher = MikanFetcher::new(base_url, proxy);
         let limit = params.limit.map(|v| v as i64);
-        let detail_urls: Vec<String> = match fetcher.fetch_and_parse_list(&list_url, limit).await {
-            Ok(urls) => {
-                self.total_items = urls.len() as i64;
-                self.update_task_status(CrawlerTaskStatus::Running, 0.0, None).await; // Update total_items
-                urls.into_iter().collect()
-            }
-            Err(e) => {
-                let error_msg = format!("Failed to fetch list page: {}", e);
-                self.update_task_status(CrawlerTaskStatus::Failed, 0.0, Some(error_msg))
-                    .await;
-                return;
-            }
-        };
 
+        // 统一收集所有目标urls
+        let mut all_detail_urls = Vec::new();
+        let mut total_items = 0;
+        let mut error_message = None;
+        let mut failed = false;
+
+        match params.mode {
+            CrawlerMode::Year => {
+                let year = params.year.unwrap_or_default();
+                let seasons = [SeasonName::Spring, SeasonName::Summer, SeasonName::Autumn, SeasonName::Winter];
+                for season in seasons.iter() {
+                    let list_url = format!(
+                        "{}/Home/BangumiCoverFlowByDayOfWeek?year={}&seasonStr={}",
+                        base_url,
+                        year,
+                        season.as_str()
+                    );
+                    match fetcher.fetch_and_parse_list(&list_url, limit).await {
+                        Ok(urls) => {
+                            total_items += urls.len();
+                            all_detail_urls.extend(urls);
+                        }
+                        Err(e) => {
+                            error_message = Some(format!("Failed to fetch list page for {}: {}", season.as_str(), e));
+                            failed = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            CrawlerMode::Season => {
+                let year = params.year.unwrap_or_default();
+                let season = params.season.as_ref().map_or("春", |s| s.as_str());
+                let list_url = format!(
+                    "{}/Home/BangumiCoverFlowByDayOfWeek?year={}&seasonStr={}",
+                    base_url,
+                    year,
+                    season
+                );
+                match fetcher.fetch_and_parse_list(&list_url, limit).await {
+                    Ok(urls) => {
+                        total_items = urls.len();
+                        all_detail_urls = urls;
+                    }
+                    Err(e) => {
+                        error_message = Some(format!("Failed to fetch list page: {}", e));
+                        failed = true;
+                    }
+                }
+            }
+            CrawlerMode::Homepage => {
+                let list_url = format!("{}/Home", base_url);
+                match fetcher.fetch_and_parse_list(&list_url, limit).await {
+                    Ok(urls) => {
+                        total_items = urls.len();
+                        all_detail_urls = urls;
+                    }
+                    Err(e) => {
+                        error_message = Some(format!("Failed to fetch homepage list: {}", e));
+                        failed = true;
+                    }
+                }
+            }
+        }
+
+        self.total_items = total_items as i64;
+        self.processed_items = 0;
+        self.update_task_status(
+            if failed { CrawlerTaskStatus::Failed } else { CrawlerTaskStatus::Running },
+            0.0,
+            error_message.clone(),
+        ).await;
+        if failed {
+            return;
+        }
+
+        // 分批调度爬取详情，边爬边flush
         let max_concurrent = 10;
         let mut processed = 0;
         let mut anime_data_buffer = Vec::new();
         let mut subtitle_group_buffer = Vec::new();
         let mut resource_buffer = Vec::new();
 
-        let mut stream = stream::iter(detail_urls.into_iter().enumerate())
+        let mut stream = stream::iter(all_detail_urls.into_iter().enumerate())
             .map(|(i, url)| {
                 let fetcher = &fetcher;
                 async move {
@@ -167,28 +213,6 @@ impl CrawlerService {
 
         self.update_task_status(CrawlerTaskStatus::Completed, 1.0, None)
             .await;
-    }
-
-    fn process_anime_data(&mut self, anime_data: AnimeData) {
-        if let Some(anime) = anime_data.anime {
-            if self.anime_ids.insert(anime.mikan_id) {
-                self.anime_buffer.push(anime);
-            }
-        }
-        for group in anime_data.subtitle_groups {
-            if let Some(id) = group.id {
-                if self.subtitle_group_ids.insert(id) {
-                    self.subtitle_group_buffer.push(group);
-                }
-            }
-        }
-        for res in anime_data.resources {
-            if let Some(hash) = &res.magnet_hash {
-                if self.resource_hashes.insert(hash.clone()) {
-                    self.resource_buffer.push(res);
-                }
-            }
-        }
     }
 
     async fn flush_buffers(&mut self) -> anyhow::Result<()> {

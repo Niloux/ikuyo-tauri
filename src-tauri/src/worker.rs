@@ -7,7 +7,6 @@ use std::sync::Arc;
 use tokio::sync::Notify;
 use tokio::time::{sleep, Duration};
 use tracing::info;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::sync::Semaphore;
 
 pub struct Worker {

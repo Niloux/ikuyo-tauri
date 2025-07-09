@@ -96,7 +96,19 @@ impl<'a> Repository<Resource, i64> for ResourceRepository<'a> {
     async fn create(&self, resource: &Resource) -> Result<()> {
         sqlx::query(
             "INSERT INTO resource (mikan_id, subtitle_group_id, episode_number, title, file_size, resolution, subtitle_type, magnet_url, torrent_url, play_url, magnet_hash, release_date, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT(magnet_hash) DO UPDATE SET
+                mikan_id = excluded.mikan_id,
+                subtitle_group_id = excluded.subtitle_group_id,
+                episode_number = excluded.episode_number,
+                title = excluded.title,
+                file_size = excluded.file_size,
+                resolution = excluded.resolution,
+                subtitle_type = excluded.subtitle_type,
+                magnet_url = excluded.magnet_url,
+                torrent_url = excluded.torrent_url,
+                release_date = excluded.release_date,
+                updated_at = excluded.updated_at;",
         )
         .bind(resource.mikan_id)
         .bind(resource.subtitle_group_id)

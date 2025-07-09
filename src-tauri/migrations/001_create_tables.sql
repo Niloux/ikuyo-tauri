@@ -112,7 +112,7 @@ CREATE TABLE IF NOT EXISTS resource (
     magnet_url TEXT,
     torrent_url TEXT,
     play_url TEXT,
-    magnet_hash TEXT,
+    magnet_hash TEXT UNIQUE,
     release_date INTEGER,
     created_at INTEGER,
     updated_at INTEGER,

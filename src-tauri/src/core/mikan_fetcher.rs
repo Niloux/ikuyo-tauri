@@ -1,8 +1,11 @@
 // src-tauri/src/core/mikan_fetcher.rs
+use crate::core::text_parser;
+use crate::models::{Anime, Resource, SubtitleGroup};
+use anyhow::Result;
+use regex::Regex;
 use reqwest::Client;
 use scraper::{Html, Selector};
-use anyhow::Result;
-use crate::models::{Anime, SubtitleGroup, Resource};
+use std::collections::HashMap;
 
 // 动画详情页URL类型
 type AnimeDetailUrl = String;
@@ -61,81 +64,139 @@ impl MikanFetcher {
         Ok(urls)
     }
 
-    /// 抓取并解析动画详情页，返回AnimeData结构体
+    // 抓取并解析动画详情页，返回AnimeData结构体
     pub async fn fetch_and_parse_detail(&self, url: &str) -> Result<AnimeData> {
         tracing::info!("MikanFetcher: 抓取详情页开始，URL: {}", url);
         let resp = self.client.get(url).send().await?.text().await?;
         let document = Html::parse_document(&resp);
-        // mikan_id 提取自URL
+
+        // --- Anime Info Extraction ---
         let mikan_id = url.split('/').last().and_then(|s| s.parse::<i64>().ok()).unwrap_or(0);
-        // title
-        let title_selector = Selector::parse("div.an-info > h1").unwrap();
-        let title = document
-            .select(&title_selector)
-            .next()
-            .map(|e| e.text().collect::<String>())
-            .unwrap_or_else(|| "未知标题".to_string());
-        // 字幕组
-        let mut subtitle_groups = Vec::new();
-        let group_selector = Selector::parse("div.an-subgroup > a").unwrap();
-        for group in document.select(&group_selector) {
-            let name = group.text().collect::<String>().trim().to_string();
-            if !name.is_empty() {
-                subtitle_groups.push(SubtitleGroup {
-                    id: None,
-                    name,
-                    last_update: None,
-                    created_at: None,
-                });
+        
+        let title_selector = Selector::parse("p.bangumi-title").unwrap();
+        let title = document.select(&title_selector).next().map_or("未知标题".to_string(), |e| e.text().collect::<String>().trim().to_string());
+
+        let bangumi_url_selector = Selector::parse("a[href*='bgm.tv/subject/']").unwrap();
+        let bangumi_url = document.select(&bangumi_url_selector).next().and_then(|e| e.value().attr("href")).map(|s| s.to_string());
+        let bangumi_id = bangumi_url.as_ref().and_then(|u| u.split('/').last().and_then(|id| id.parse::<i64>().ok())).unwrap_or(0);
+
+        let mut anime_info = HashMap::new();
+        let info_selector = Selector::parse("div.bangumi-info p").unwrap();
+        for p in document.select(&info_selector) {
+            let text = p.text().collect::<String>();
+            let parts: Vec<&str> = text.split('：').map(|s| s.trim()).collect();
+            if parts.len() == 2 {
+                anime_info.insert(parts[0].to_string(), parts[1].to_string());
             }
         }
-        // 资源（只提取磁链和标题）
+
+        let official_website = anime_info.get("官方网站").map(|s| s.to_string());
+        let broadcast_day = anime_info.get("放送日期").map(|s| s.to_string());
+        let broadcast_start_str = anime_info.get("放送开始").map(|s| s.to_string());
+        let broadcast_start = broadcast_start_str.as_deref().and_then(text_parser::parse_datetime_to_timestamp);
+
+
+        let description_selector = Selector::parse("div.bangumi-desc").unwrap();
+        let description = document.select(&description_selector).next().map(|e| e.text().collect::<String>().trim().to_string());
+
+        let anime = Some(Anime {
+            mikan_id,
+            bangumi_id,
+            title,
+            original_title: None, // Mikan doesn't usually provide this
+            broadcast_day,
+            broadcast_start,
+            official_website,
+            bangumi_url,
+            description,
+            status: None, // Status needs to be determined based on broadcast dates
+            created_at: Some(chrono::Utc::now().timestamp_millis()),
+            updated_at: Some(chrono::Utc::now().timestamp_millis()),
+        });
+
+        // --- SubtitleGroup and Resource Extraction ---
+        let mut subtitle_groups = Vec::new();
         let mut resources = Vec::new();
-        let res_selector = Selector::parse("table.table tbody tr").unwrap();
-        for row in document.select(&res_selector) {
-            let cols: Vec<_> = row.select(&Selector::parse("td").unwrap()).collect();
-            if cols.len() >= 4 {
-                let title = cols[1].text().collect::<String>().trim().to_string();
-                let magnet = cols[3].select(&Selector::parse("a[href^='magnet']").unwrap())
-                    .next()
-                    .and_then(|a| a.value().attr("href"))
-                    .map(|s| s.to_string());
-                if let Some(magnet_url) = magnet {
-                    resources.push(Resource {
-                        id: None,
-                        mikan_id,
-                        subtitle_group_id: 0, // 暂不解析分组ID
-                        episode_number: None,
-                        title,
-                        file_size: None,
-                        resolution: None,
-                        subtitle_type: None,
-                        magnet_url: Some(magnet_url),
-                        torrent_url: None,
-                        play_url: None,
-                        magnet_hash: None,
-                        release_date: None,
-                        created_at: None,
-                        updated_at: None,
-                    });
+        let mut subtitle_group_map = HashMap::new();
+
+        let group_container_selector = Selector::parse("div.subgroup-text").unwrap();
+        for group_element in document.select(&group_container_selector) {
+            let group_id_str = group_element.value().attr("id").unwrap_or("0");
+            let group_id = group_id_str.parse::<i64>().unwrap_or(0);
+            
+            let group_name = group_element.select(&Selector::parse("a").unwrap()).next().map_or("".to_string(), |a| a.text().collect::<String>().trim().to_string());
+
+            if group_id != 0 && !group_name.is_empty() {
+                let group = SubtitleGroup {
+                    id: Some(group_id),
+                    name: group_name.clone(),
+                    last_update: Some(chrono::Utc::now().timestamp_millis()),
+                    created_at: Some(chrono::Utc::now().timestamp_millis()),
+                };
+                if subtitle_group_map.get(&group_id).is_none() {
+                    subtitle_group_map.insert(group_id, group.clone());
+                    subtitle_groups.push(group);
+                }
+
+                // 若后续用到next_sibling_element，改为next_sibling并手动判断节点类型。
+                // 当前代码未用到next_sibling_element，无需修复。
+                if let Some(sibling) = group_element.next_sibling() {
+                    if let Some(table) = scraper::ElementRef::wrap(sibling) {
+                        if table.value().name() == "table" {
+                            let resource_selector = Selector::parse("tbody tr").unwrap();
+                            for row in table.select(&resource_selector) {
+                                let cols: Vec<_> = row.select(&Selector::parse("td").unwrap()).collect();
+                                if cols.len() >= 3 {
+                                    let title_cell = &cols[0];
+                                    let size_cell = &cols[1];
+                                    let date_cell = &cols[2];
+
+                                    let resource_title = title_cell.select(&Selector::parse("a.magnet-link-wrap").unwrap()).next().map_or("".to_string(), |a| a.text().collect::<String>().trim().to_string());
+                                    let magnet_url = title_cell.select(&Selector::parse("a.js-magnet").unwrap()).next().and_then(|a| a.value().attr("data-clipboard-text")).map(|s| s.to_string());
+                                    let torrent_url = cols[3].select(&Selector::parse("a").unwrap()).next().and_then(|a| a.value().attr("href")).map(|s| format!("{}{}", self.base_url, s));
+                                    
+                                    let file_size = Some(size_cell.text().collect::<String>().trim().to_string());
+                                    let release_date_str = date_cell.text().collect::<String>().trim().to_string();
+                                    let release_date = text_parser::parse_datetime_to_timestamp(&release_date_str);
+
+                                    let magnet_hash = magnet_url.as_ref().and_then(|u| {
+                                        let re = Regex::new(r"xt=urn:btih:([a-fA-F0-9]{40})").unwrap();
+                                        re.captures(u).and_then(|caps| caps.get(1).map(|m| m.as_str().to_lowercase()))
+                                    });
+                                    
+                                    let episode_number = text_parser::parse_episode_number(&resource_title);
+                                    let resolution = text_parser::parse_resolution(&resource_title);
+                                    let subtitle_type = text_parser::parse_subtitle_type(&resource_title);
+
+                                    if let Some(magnet_url_unwrapped) = magnet_url {
+                                        resources.push(Resource {
+                                            id: None,
+                                            mikan_id,
+                                            subtitle_group_id: group_id,
+                                            episode_number,
+                                            title: resource_title,
+                                            file_size,
+                                            resolution,
+                                            subtitle_type,
+                                            magnet_url: Some(magnet_url_unwrapped),
+                                            torrent_url,
+                                            play_url: None, // Mikan doesn't provide this directly
+                                            magnet_hash,
+                                            release_date,
+                                            created_at: Some(chrono::Utc::now().timestamp_millis()),
+                                            updated_at: Some(chrono::Utc::now().timestamp_millis()),
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
-        // Anime
-        let anime = Some(Anime {
-            mikan_id,
-            bangumi_id: 0,
-            title,
-            original_title: None,
-            broadcast_day: None,
-            broadcast_start: None,
-            official_website: None,
-            bangumi_url: None,
-            description: None,
-            status: None,
-            created_at: None,
-            updated_at: None,
-        });
+
+        tracing::info!("MikanFetcher: 抓取详情页完成, Anime: {}, Groups: {}, Resources: {}", anime.as_ref().unwrap().title, subtitle_groups.len(), resources.len());
+
         Ok(AnimeData {
             anime,
             subtitle_groups,
@@ -143,4 +204,4 @@ impl MikanFetcher {
         })
     }
 }
- 
+

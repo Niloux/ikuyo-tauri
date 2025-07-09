@@ -46,12 +46,19 @@ impl<'a> SubtitleGroupRepository<'a> {
 #[async_trait]
 impl<'a> Repository<SubtitleGroup, i64> for SubtitleGroupRepository<'a> {
     async fn create(&self, group: &SubtitleGroup) -> Result<()> {
-        sqlx::query("INSERT INTO subtitle_group (name, last_update, created_at) VALUES (?, ?, ?)")
-            .bind(&group.name)
-            .bind(group.last_update)
-            .bind(group.created_at)
-            .execute(self.pool)
-            .await?;
+        sqlx::query(
+            "INSERT INTO subtitle_group (id, name, last_update, created_at)
+             VALUES (?, ?, ?, ?)
+             ON CONFLICT(id) DO UPDATE SET
+                name = excluded.name,
+                last_update = excluded.last_update;",
+        )
+        .bind(group.id)
+        .bind(&group.name)
+        .bind(group.last_update)
+        .bind(group.created_at)
+        .execute(self.pool)
+        .await?;
         Ok(())
     }
 

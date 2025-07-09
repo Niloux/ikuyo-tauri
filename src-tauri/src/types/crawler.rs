@@ -14,6 +14,16 @@ pub enum CrawlerMode {
     Year,
 }
 
+impl CrawlerMode {
+    pub fn as_str(&self) -> &str {
+        match self {
+            CrawlerMode::Homepage => "homepage",
+            CrawlerMode::Season => "season",
+            CrawlerMode::Year => "year",
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum SeasonName {
     #[serde(rename = "春")]
@@ -26,12 +36,34 @@ pub enum SeasonName {
     Winter,
 }
 
+impl SeasonName {
+    pub fn as_str(&self) -> &str {
+        match self {
+            SeasonName::Spring => "春",
+            SeasonName::Summer => "夏",
+            SeasonName::Autumn => "秋",
+            SeasonName::Winter => "冬",
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CrawlerTaskCreate {
     pub mode: CrawlerMode,
     pub year: Option<i64>,
     pub season: Option<SeasonName>,
     pub limit: Option<i64>,
+}
+
+impl Default for CrawlerTaskCreate {
+    fn default() -> Self {
+        Self {
+            mode: CrawlerMode::Homepage,
+            year: None,
+            season: None,
+            limit: None,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

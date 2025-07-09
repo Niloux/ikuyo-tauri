@@ -84,7 +84,18 @@ impl<'a> Repository<Anime, i64> for AnimeRepository<'a> {
     async fn create(&self, anime: &Anime) -> Result<()> {
         sqlx::query(
             "INSERT INTO anime (mikan_id, bangumi_id, title, original_title, broadcast_day, broadcast_start, official_website, bangumi_url, description, status, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT(mikan_id) DO UPDATE SET
+                bangumi_id = excluded.bangumi_id,
+                title = excluded.title,
+                original_title = excluded.original_title,
+                broadcast_day = excluded.broadcast_day,
+                broadcast_start = excluded.broadcast_start,
+                official_website = excluded.official_website,
+                bangumi_url = excluded.bangumi_url,
+                description = excluded.description,
+                status = excluded.status,
+                updated_at = excluded.updated_at;",
         )
         .bind(anime.mikan_id)
         .bind(anime.bangumi_id)

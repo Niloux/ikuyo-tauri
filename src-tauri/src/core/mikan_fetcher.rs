@@ -5,7 +5,7 @@ use anyhow::Result;
 use regex::Regex;
 use reqwest::Client;
 use scraper::{ElementRef, Html, Selector};
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashSet};
 
 // 动画详情页URL类型
 type AnimeDetailUrl = String;
@@ -47,10 +47,11 @@ impl MikanFetcher {
         tracing::info!("MikanFetcher: 抓取列表页开始，URL: {}", url);
         let resp = self.client.get(url).send().await?.text().await?;
         let document = Html::parse_document(&resp);
-        let selector = Selector::parse("div.m-week-square a[href*='/Home/Bangumi/']").unwrap();
         let mut urls = Vec::new();
         let limit = limit.map(|l| l as usize);
 
+        // 极宽泛选择器，抓所有番剧详情页链接
+        let selector = Selector::parse("a[href*='/Home/Bangumi/']").unwrap();
         for element in document.select(&selector) {
             if let Some(href) = element.value().attr("href") {
                 let full_url = if href.starts_with("http") {
@@ -65,6 +66,33 @@ impl MikanFetcher {
                     }
                 }
             }
+        }
+
+        // 去重
+        let mut seen = std::collections::HashSet::new();
+        urls.retain(|url| seen.insert(url.clone()));
+
+        // 若抓不到，用正则兜底
+        if urls.is_empty() {
+            tracing::warn!("MikanFetcher: 选择器未命中，尝试正则兜底");
+            let re = regex::Regex::new(r#"/Home/Bangumi/(\\d+)"#).unwrap();
+            for cap in re.captures_iter(&resp) {
+                let mikan_id = &cap[1];
+                let full_url = format!("{}/Home/Bangumi/{}", self.base_url, mikan_id);
+                if !urls.contains(&full_url) {
+                    urls.push(full_url);
+                    if let Some(lim) = limit {
+                        if urls.len() >= lim {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 日志输出所有抓到的URL
+        for (i, url) in urls.iter().enumerate() {
+            tracing::debug!("MikanFetcher: [{}] 抓到URL: {}", i + 1, url);
         }
         tracing::info!("MikanFetcher: 抓取列表页完成，共抓取{}个URL", urls.len());
         Ok(urls)

@@ -64,6 +64,7 @@ impl CrawlerService {
         let base_url = "https://mikanani.me"; // TODO: Get from config
         let proxy = Some("http://127.0.0.1:7890"); // TODO: Get from config
 
+        tracing::info!("params: {:?}", params);
         let list_url = match params.mode {
             CrawlerMode::Year => format!(
                 "{}/Home/Bangumi?year={}",
@@ -71,13 +72,14 @@ impl CrawlerService {
                 params.year.unwrap_or_default()
             ),
             CrawlerMode::Season => format!(
-                "{}/Home/Bangumi?year={}&season={}",
+                "{}/Home/BangumiCoverFlowByDayOfWeek?year={}&seasonStr={}",
                 base_url,
                 params.year.unwrap_or_default(),
-                params.season.as_ref().map_or("", |s| s.as_str())
+                params.season.as_ref().map_or("春", |s| s.as_str())
             ),
             CrawlerMode::Homepage => format!("{}/Home", base_url),
         };
+        tracing::info!("list_url: {:?}", list_url);
         
         let fetcher = MikanFetcher::new(base_url, proxy);
         let limit = params.limit.map(|v| v as i64);

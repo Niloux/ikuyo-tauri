@@ -37,7 +37,7 @@ impl BangumiService {
     }
 
     pub async fn get_subject(&self, id: i64) -> Result<BangumiSubject, String> {
-        let url = format!("{}/subject/{}", self.base_url, id);
+        let url = format!("{}/v0/subjects/{}", self.base_url, id);
         let response = self
             .client
             .get(&url)

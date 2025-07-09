@@ -76,7 +76,7 @@ impl CrawlerService {
         };
         
         let fetcher = MikanFetcher::new(base_url, proxy);
-        let limit = params.limit.map(|v| v as usize);
+        let limit = params.limit.map(|v| v as i64);
         let detail_urls = match fetcher.fetch_and_parse_list(&list_url, limit).await {
             Ok(urls) => {
                 self.total_items = urls.len() as i64;

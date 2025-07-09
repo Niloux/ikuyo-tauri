@@ -133,7 +133,7 @@ pub async fn get_crawler_task(
     }
 }
 
-#[command(rename_all = "snake_case")]
+#[tauri::command]
 pub async fn cancel_crawler_task(
     task_id: i64,
     pool: State<'_, Arc<SqlitePool>>,
@@ -161,7 +161,7 @@ pub async fn cancel_crawler_task(
     }
 }
 
-#[command(rename_all = "snake_case")]
+#[tauri::command]
 pub async fn delete_crawler_task(
     task_id: i64,
     pool: State<'_, Arc<SqlitePool>>,

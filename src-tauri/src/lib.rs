@@ -6,6 +6,7 @@ mod types;
 mod services;
 mod repositories;
 mod config;
+mod core;
 use std::sync::Arc;
 use tokio::sync::Notify;
 mod worker;

@@ -98,46 +98,21 @@ impl MikanFetcher {
     }
 
     fn parse_anime_info(&self, document: &Html, mikan_id: i64) -> Anime {
-        let title = Selector::parse("p.bangumi-title").unwrap();
-        let title = document
-            .select(&title)
-            .next()
-            .map_or("未知标题".to_string(), |e| {
-                e.text().collect::<String>().trim().to_string()
-            });
+        let title = self.extract_text(document, &["p.bangumi-title", "title"])
+            .unwrap_or_else(|| "未知标题".to_string())
+            .replace("Mikan Project - ", "");
 
-        let bangumi_url_selector = Selector::parse("a[href*='bgm.tv/subject/']").unwrap();
-        let bangumi_url = document
-            .select(&bangumi_url_selector)
-            .next()
-            .and_then(|e| e.value().attr("href"))
-            .map(|s| s.to_string());
+        let bangumi_url = self.extract_href(document, &["a[href*='bgm.tv/subject/']"]);
         let bangumi_id = bangumi_url
             .as_ref()
             .and_then(|u| u.split('/').last().and_then(|id| id.parse::<i64>().ok()))
             .unwrap_or(0);
 
-        let mut anime_info = HashMap::new();
-        let info_selector = Selector::parse("div.bangumi-info p").unwrap();
-        for p in document.select(&info_selector) {
-            let text = p.text().collect::<String>();
-            let parts: Vec<&str> = text.split('：').map(|s| s.trim()).collect();
-            if parts.len() == 2 {
-                anime_info.insert(parts[0].to_string(), parts[1].to_string());
-            }
-        }
+        let (broadcast_day, broadcast_start_str) = self.extract_broadcast_info(document);
+        let broadcast_start = broadcast_start_str.as_deref().and_then(text_parser::parse_datetime_to_timestamp);
 
-        let official_website = anime_info.get("官方网站").map(|s| s.to_string());
-        let broadcast_day = anime_info.get("放送日期").map(|s| s.to_string());
-        let broadcast_start_str = anime_info.get("放送开始").map(|s| s.to_string());
-        let broadcast_start =
-            broadcast_start_str.as_deref().and_then(text_parser::parse_datetime_to_timestamp);
-
-        let desc_selector = Selector::parse("div.bangumi-desc").unwrap();
-        let description = document
-            .select(&desc_selector)
-            .next()
-            .map(|e| e.text().collect::<String>().trim().to_string());
+        let official_website = self.extract_official_website(document);
+        let description = self.extract_text(document, &["div.bangumi-desc", ".header2-desc"]);
 
         Anime {
             mikan_id,
@@ -153,6 +128,79 @@ impl MikanFetcher {
             created_at: Some(chrono::Utc::now().timestamp_millis()),
             updated_at: Some(chrono::Utc::now().timestamp_millis()),
         }
+    }
+
+    fn extract_broadcast_info(&self, document: &Html) -> (Option<String>, Option<String>) {
+        let mut day = None;
+        let mut start = None;
+        let selector = Selector::parse("div.bangumi-info p, .central-container p").unwrap();
+        for element in document.select(&selector) {
+            let text = element.text().collect::<String>();
+            if text.contains("放送日期") {
+                day = Some(text.replace("放送日期：", "").trim().to_string());
+            }
+            if text.contains("放送开始") {
+                start = Some(text.replace("放送开始：", "").trim().to_string());
+            }
+            if day.is_some() && start.is_some() {
+                break;
+            }
+        }
+        (day, start)
+    }
+
+    fn extract_official_website(&self, document: &Html) -> Option<String> {
+        // Strategy 1: Find <a> tag whose text contains "官方网站"
+        let selector1 = Selector::parse("a").unwrap();
+        for element in document.select(&selector1) {
+            let text = element.text().collect::<String>();
+            if text.contains("官方网站") {
+                if let Some(href) = element.value().attr("href") {
+                    return Some(href.to_string());
+                }
+            }
+        }
+
+        // Strategy 2: Find link in a <p> that contains "官方网站"
+        let selector2 = Selector::parse("div.bangumi-info p, .central-container p").unwrap();
+        for p_element in document.select(&selector2) {
+            let text = p_element.text().collect::<String>();
+            if text.contains("官方网站") {
+                 if let Some(a_element) = p_element.select(&Selector::parse("a").unwrap()).next() {
+                     if let Some(href) = a_element.value().attr("href") {
+                        return Some(href.to_string());
+                    }
+                 }
+            }
+        }
+        None
+    }
+
+    // Helper to extract text from the first matching selector
+    fn extract_text(&self, document: &Html, selectors: &[&str]) -> Option<String> {
+        for selector_str in selectors {
+            let selector = Selector::parse(selector_str).ok()?;
+            if let Some(element) = document.select(&selector).next() {
+                let text = element.text().collect::<String>().trim().to_string();
+                if !text.is_empty() {
+                    return Some(text);
+                }
+            }
+        }
+        None
+    }
+
+    // Helper to extract href from the first matching selector
+    fn extract_href(&self, document: &Html, selectors: &[&str]) -> Option<String> {
+        for selector_str in selectors {
+            let selector = Selector::parse(selector_str).ok()?;
+            if let Some(element) = document.select(&selector).next() {
+                if let Some(href) = element.value().attr("href") {
+                    return Some(href.to_string());
+                }
+            }
+        }
+        None
     }
 
     fn parse_groups_and_resources(
@@ -256,7 +304,7 @@ impl MikanFetcher {
 
         let episode_number = text_parser::parse_episode_number(&resource_title);
         let resolution = text_parser::parse_resolution(&resource_title);
-        let subtitle_type = text_parser::parse_subtitle_type(&resource_title);
+        let subtitle_type = text_parser::parse_and_normalize_subtitle_type(&resource_title);
 
         Some(Resource {
             id: None,

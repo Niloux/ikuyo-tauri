@@ -34,7 +34,7 @@
           </div>
           <div class="task-meta-item">
             <span class="task-meta-label">创建时间</span>
-            <span class="task-meta-value">{{ formatDateTime(task.created_at) }}</span>
+            <span class="task-meta-value">{{ formatDateTime(task.created_at?.toString() || '') }}</span>
           </div>
         </div>
 

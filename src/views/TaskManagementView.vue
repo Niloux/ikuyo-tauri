@@ -74,6 +74,7 @@ import { defineAsyncComponent } from 'vue'
 import type { CrawlerTaskCreate } from '../services/crawler/crawlerTypes'
 import type { ScheduledJobCreate, ScheduledJobUpdate, ScheduledJobResponse } from '../services/scheduler/schedulerTypes'
 import { ensureScrollToTop } from '../utils/scrollUtils'
+import { ElMessageBox } from 'element-plus'
 
 const taskStore = useTaskStore()
 const schedulerStore = useSchedulerStore()
@@ -279,12 +280,23 @@ const submitScheduledJob = async () => {
 }
 
 const cancelTask = async (taskId: number) => {
-  if (confirm('确定要取消这个任务吗？')) {
-    try {
-      const cancelledTask = await taskStore.cancelTask(taskId)
-      showSuccess('任务已取消！')
-      taskStore.stopTaskPolling(taskId)
-    } catch (e: any) {
+  try {
+    await ElMessageBox.confirm(
+      '确定要取消这个任务吗？',
+      '提示',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    )
+    // 用户点击了“确定”
+    const cancelledTask = await taskStore.cancelTask(taskId)
+    showSuccess('任务已取消！')
+    taskStore.stopTaskPolling(taskId)
+  } catch (e: any) {
+    // 用户点击了“取消”或关闭弹窗，不做任何事
+    if (e !== 'cancel' && e !== 'close') {
       handleApiError(e, '取消任务失败')
     }
   }
@@ -300,11 +312,20 @@ const toggleScheduledJob = async (jobId: string) => {
 }
 
 const deleteScheduledJob = async (jobId: string) => {
-  if (confirm('确定要删除这个定时任务吗？')) {
-    try {
-      await schedulerStore.deleteScheduledJob(jobId)
-      showSuccess('定时任务已删除！')
-    } catch (e: any) {
+  try {
+    await ElMessageBox.confirm(
+      '确定要删除这个定时任务吗？',
+      '提示',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    )
+    await schedulerStore.deleteScheduledJob(jobId)
+    showSuccess('定时任务已删除！')
+  } catch (e: any) {
+    if (e !== 'cancel' && e !== 'close') {
       handleApiError(e, '删除定时任务失败')
     }
   }

@@ -1,39 +1,89 @@
 mod commands;
+mod config;
+mod core;
 mod db;
 mod error;
 mod models;
-mod types;
-mod services;
 mod repositories;
-mod config;
-mod core;
+mod services;
+mod types;
 use std::sync::Arc;
 use tokio::sync::Notify;
 mod worker;
 
-use commands::{ bangumi::*, crawler::*, scheduler::*, subscription::*, };
-use tauri::async_runtime::block_on;
-use sqlx::SqlitePool;
 use crate::error::Result;
+use commands::{bangumi::*, crawler::*, scheduler::*, subscription::*};
+use sqlx::SqlitePool;
+use tauri::path::BaseDirectory;
+use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() -> Result<()> {
-    let config = config::Config::load();
-    let pool: SqlitePool = block_on(crate::db::init_pool(&config))?;
-    let pool_arc = Arc::new(pool);
-    let notify = Arc::new(Notify::new());
-
-    // 启动worker池（单worker）
-    let worker = worker::Worker::new(pool_arc.clone(), notify.clone(), None);
-    tauri::async_runtime::spawn(async move {
-        worker.run().await;
-    });
+    // 在编译时嵌入迁移文件
+    let migrator = sqlx::migrate!("./migrations");
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .manage(pool_arc)
-        .manage(config) // 将 config 也注入
-        .manage(notify)
+        .setup(move |app| {
+            // 1. 加载配置
+            let config = config::Config::load();
+            let app_handle = app.handle().clone(); // CLONE THE HANDLE HERE
+
+            // 2. 设置数据库（首次运行时复制策略）
+            let pool = tauri::async_runtime::block_on(async move {
+                // app_handle is moved into this block
+                let path_resolver = app_handle.path();
+                let app_data_dir = path_resolver
+                    .app_data_dir()
+                    .expect("failed to resolve app data dir");
+                if !app_data_dir.exists() {
+                    std::fs::create_dir_all(&app_data_dir).expect("failed to create app data dir");
+                }
+
+                let writable_db_path = app_data_dir.join("ikuyo.db");
+
+                // 如果可写目录中不存在数据库文件，则从资源中复制
+                if !writable_db_path.exists() {
+                    let resource_db_path = path_resolver
+                        .resolve("ikuyo.db", BaseDirectory::Resource)
+                        .expect("failed to resolve resource");
+
+                    std::fs::copy(resource_db_path, &writable_db_path)
+                        .expect("failed to copy database file");
+                }
+
+                let db_url = format!(
+                    "sqlite:{}",
+                    writable_db_path
+                        .to_str()
+                        .expect("failed to convert db path to string")
+                );
+
+                let pool = SqlitePool::connect(&db_url)
+                    .await
+                    .expect("failed to connect to database");
+                migrator
+                    .run(&pool)
+                    .await
+                    .expect("failed to run database migrations");
+                Ok::<SqlitePool, anyhow::Error>(pool)
+            })?;
+            let pool_arc = Arc::new(pool);
+
+            // 3. 设置并启动后台工作者
+            let notify = Arc::new(Notify::new());
+            let worker = worker::Worker::new(pool_arc.clone(), notify.clone(), None);
+            tauri::async_runtime::spawn(async move {
+                worker.run().await;
+            });
+
+            // 4. 将所有状态注入Tauri
+            app.manage(pool_arc);
+            app.manage(config);
+            app.manage(notify);
+
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             // Bangumi commands
             get_calendar,

@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS anime (
     title TEXT NOT NULL,
     original_title TEXT,
     broadcast_day TEXT,
-    broadcast_start INTEGER,
+    broadcast_start TEXT,
     official_website TEXT,
     bangumi_url TEXT,
     description TEXT,

@@ -108,8 +108,7 @@ impl MikanFetcher {
             .and_then(|u| u.split('/').last().and_then(|id| id.parse::<i64>().ok()))
             .unwrap_or(0);
 
-        let (broadcast_day, broadcast_start_str) = self.extract_broadcast_info(document);
-        let broadcast_start = broadcast_start_str.as_deref().and_then(text_parser::parse_datetime_to_timestamp);
+        let (broadcast_day, broadcast_start) = self.extract_broadcast_info(document);
 
         let official_website = self.extract_official_website(document);
         let description = self.extract_text(document, &["div.bangumi-desc", ".header2-desc"]);
@@ -133,13 +132,13 @@ impl MikanFetcher {
     fn extract_broadcast_info(&self, document: &Html) -> (Option<String>, Option<String>) {
         let mut day = None;
         let mut start = None;
-        let selector = Selector::parse("div.bangumi-info p, .central-container p").unwrap();
+        let selector = Selector::parse("p.bangumi-info").unwrap();
         for element in document.select(&selector) {
-            let text = element.text().collect::<String>();
-            if text.contains("放送日期") {
+            let text = element.text().collect::<String>().replace("\n", "").trim().to_string();
+            if text.starts_with("放送日期：") {
                 day = Some(text.replace("放送日期：", "").trim().to_string());
             }
-            if text.contains("放送开始") {
+            if text.starts_with("放送开始：") {
                 start = Some(text.replace("放送开始：", "").trim().to_string());
             }
             if day.is_some() && start.is_some() {
@@ -150,27 +149,16 @@ impl MikanFetcher {
     }
 
     fn extract_official_website(&self, document: &Html) -> Option<String> {
-        // Strategy 1: Find <a> tag whose text contains "官方网站"
-        let selector1 = Selector::parse("a").unwrap();
-        for element in document.select(&selector1) {
-            let text = element.text().collect::<String>();
-            if text.contains("官方网站") {
-                if let Some(href) = element.value().attr("href") {
-                    return Some(href.to_string());
-                }
-            }
-        }
-
-        // Strategy 2: Find link in a <p> that contains "官方网站"
-        let selector2 = Selector::parse("div.bangumi-info p, .central-container p").unwrap();
-        for p_element in document.select(&selector2) {
-            let text = p_element.text().collect::<String>();
-            if text.contains("官方网站") {
-                 if let Some(a_element) = p_element.select(&Selector::parse("a").unwrap()).next() {
-                     if let Some(href) = a_element.value().attr("href") {
+        let selector = Selector::parse("p.bangumi-info").unwrap();
+        for element in document.select(&selector) {
+            let text = element.text().collect::<String>().replace("\n", "").trim().to_string();
+            if text.starts_with("官方网站：") {
+                // 查找a标签
+                if let Some(a_element) = element.select(&Selector::parse("a").unwrap()).next() {
+                    if let Some(href) = a_element.value().attr("href") {
                         return Some(href.to_string());
                     }
-                 }
+                }
             }
         }
         None

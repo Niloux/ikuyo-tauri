@@ -38,7 +38,7 @@ pub struct Anime {
     pub title: String,
     pub original_title: Option<String>,
     pub broadcast_day: Option<String>,
-    pub broadcast_start: Option<i64>,
+    pub broadcast_start: Option<String>,
     pub official_website: Option<String>,
     pub bangumi_url: Option<String>,
     pub description: Option<String>,

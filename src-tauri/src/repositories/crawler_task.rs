@@ -23,7 +23,7 @@ impl<'a> CrawlerTaskRepository<'a> {
         let query = if limit > 0 {
             "SELECT * FROM crawler_task WHERE status = ? ORDER BY created_at DESC LIMIT ? OFFSET ?"
         } else {
-            "SELECT * FROM crawler_task WHERE status = ? ORDER BY created_at DESC"
+            "SELECT * FROM crawler_task WHERE status = ? ORDER BY created_at DESC LIMIT -1 OFFSET 0"
         };
         Ok(sqlx::query_as::<_, CrawlerTask>(query)
             .bind(status)
@@ -42,7 +42,7 @@ impl<'a> CrawlerTaskRepository<'a> {
         let query = if limit > 0 {
             "SELECT * FROM crawler_task WHERE task_type = ? ORDER BY created_at DESC LIMIT ? OFFSET ?"
         } else {
-            "SELECT * FROM crawler_task WHERE task_type = ? ORDER BY created_at DESC"
+            "SELECT * FROM crawler_task WHERE task_type = ? ORDER BY created_at DESC LIMIT -1 OFFSET 0"
         };
         Ok(sqlx::query_as::<_, CrawlerTask>(query)
             .bind(task_type)
@@ -62,7 +62,7 @@ impl<'a> CrawlerTaskRepository<'a> {
         let query = if limit > 0 {
             "SELECT * FROM crawler_task WHERE created_at >= ? AND created_at <= ? ORDER BY created_at DESC LIMIT ? OFFSET ?"
         } else {
-            "SELECT * FROM crawler_task WHERE created_at >= ? AND created_at <= ? ORDER BY created_at DESC"
+            "SELECT * FROM crawler_task WHERE created_at >= ? AND created_at <= ? ORDER BY created_at DESC LIMIT -1 OFFSET 0"
         };
         Ok(sqlx::query_as::<_, CrawlerTask>(query)
             .bind(start)
@@ -110,7 +110,7 @@ impl<'a> Repository<CrawlerTask, i64> for CrawlerTaskRepository<'a> {
         let query = if limit > 0 {
             "SELECT * FROM crawler_task ORDER BY created_at DESC LIMIT ? OFFSET ?"
         } else {
-            "SELECT * FROM crawler_task ORDER BY created_at DESC"
+            "SELECT * FROM crawler_task ORDER BY created_at DESC LIMIT -1 OFFSET 0"
         };
         Ok(sqlx::query_as::<_, CrawlerTask>(query)
             .bind(limit)

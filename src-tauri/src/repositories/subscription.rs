@@ -92,7 +92,7 @@ impl<'a> SubscriptionRepository<'a> {
         if limit > 0 {
             data_query.push_str("LIMIT ? OFFSET ?");
         } else {
-            data_query.push_str("OFFSET ?");
+            data_query.push_str("LIMIT -1 OFFSET 0");
         }
 
         let mut data_query_builder =

@@ -92,7 +92,7 @@ impl<'a> Repository<SubtitleGroup, i64> for SubtitleGroupRepository<'a> {
         let query = if limit > 0 {
             "SELECT * FROM subtitle_group ORDER BY id LIMIT ? OFFSET ?"
         } else {
-            "SELECT * FROM subtitle_group ORDER BY id OFFSET ?"
+            "SELECT * FROM subtitle_group ORDER BY id LIMIT -1 OFFSET 0"
         };
         Ok(sqlx::query_as::<_, SubtitleGroup>(query)
             .bind(limit)

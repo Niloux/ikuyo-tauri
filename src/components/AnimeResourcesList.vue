@@ -219,7 +219,7 @@ const dateFormatOptions: Intl.DateTimeFormatOptions = {
 const formatReleaseDate = (dateStr: string): string => {
   if (!dateStr) return ''
   try {
-    const date = new Date(dateStr)
+    const date = new Date(Number(dateStr))
     return date.toLocaleDateString('zh-CN', dateFormatOptions)
   } catch {
     return dateStr

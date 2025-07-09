@@ -44,10 +44,12 @@ impl<'a> ResourceRepository<'a> {
         if limit > 0 {
             builder.push(" LIMIT ");
             builder.push_bind(limit);
+            builder.push(" OFFSET ");
+            builder.push_bind(offset);
+        } else {
+            // limit <= 0 时，SQLite 推荐 LIMIT -1 表示不限制条数
+            builder.push(" LIMIT -1 OFFSET 0");
         }
-
-        builder.push(" OFFSET ");
-        builder.push_bind(offset);
 
         Ok(builder.build_query_as().fetch_all(self.pool).await?)
     }

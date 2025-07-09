@@ -30,7 +30,7 @@ impl<'a> ScheduledJobRepository<'a> {
         let query = if limit > 0 {
             "SELECT * FROM scheduled_job WHERE enabled = ? ORDER BY created_at DESC LIMIT ? OFFSET ?"
         } else {
-            "SELECT * FROM scheduled_job WHERE enabled = ? ORDER BY created_at DESC"
+            "SELECT * FROM scheduled_job WHERE enabled = ? ORDER BY created_at DESC LIMIT -1 OFFSET 0"
         };
         Ok(sqlx::query_as::<_, ScheduledJob>(query)
             .bind(enabled)
@@ -50,7 +50,7 @@ impl<'a> ScheduledJobRepository<'a> {
         let query = if limit > 0 {
             "SELECT * FROM scheduled_job WHERE created_at >= ? AND created_at <= ? ORDER BY created_at DESC LIMIT ? OFFSET ?"
         } else {
-            "SELECT * FROM scheduled_job WHERE created_at >= ? AND created_at <= ? ORDER BY created_at DESC"
+            "SELECT * FROM scheduled_job WHERE created_at >= ? AND created_at <= ? ORDER BY created_at DESC LIMIT -1 OFFSET 0"
         };
         Ok(sqlx::query_as::<_, ScheduledJob>(query)
             .bind(start)
@@ -94,7 +94,7 @@ impl<'a> Repository<ScheduledJob, i64> for ScheduledJobRepository<'a> {
         let query = if limit > 0 {
             "SELECT * FROM scheduled_job ORDER BY created_at DESC LIMIT ? OFFSET ?"
         } else {
-            "SELECT * FROM scheduled_job ORDER BY created_at DESC"
+            "SELECT * FROM scheduled_job ORDER BY created_at DESC LIMIT -1 OFFSET 0"
         };
         Ok(sqlx::query_as::<_, ScheduledJob>(query)
             .bind(limit)

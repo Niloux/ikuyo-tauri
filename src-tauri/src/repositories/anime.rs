@@ -32,7 +32,7 @@ impl<'a> AnimeRepository<'a> {
         let query = if limit > 0 {
             "SELECT * FROM anime WHERE lower(title) LIKE ? LIMIT ? OFFSET ?"
         } else {
-            "SELECT * FROM anime WHERE lower(title) LIKE ? OFFSET ?"
+            "SELECT * FROM anime WHERE lower(title) LIKE ? LIMIT -1 OFFSET 0"
         };
         Ok(sqlx::query_as::<_, Anime>(query)
             .bind(format!("%{}%", title.to_lowercase()))
@@ -160,7 +160,7 @@ impl<'a> Repository<Anime, i64> for AnimeRepository<'a> {
         let query = if limit > 0 {
             "SELECT * FROM anime LIMIT ? OFFSET ?"
         } else {
-            "SELECT * FROM anime OFFSET ?"
+            "SELECT * FROM anime LIMIT -1 OFFSET 0"
         };
         Ok(sqlx::query_as::<_, Anime>(query)
             .bind(limit)

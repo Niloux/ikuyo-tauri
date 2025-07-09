@@ -79,7 +79,7 @@ impl<'a> Repository<AnimeSubtitleGroup, i64> for AnimeSubtitleGroupRepository<'a
         let query = if limit > 0 {
             "SELECT * FROM anime_subtitle_group LIMIT ? OFFSET ?"
         } else {
-            "SELECT * FROM anime_subtitle_group OFFSET ?"
+            "SELECT * FROM anime_subtitle_group LIMIT -1 OFFSET 0"
         };
         Ok(sqlx::query_as::<_, AnimeSubtitleGroup>(query)
             .bind(limit)

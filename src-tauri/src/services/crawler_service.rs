@@ -9,6 +9,7 @@ use sqlx::SqlitePool;
 use std::collections::HashSet;
 use std::sync::Arc;
 use futures_util::stream::{self, StreamExt};
+use std::sync::atomic::{AtomicI64, Ordering};
 
 pub struct CrawlerService {
     pub pool: Arc<SqlitePool>,
@@ -21,6 +22,7 @@ pub struct CrawlerService {
     pub resource_hashes: HashSet<String>,
     pub processed_items: i64,
     pub total_items: i64,
+    pub finished_count: Arc<AtomicI64>,
 }
 
 impl CrawlerService {
@@ -36,6 +38,7 @@ impl CrawlerService {
             resource_hashes: HashSet::new(),
             processed_items: 0,
             total_items: 0,
+            finished_count: Arc::new(AtomicI64::new(0)),
         }
     }
 
@@ -139,6 +142,10 @@ impl CrawlerService {
                         }
                     }
                 }
+                // 每完成一部动画，主线程自增finished_count并更新进度
+                let finished = self.finished_count.fetch_add(1, Ordering::SeqCst) + 1;
+                let percent = finished as f64 / self.total_items as f64;
+                self.update_task_status(CrawlerTaskStatus::Running, percent, None).await;
             }
             processed += 1;
             self.processed_items = processed;
@@ -153,8 +160,6 @@ impl CrawlerService {
                     self.update_task_status(CrawlerTaskStatus::Failed, processed as f64 / self.total_items as f64, Some(error_msg)).await;
                     return;
                 }
-                let percent = (processed as f64) / (self.total_items as f64);
-                self.update_task_status(CrawlerTaskStatus::Running, percent, None).await;
             }
         }
 

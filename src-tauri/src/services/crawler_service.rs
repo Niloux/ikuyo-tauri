@@ -7,7 +7,6 @@ use sqlx::{SqlitePool, Transaction};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use crate::core::mikan_fetcher::{MikanFetcher, AnimeData};
-use tokio::sync::Notify;
 
 pub struct CrawlerService {
     pub pool: Arc<SqlitePool>,

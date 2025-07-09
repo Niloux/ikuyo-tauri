@@ -43,12 +43,8 @@ impl Worker {
                     task.started_at = Some(chrono::Utc::now().timestamp_millis());
                     let _ = repo.update(&task).await;
                     let pool = self.pool.clone();
-                    let notify = self.notify.clone();
-                    let semaphore = self.semaphore.clone();
-                    let retry_count = self.retry_count;
-                    let retry_delay_ms = self.retry_delay_ms;
-
                     let mut crawler_service = CrawlerService::new(pool.clone(), task.id.unwrap_or_default());
+                    let retry_count = self.retry_count;
                     tokio::spawn(async move {
                         let mut attempt = 0;
                         let mut success = false;

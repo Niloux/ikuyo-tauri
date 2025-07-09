@@ -7,10 +7,11 @@ use crate::{
 };
 use sqlx::SqlitePool;
 use tauri::{command, State};
+use std::sync::Arc;
 
 #[command(rename_all = "snake_case")]
 pub async fn get_all_subscription_ids(
-    pool: State<'_, SqlitePool>,
+    pool: State<'_, Arc<SqlitePool>>,
     user_id: String,
 ) -> Result<SubscriptionIdsResponse, String> {
     let repo = SubscriptionRepository::new(&pool);
@@ -23,7 +24,7 @@ pub async fn get_all_subscription_ids(
 
 #[command(rename_all = "snake_case")]
 pub async fn subscribe(
-    pool: State<'_, SqlitePool>,
+    pool: State<'_, Arc<SqlitePool>>,
     user_id: String,
     bangumi_id: i64,
     anime_name: String,
@@ -85,7 +86,7 @@ pub async fn subscribe(
 
 #[command(rename_all = "snake_case")]
 pub async fn unsubscribe(
-    pool: State<'_, SqlitePool>,
+    pool: State<'_, Arc<SqlitePool>>,
     user_id: String,
     bangumi_id: i64,
 ) -> Result<(), String> {
@@ -98,7 +99,7 @@ pub async fn unsubscribe(
 
 #[command(rename_all = "snake_case")]
 pub async fn get_subscriptions(
-    pool: State<'_, SqlitePool>,
+    pool: State<'_, Arc<SqlitePool>>,
     user_id: String,
     sort: Option<String>,
     order: Option<String>,
@@ -141,7 +142,7 @@ pub async fn get_subscriptions(
 
 #[command(rename_all = "snake_case")]
 pub async fn check_subscription(
-    pool: State<'_, SqlitePool>,
+    pool: State<'_, Arc<SqlitePool>>,
     user_id: String,
     bangumi_id: i64,
 ) -> Result<SubscriptionStatus, String> {

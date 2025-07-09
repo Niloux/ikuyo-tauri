@@ -4,7 +4,7 @@ use crate::{
     types::crawler::{CrawlerTaskCreate, TaskResponse},
 };
 use sqlx::SqlitePool;
-use tauri::State;
+use tauri::{command, State};
 use tokio::sync::Notify;
 use std::sync::Arc;
 
@@ -27,7 +27,7 @@ fn convert_to_response(task: CrawlerTask) -> TaskResponse {
     }
 }
 
-#[tauri::command]
+#[command(rename_all = "snake_case")]
 pub async fn create_crawler_task(
     task: CrawlerTaskCreate,
     pool: State<'_, Arc<SqlitePool>>,
@@ -75,10 +75,10 @@ pub async fn create_crawler_task(
     }
 }
 
-#[tauri::command]
+#[command(rename_all = "snake_case")]
 pub async fn get_crawler_task_status(
     task_id: i64,
-    pool: State<'_, SqlitePool>,
+    pool: State<'_, Arc<SqlitePool>>,
 ) -> Result<TaskResponse, String> {
     tracing::info!("Getting status for crawler task ID: {}", task_id);
 
@@ -91,11 +91,11 @@ pub async fn get_crawler_task_status(
     }
 }
 
-#[tauri::command]
+#[command(rename_all = "snake_case")]
 pub async fn list_crawler_tasks(
     page: Option<i64>,
     page_size: Option<i64>,
-    pool: State<'_, SqlitePool>,
+    pool: State<'_, Arc<SqlitePool>>,
 ) -> Result<Vec<TaskResponse>, String> {
     tracing::info!(
         "Listing crawler tasks with page: {:?}, page_size: {:?}",
@@ -117,10 +117,10 @@ pub async fn list_crawler_tasks(
     Ok(responses)
 }
 
-#[tauri::command]
+#[command(rename_all = "snake_case")]
 pub async fn get_crawler_task(
     task_id: i64,
-    pool: State<'_, SqlitePool>,
+    pool: State<'_, Arc<SqlitePool>>,
 ) -> Result<TaskResponse, String> {
     tracing::info!("Getting crawler task ID: {}", task_id);
 
@@ -133,10 +133,10 @@ pub async fn get_crawler_task(
     }
 }
 
-#[tauri::command]
+#[command(rename_all = "snake_case")]
 pub async fn cancel_crawler_task(
     task_id: i64,
-    pool: State<'_, SqlitePool>,
+    pool: State<'_, Arc<SqlitePool>>,
 ) -> Result<TaskResponse, String> {
     tracing::info!("Cancelling crawler task ID: {}", task_id);
 
@@ -161,8 +161,11 @@ pub async fn cancel_crawler_task(
     }
 }
 
-#[tauri::command]
-pub async fn delete_crawler_task(task_id: i64, pool: State<'_, SqlitePool>) -> Result<(), String> {
+#[command(rename_all = "snake_case")]
+pub async fn delete_crawler_task(
+    task_id: i64,
+    pool: State<'_, Arc<SqlitePool>>,
+) -> Result<(), String> {
     tracing::info!("Deleting crawler task ID: {}", task_id);
 
     let repo = CrawlerTaskRepository::new(&pool);

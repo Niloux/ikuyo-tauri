@@ -103,22 +103,15 @@ const currentScheduledJob = ref<ScheduledJobCreate & { parameters_json?: string 
   description: '',
 })
 
-// WebSocket连接实例
-const activeWebSockets = ref<Map<number, WebSocket>>(new Map())
-
-// WebSocket进度监听相关
-const wsEnabled = ref(true) // 可用于后续切换WebSocket/轮询
-
-// 监听进行中任务，自动建立WebSocket连接
+// 监听进行中任务，自动开启轮询
 watch(
   () => (Array.isArray(taskStore.tasks) ? taskStore.tasks : []).map(t => ({ id: t.id, status: t.status })),
   (newTasks) => {
-    if (!wsEnabled.value) return
     newTasks.forEach(task => {
       if (["pending", "running"].includes(task.status)) {
-        taskStore.startTaskProgressWs(task.id)
+        taskStore.startTaskPolling(task.id)
       } else {
-        taskStore.stopTaskProgressWs(task.id)
+        taskStore.stopTaskPolling(task.id)
       }
     })
   },
@@ -126,23 +119,20 @@ watch(
 )
 
 onMounted(() => {
-  ensureScrollToTop() // 每次进入页面自动置顶
+  ensureScrollToTop()
   taskStore.fetchTasks()
   schedulerStore.fetchScheduledJobs()
-  // 可选：定时轮询作为兜底
-  // setInterval(() => { if (!wsEnabled.value) taskStore.fetchTasks() }, 10000)
 })
 
 onActivated(() => {
-  ensureScrollToTop() // keep-alive恢复时也自动置顶
+  ensureScrollToTop()
 })
 
 onUnmounted(() => {
-  taskStore.stopAllTaskProgressWs()
+  taskStore.stopAllTaskPolling()
 })
 
 const openCreateTaskModal = () => {
-  // 重置表单
   newTask.value = {
     mode: 'homepage',
     year: undefined,
@@ -198,39 +188,29 @@ function validateScheduledJobForm() {
 }
 
 const submitCreateTask = async () => {
-  // 保持原有的验证逻辑不变
   if (!validateCreateTaskForm()) return
-
   try {
     const payload: CrawlerTaskCreate = {
       mode: newTask.value.mode,
       limit: newTask.value.limit,
     }
-
-    // 根据模式添加必要参数
     if (newTask.value.mode === 'season' || newTask.value.mode === 'year') {
       payload.year = newTask.value.year
     }
-
     if (newTask.value.mode === 'season') {
       payload.season = newTask.value.season
     }
-
     const createdTask = await taskStore.createTask(payload)
     closeCreateTaskModal()
-    // 如果新任务是运行中或待处理状态，建立WebSocket连接
-    if (createdTask.status === 'running' || createdTask.status === 'pending') {
-      setupTaskWebSocket(createdTask.id)
-    }
+    // 直接开启轮询
+    taskStore.startTaskPolling(createdTask.id)
   } catch (e: any) {
-    // 使用新的API错误处理器，保持相同的错误信息格式
     handleApiError(e, '创建任务失败')
   }
 }
 
 const openCreateScheduledJobModal = () => {
   editingJob.value = null
-  // 重置表单
   currentScheduledJob.value = {
     job_id: '',
     name: '',
@@ -253,13 +233,12 @@ const updateScheduledJob = (j: ScheduledJobCreate & { parameters_json?: string }
 
 const editScheduledJob = (job: ScheduledJobResponse) => {
   editingJob.value = job
-  // 填充表单数据
   currentScheduledJob.value = {
     job_id: job.job_id,
     name: job.name,
     cron_expression: job.cron_expression,
     parameters: job.parameters,
-    parameters_json: JSON.stringify(job.parameters, null, 2), // 格式化JSON字符串
+    parameters_json: JSON.stringify(job.parameters, null, 2),
     enabled: job.enabled,
     description: job.description || '',
   }
@@ -269,7 +248,6 @@ const editScheduledJob = (job: ScheduledJobResponse) => {
 const submitScheduledJob = async () => {
   if (!validateScheduledJobForm()) return
   try {
-    // 解析JSON参数
     let parsedParameters = {}
     if (currentScheduledJob.value.parameters_json) {
       try {
@@ -279,7 +257,6 @@ const submitScheduledJob = async () => {
         return
       }
     }
-
     const payload = {
       job_id: currentScheduledJob.value.job_id,
       name: currentScheduledJob.value.name,
@@ -288,13 +265,10 @@ const submitScheduledJob = async () => {
       enabled: currentScheduledJob.value.enabled,
       description: currentScheduledJob.value.description,
     }
-
     if (editingJob.value) {
-      // 更新现有任务
       await schedulerStore.updateScheduledJob(editingJob.value.job_id, payload as ScheduledJobUpdate)
       showSuccess('定时任务更新成功！')
     } else {
-      // 创建新任务
       await schedulerStore.createScheduledJob(payload as ScheduledJobCreate)
       showSuccess('定时任务创建成功！')
     }
@@ -309,11 +283,7 @@ const cancelTask = async (taskId: number) => {
     try {
       const cancelledTask = await taskStore.cancelTask(taskId)
       showSuccess('任务已取消！')
-      // 如果任务被取消，关闭对应的WebSocket连接
-      if (activeWebSockets.value.has(taskId)) {
-        activeWebSockets.value.get(taskId)?.close()
-        activeWebSockets.value.delete(taskId)
-      }
+      taskStore.stopTaskPolling(taskId)
     } catch (e: any) {
       handleApiError(e, '取消任务失败')
     }
@@ -338,77 +308,6 @@ const deleteScheduledJob = async (jobId: string) => {
       handleApiError(e, '删除定时任务失败')
     }
   }
-}
-
-// 设置任务WebSocket连接
-const setupTaskWebSocket = (taskId: number) => {
-  if (activeWebSockets.value.has(taskId)) {
-    // 如果已经有连接，则不重复建立
-    return
-  }
-
-  const ws = taskStore.connectTaskProgressWs(
-    taskId,
-    (data: any) => {
-      // 收到WebSocket消息时更新任务状态
-      const index = taskStore.tasks.findIndex(t => t.id === taskId)
-      if (index !== -1) {
-        // 确保只更新WebSocket发送的字段，避免覆盖其他字段
-        taskStore.tasks[index] = { ...taskStore.tasks[index], ...data }
-      }
-      // 检查是否有final_status字段，若有则立即刷新任务列表
-      if (data.final_status) {
-        taskStore.fetchTasks()
-      }
-    },
-    (event: Event) => {
-      console.error(`任务 ${taskId} 的WebSocket连接错误:`, event)
-      // 可以在这里处理错误，例如显示错误信息
-    },
-    (event: CloseEvent) => {
-      console.log(`任务 ${taskId} 的WebSocket连接关闭:`, event)
-      activeWebSockets.value.delete(taskId)
-      // 无论正常还是异常关闭，都延迟刷新任务列表
-      if (event.code !== 1000) {
-        console.warn(`任务 ${taskId} 的WebSocket连接异常关闭，尝试重新获取任务状态...`)
-      }
-      setTimeout(() => {
-        taskStore.fetchTasks()
-      }, 300)
-    },
-  )
-  activeWebSockets.value.set(taskId, ws)
-}
-
-// 辅助函数：从parameters字符串中解析特定参数
-const getParameter = (parameters: string | undefined, key: string): string => {
-  if (!parameters) return '-'
-  try {
-    const params = JSON.parse(parameters)
-    // 特殊处理bangumi_id，因为后端可能直接返回bangumi_id而不是parameters中的mode
-    if (key === 'mode' && params.bangumi_id) {
-      return `bangumi_id: ${params.bangumi_id}`
-    }
-    return params[key] || '-'
-  } catch (e) {
-    console.error('解析参数失败:', e)
-    return '-'
-  }
-}
-
-// 辅助函数：格式化日期时间
-const formatDateTime = (dateTimeStr: string | undefined): string => {
-  if (!dateTimeStr) return '-'
-  const date = new Date(dateTimeStr)
-  return date.toLocaleString()
-}
-
-// 辅助函数：格式化秒为可读时间
-const formatTime = (seconds: number | undefined): string => {
-  if (seconds === undefined || seconds < 0) return '-'
-  const minutes = Math.floor(seconds / 60)
-  const remainingSeconds = Math.floor(seconds % 60)
-  return `${minutes}m ${remainingSeconds}s`
 }
 
 const handlePageChange = (page: number) => {

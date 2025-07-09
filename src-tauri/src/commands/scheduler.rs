@@ -4,8 +4,9 @@ use crate::{
     types::scheduler::{ScheduledJobCreate, ScheduledJobResponse, ScheduledJobUpdate},
 };
 use sqlx::SqlitePool;
+use tauri::{command, State};
 use std::collections::HashMap;
-use tauri::State;
+use std::sync::Arc;
 
 fn convert_to_response(job: ScheduledJob) -> ScheduledJobResponse {
     let parameters: HashMap<String, serde_json::Value> = match job.parameters {
@@ -34,10 +35,10 @@ fn convert_to_response(job: ScheduledJob) -> ScheduledJobResponse {
     }
 }
 
-#[tauri::command]
+#[command(rename_all = "snake_case")]
 pub async fn create_scheduled_job(
     job: ScheduledJobCreate,
-    pool: State<'_, SqlitePool>,
+    pool: State<'_, Arc<SqlitePool>>,
 ) -> Result<ScheduledJobResponse, String> {
     tracing::info!("Creating scheduled job: {:?}", job);
 
@@ -68,11 +69,11 @@ pub async fn create_scheduled_job(
     }
 }
 
-#[tauri::command]
+#[command(rename_all="snake_case")]
 pub async fn update_scheduled_job(
     job_id: String,
     updates: ScheduledJobUpdate,
-    pool: State<'_, SqlitePool>,
+    pool: State<'_, Arc<SqlitePool>>,
 ) -> Result<ScheduledJobResponse, String> {
     tracing::info!("Updating scheduled job {}: {:?}", job_id, updates);
 
@@ -109,9 +110,9 @@ pub async fn update_scheduled_job(
     }
 }
 
-#[tauri::command]
+#[command(rename_all = "snake_case")]
 pub async fn get_scheduled_jobs(
-    pool: State<'_, SqlitePool>,
+    pool: State<'_, Arc<SqlitePool>>,
 ) -> Result<Vec<ScheduledJobResponse>, String> {
     tracing::info!("Fetching all scheduled jobs");
 
@@ -122,10 +123,10 @@ pub async fn get_scheduled_jobs(
     Ok(responses)
 }
 
-#[tauri::command]
+#[command(rename_all = "snake_case")]
 pub async fn get_scheduled_job(
     job_id: String,
-    pool: State<'_, SqlitePool>,
+    pool: State<'_, Arc<SqlitePool>>,
 ) -> Result<ScheduledJobResponse, String> {
     tracing::info!("Getting scheduled job: {}", job_id);
 
@@ -141,10 +142,10 @@ pub async fn get_scheduled_job(
     }
 }
 
-#[tauri::command]
+#[command(rename_all = "snake_case")]
 pub async fn delete_scheduled_job(
     job_id: String,
-    pool: State<'_, SqlitePool>,
+    pool: State<'_, Arc<SqlitePool>>,
 ) -> Result<(), String> {
     tracing::info!("Deleting scheduled job: {}", job_id);
 
@@ -167,10 +168,10 @@ pub async fn delete_scheduled_job(
     }
 }
 
-#[tauri::command]
+#[command(rename_all = "snake_case")]
 pub async fn toggle_scheduled_job(
     job_id: String,
-    pool: State<'_, SqlitePool>,
+    pool: State<'_, Arc<SqlitePool>>,
 ) -> Result<ScheduledJobResponse, String> {
     tracing::info!("Toggling scheduled job: {}", job_id);
 

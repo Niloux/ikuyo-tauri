@@ -14,8 +14,8 @@ export const useTaskStore = defineStore('task', () => {
   const tasks = ref<TaskResponse[]>([])
   const currentPage = ref(1)
   const pageSize = ref(10)
-  // WebSocket连接管理
-  const taskProgressWsMap = new Map<number, WebSocket>()
+  // 轮询定时器map
+  const pollingTimers = new Map<number, number>()
 
   // --- 即时任务相关操作 ---
   /**
@@ -38,6 +38,7 @@ export const useTaskStore = defineStore('task', () => {
   const createTask = async (taskCreateData: CrawlerTaskCreate) => {
     const result = await createTaskAsync.run(taskCreateData)
     await fetchTasks()
+    startTaskPolling(result.id)
     return result
   }
 
@@ -53,84 +54,39 @@ export const useTaskStore = defineStore('task', () => {
     if (index !== -1) {
       tasks.value[index] = result
     }
+    stopTaskPolling(taskId)
     return result
   }
 
-  // --- WebSocket 相关操作 ---
-  const connectTaskProgressWs = (
-    taskId: number,
-    onMessageCallback: (data: any) => void,
-    onErrorCallback: (event: Event) => void,
-    onCloseCallback: (event: CloseEvent) => void,
-  ) => {
-    const ws = CrawlerApiService.connectTaskProgressWs(taskId)
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data)
-        onMessageCallback(data)
-      } catch (e) {
-        console.error('WebSocket消息解析失败:', e)
+  // --- 轮询相关 ---
+  const startTaskPolling = (taskId: number) => {
+    if (pollingTimers.has(taskId)) return
+    const timer = window.setInterval(async () => {
+      const task = await CrawlerApiService.getTaskProgress(taskId)
+      const index = tasks.value.findIndex(t => t.id === taskId)
+      if (index !== -1) {
+        tasks.value[index] = task
       }
-    }
-    ws.onerror = (event) => {
-      console.error('WebSocket错误:', event)
-      onErrorCallback(event)
-    }
-    ws.onclose = (event) => {
-      console.log('WebSocket连接关闭:', event)
-      onCloseCallback(event)
-    }
-    return ws
-  }
-
-  const startTaskProgressWs = (
-    taskId: number,
-    onErrorCallback?: (event: Event) => void,
-    onCloseCallback?: (event: CloseEvent) => void,
-  ) => {
-    if (taskProgressWsMap.has(taskId)) return
-    const ws = CrawlerApiService.connectTaskProgressWs(taskId)
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data)
-        const index = tasks.value.findIndex(t => t.id === taskId)
-        if (index !== -1) {
-          tasks.value[index] = { ...tasks.value[index], ...data }
-          if (["completed", "failed", "cancelled"].includes(data.status)) {
-            stopTaskProgressWs(taskId)
-          }
-        }
-      } catch (e) {
-        console.error('WebSocket消息解析失败:', e)
+      if (["completed", "failed", "cancelled"].includes(task.status)) {
+        stopTaskPolling(taskId)
       }
-    }
-    ws.onerror = (event) => {
-      console.error('WebSocket错误:', event)
-      stopTaskProgressWs(taskId)
-      if (onErrorCallback) onErrorCallback(event)
-      fetchTasks()
-    }
-    ws.onclose = (event) => {
-      console.log('WebSocket连接关闭:', event)
-      stopTaskProgressWs(taskId)
-      if (onCloseCallback) onCloseCallback(event)
-    }
-    taskProgressWsMap.set(taskId, ws)
+    }, 1000)
+    pollingTimers.set(taskId, timer)
   }
 
-  const stopTaskProgressWs = (taskId: number) => {
-    const ws = taskProgressWsMap.get(taskId)
-    if (ws) {
-      ws.close()
-      taskProgressWsMap.delete(taskId)
+  const stopTaskPolling = (taskId: number) => {
+    const timer = pollingTimers.get(taskId)
+    if (timer) {
+      clearInterval(timer)
+      pollingTimers.delete(taskId)
     }
   }
 
-  const stopAllTaskProgressWs = () => {
-    for (const [taskId, ws] of taskProgressWsMap.entries()) {
-      ws.close()
+  const stopAllTaskPolling = () => {
+    for (const timer of pollingTimers.values()) {
+      clearInterval(timer)
     }
-    taskProgressWsMap.clear()
+    pollingTimers.clear()
   }
 
   return {
@@ -149,10 +105,9 @@ export const useTaskStore = defineStore('task', () => {
     createTaskAsync,
     cancelTaskAsync,
 
-    // WebSocket操作
-    connectTaskProgressWs,
-    startTaskProgressWs,
-    stopTaskProgressWs,
-    stopAllTaskProgressWs
+    // 轮询操作
+    startTaskPolling,
+    stopTaskPolling,
+    stopAllTaskPolling
   }
 })

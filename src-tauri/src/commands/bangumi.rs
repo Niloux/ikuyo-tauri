@@ -14,8 +14,9 @@ use crate::{
 };
 use sqlx::SqlitePool;
 use tauri::{command, State};
+use std::sync::Arc;
 
-#[command]
+#[command(rename_all = "snake_case")]
 pub async fn get_calendar() -> Result<Vec<BangumiWeekday>, String> {
     let service = BangumiService::new();
     service.get_calendar().await
@@ -43,7 +44,7 @@ pub async fn get_episodes(
 #[command(rename_all = "snake_case")]
 pub async fn get_episode_availability(
     bangumi_id: i64,
-    pool: State<'_, SqlitePool>,
+    pool: State<'_, Arc<SqlitePool>>,
 ) -> Result<Option<EpisodeAvailabilityData>, String> {
     let anime_repo = AnimeRepository::new(&pool);
     let resource_repo = ResourceRepository::new(&pool);
@@ -77,7 +78,7 @@ pub async fn get_episode_availability(
 pub async fn get_episode_resources(
     bangumi_id: i64,
     episode: i64,
-    pool: State<'_, SqlitePool>,
+    pool: State<'_, Arc<SqlitePool>>,
 ) -> Result<Option<EpisodeResourcesData>, String> {
     let anime_repo = AnimeRepository::new(&pool);
     let resource_repo = ResourceRepository::new(&pool);
@@ -144,7 +145,7 @@ pub async fn search_library(
     query: String,
     page: i64,
     limit: i64,
-    pool: State<'_, SqlitePool>,
+    pool: State<'_, Arc<SqlitePool>>,
 ) -> Result<SearchLibraryResponse, String> {
     let anime_repo = AnimeRepository::new(&pool);
 
@@ -179,7 +180,7 @@ pub async fn get_anime_resources(
     subtitle_type: Option<String>,
     limit: Option<i64>,
     offset: Option<i64>,
-    pool: State<'_, SqlitePool>,
+    pool: State<'_, Arc<SqlitePool>>,
 ) -> Result<Option<EpisodeResourcesData>, String> {
     let anime_repo = AnimeRepository::new(&pool);
     let resource_repo = ResourceRepository::new(&pool);

@@ -24,7 +24,7 @@ pub fn run() -> Result<()> {
     let notify = Arc::new(Notify::new());
 
     // 启动worker池（单worker）
-    let worker = worker::Worker::new(pool_arc.clone(), notify.clone(), 1);
+    let worker = worker::Worker::new(pool_arc.clone(), notify.clone(), None);
     tauri::async_runtime::spawn(async move {
         worker.run().await;
     });

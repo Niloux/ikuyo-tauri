@@ -12,19 +12,18 @@ use tokio::sync::Semaphore;
 pub struct Worker {
     pool: Arc<SqlitePool>,
     notify: Arc<Notify>,
-    max_workers: usize,
     semaphore: Arc<Semaphore>,
     retry_count: usize,
     retry_delay_ms: u64,
 }
 
 impl Worker {
-    pub fn new(pool: Arc<SqlitePool>, notify: Arc<Notify>, max_workers: usize) -> Self {
+    pub fn new(pool: Arc<SqlitePool>, notify: Arc<Notify>, permits: Option<usize>) -> Self {
+        let permits = permits.unwrap_or(1);
         Self {
             pool,
             notify,
-            max_workers,
-            semaphore: Arc::new(Semaphore::new(max_workers)),
+            semaphore: Arc::new(Semaphore::new(permits)),
             retry_count: 3,
             retry_delay_ms: 1000,
         }
@@ -34,7 +33,7 @@ impl Worker {
         loop {
             let permit = self.semaphore.clone().acquire_owned().await.unwrap();
             let repo = CrawlerTaskRepository::new(&self.pool);
-            let pending_tasks = repo.list_by_status(CrawlerTaskStatus::Pending, 1, 0).await;
+            let pending_tasks = repo.list_by_status(CrawlerTaskStatus::Pending, -1, 0).await;
             match pending_tasks {
                 Ok(mut tasks) if !tasks.is_empty() => {
                     let mut task = tasks.remove(0);

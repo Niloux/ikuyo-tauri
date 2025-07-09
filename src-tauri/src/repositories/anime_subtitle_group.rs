@@ -2,7 +2,7 @@ use crate::models::AnimeSubtitleGroup;
 use crate::error::Result;
 use crate::repositories::base::Repository;
 use async_trait::async_trait;
-use sqlx::SqlitePool;
+use sqlx::{SqlitePool, Transaction};
 
 pub struct AnimeSubtitleGroupRepository<'a> {
     pool: &'a SqlitePool,
@@ -26,6 +26,25 @@ impl<'a> AnimeSubtitleGroupRepository<'a> {
         .bind(subtitle_group_id)
         .fetch_optional(self.pool)
         .await?)
+    }
+
+    pub async fn insert_many_anime_subtitle_groups(&self, tx: &mut Transaction<'_, sqlx::Sqlite>, items: &[AnimeSubtitleGroup]) -> Result<()> {
+        for item in items {
+            sqlx::query(
+                "INSERT OR IGNORE INTO anime_subtitle_group (mikan_id, subtitle_group_id, first_release_date, last_update_date, resource_count, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+            )
+            .bind(item.mikan_id)
+            .bind(item.subtitle_group_id)
+            .bind(item.first_release_date)
+            .bind(item.last_update_date)
+            .bind(item.resource_count)
+            .bind(item.is_active)
+            .bind(item.created_at)
+            .bind(item.updated_at)
+            .execute(&mut **tx)
+            .await?;
+        }
+        Ok(())
     }
 }
 

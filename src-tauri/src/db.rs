@@ -1,6 +1,5 @@
 use crate::config::Config;
 use crate::error::{Error, Result};
-use anyhow::Context;
 use sqlx::SqlitePool;
 use std::fs;
 

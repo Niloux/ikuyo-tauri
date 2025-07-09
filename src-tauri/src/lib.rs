@@ -6,6 +6,9 @@ mod types;
 mod services;
 mod repositories;
 mod config;
+use std::sync::Arc;
+use tokio::sync::Notify;
+mod worker;
 
 use commands::{ bangumi::*, crawler::*, scheduler::*, subscription::*, };
 use tauri::async_runtime::block_on;
@@ -16,11 +19,20 @@ use crate::error::Result;
 pub fn run() -> Result<()> {
     let config = config::Config::load();
     let pool: SqlitePool = block_on(crate::db::init_pool(&config))?;
+    let pool_arc = Arc::new(pool);
+    let notify = Arc::new(Notify::new());
+
+    // 启动worker池（单worker）
+    let worker = worker::Worker::new(pool_arc.clone(), notify.clone());
+    tokio::spawn(async move {
+        worker.run().await;
+    });
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .manage(pool)
+        .manage(pool_arc)
         .manage(config) // 将 config 也注入
+        .manage(notify)
         .invoke_handler(tauri::generate_handler![
             // Bangumi commands
             get_calendar,

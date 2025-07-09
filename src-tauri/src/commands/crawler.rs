@@ -5,6 +5,8 @@ use crate::{
 };
 use sqlx::SqlitePool;
 use tauri::State;
+use tokio::sync::Notify;
+use std::sync::Arc;
 
 fn convert_to_response(task: CrawlerTask) -> TaskResponse {
     TaskResponse {
@@ -28,7 +30,8 @@ fn convert_to_response(task: CrawlerTask) -> TaskResponse {
 #[tauri::command]
 pub async fn create_crawler_task(
     task: CrawlerTaskCreate,
-    pool: State<'_, SqlitePool>,
+    pool: State<'_, Arc<SqlitePool>>,
+    notify: State<'_, Arc<Notify>>,
 ) -> Result<TaskResponse, String> {
     tracing::info!("Creating crawler task: {:?}", task);
 
@@ -62,6 +65,9 @@ pub async fn create_crawler_task(
         .map_err(|e| e.to_string())?
         .into_iter()
         .next();
+
+    // 唤醒worker
+    notify.notify_one();
 
     match created_task {
         Some(task) => Ok(convert_to_response(task)),

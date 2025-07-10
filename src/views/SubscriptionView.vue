@@ -111,8 +111,6 @@ const subscriptionStore = useSubscriptionStore()
 
 // 响应式引用
 const searchQuery = ref('')
-const sortBy = ref<GetSubscriptionsParams['sort']>('subscribed_at')
-const sortOrder = ref<GetSubscriptionsParams['order']>('desc')
 const sortOption = ref('subscribed_at-desc')
 
 const handleSortOptionChange = () => {
@@ -136,17 +134,6 @@ const shouldShowSkeleton = computed(() => {
 // 搜索处理
 const handleSearch = () => {
   subscriptionStore.searchSubscriptions(searchQuery.value)
-}
-
-// 排序处理
-const handleSort = () => {
-  subscriptionStore.sortSubscriptions(sortBy.value, sortOrder.value)
-}
-
-// 切换排序顺序
-const toggleSortOrder = () => {
-  sortOrder.value = sortOrder.value === 'desc' ? 'asc' : 'desc'
-  handleSort()
 }
 
 // 翻页
@@ -283,19 +270,9 @@ onActivated(() => {
   border-color: var(--color-primary);
 }
 
-.search-btn {
-  padding: 10px 15px;
-  background: var(--color-primary);
-  color: white;
-  border: none;
-  border-radius: 0 8px 8px 0;
-  cursor: pointer;
-  font-size: 16px;
-}
-
-.search-btn:hover {
-  background: var(--color-primary-dark);
-}
+/* 删除无用按钮样式 */
+/* .sort-order-btn { ... } 及其相关hover/active样式 */
+/* .search-btn { ... } 及其相关hover样式 */
 
 .sort-controls {
   display: flex;
@@ -312,23 +289,6 @@ onActivated(() => {
 }
 
 .sort-select:focus {
-  border-color: var(--color-primary);
-}
-
-.sort-order-btn {
-  padding: 8px 12px;
-  background: var(--color-background-mute);
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 16px;
-  transition: all 0.3s;
-}
-
-.sort-order-btn:hover,
-.sort-order-btn.active {
-  background: var(--color-primary);
-  color: white;
   border-color: var(--color-primary);
 }
 

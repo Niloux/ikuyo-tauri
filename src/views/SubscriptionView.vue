@@ -32,12 +32,12 @@
         <div class="search-box">
           <input
             v-model="searchQuery"
-            @input="handleSearch"
-            @keyup.enter="handleSearch"
             type="text"
             placeholder="搜索订阅番剧"
             class="search-input unified-input"
           />
+          <!-- 搜索动画：防抖期间显示 -->
+          <span v-if="searching" class="search-loading-spinner" style="margin-left:8px;"></span>
         </div>
         <div class="sort-controls">
           <select
@@ -56,9 +56,14 @@
           </select>
         </div>
       </div>
+      <!-- 搜索提示 -->
+      <div v-if="searchQuery && filteredSubscriptions.length === 0" class="search-tip" style="color: var(--color-danger, #e74c3c); margin-bottom: 1rem; text-align: left;">
+        <!-- 搜索无结果时仅提示，不影响主内容区 -->
+        未搜索到相关订阅
+      </div>
       <div class="anime-grid">
         <AnimeCard
-          v-for="subscription in subscriptions"
+          v-for="subscription in (searchQuery ? (filteredSubscriptions.length > 0 ? filteredSubscriptions : subscriptions) : subscriptions)"
           :key="subscription.bangumi_id"
           :anime="subscription.anime"
           :show-subscription-button="true"
@@ -97,7 +102,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, onActivated } from 'vue'
+import { ref, onMounted, computed, onActivated, watch } from 'vue'
 import { useSubscriptionStore } from '../stores/subscriptionStore'
 import AnimeCard from '../components/AnimeCard.vue'
 import Skeleton from '../components/common/Skeleton.vue'
@@ -105,6 +110,7 @@ import type { GetSubscriptionsParams } from '../services/subscription/subscripti
 import type { BangumiCalendarItem } from '../services/bangumi/bangumiTypes'
 import { useRouter } from 'vue-router'
 import { ensureScrollToTop } from '../utils/scrollUtils'
+import { debounce } from '../utils/debounce'
 
 const router = useRouter()
 const subscriptionStore = useSubscriptionStore()
@@ -112,6 +118,20 @@ const subscriptionStore = useSubscriptionStore()
 // 响应式引用
 const searchQuery = ref('')
 const sortOption = ref('subscribed_at-desc')
+
+// 新增：用于实际过滤的searchText，防抖更新
+const searchText = ref('')
+const searching = ref(false)
+
+const updateSearchText = debounce((val: string) => {
+  searchText.value = val
+  searching.value = false
+}, 200)
+
+watch(searchQuery, (val) => {
+  searching.value = true
+  updateSearchText(val)
+})
 
 const handleSortOptionChange = () => {
   const [sort, order] = sortOption.value.split('-') as [
@@ -125,6 +145,23 @@ const handleSortOptionChange = () => {
 const subscriptions = computed(() => subscriptionStore.subscriptions)
 const loading = computed(() => subscriptionStore.loading)
 const pagination = computed(() => subscriptionStore.pagination)
+
+// 新增：本地模糊过滤订阅，基于searchText
+const filteredSubscriptions = computed(() => {
+  // 若无搜索词，返回全部订阅
+  if (!searchText.value) return subscriptions.value
+  const q = searchText.value.trim().toLowerCase()
+  // 名称、中文名和别名模糊匹配
+  return subscriptions.value.filter(sub => {
+    const name = sub.anime?.name?.toLowerCase() || ''
+    const nameCn = sub.anime?.name_cn?.toLowerCase() || ''
+    // 进一步兼容无aliases字段
+    const aliases = (sub.anime && 'aliases' in sub.anime && Array.isArray((sub.anime as any).aliases))
+      ? ((sub.anime as any).aliases as string[]).map(a => a.toLowerCase()).join(',')
+      : ''
+    return name.includes(q) || nameCn.includes(q) || aliases.includes(q)
+  })
+})
 
 // 优化：计算属性，只有在初次加载且无订阅数据时才显示骨架屏
 const shouldShowSkeleton = computed(() => {
@@ -498,5 +535,16 @@ onActivated(() => {
     width: 100%;
     min-width: 0;
   }
+}
+/* 搜索loading动画 */
+.search-loading-spinner {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  border: 3px solid #e0e0e0;
+  border-top: 3px solid var(--color-primary, #007AFF);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  vertical-align: middle;
 }
 </style>

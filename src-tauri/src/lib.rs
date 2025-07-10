@@ -16,6 +16,33 @@ use commands::{bangumi::*, crawler::*, scheduler::*, subscription::*};
 use sqlx::SqlitePool;
 use tauri::path::BaseDirectory;
 use tauri::Manager;
+use tracing_appender::rolling::{RollingFileAppender, Rotation};
+use tracing_subscriber::{filter::EnvFilter, fmt, prelude::*, registry};
+use once_cell::sync::OnceCell;
+
+static LOG_GUARD: OnceCell<tracing_appender::non_blocking::WorkerGuard> = OnceCell::new();
+
+fn init_logging(log_path: &std::path::Path) {
+    let log_dir = log_path.parent().unwrap();
+    if !log_dir.exists() {
+        if let Err(e) = std::fs::create_dir_all(log_dir) {
+            eprintln!("无法创建日志目录: {:?}", e);
+            return;
+        }
+    }
+    let file_appender = RollingFileAppender::new(Rotation::DAILY, log_dir, log_path.file_name().unwrap());
+    let (non_blocking_file_appender, guard) = tracing_appender::non_blocking(file_appender);
+    let console_layer = fmt::layer().with_writer(std::io::stdout).pretty();
+    let file_layer = fmt::layer().with_writer(non_blocking_file_appender).json();
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+    registry()
+        .with(env_filter)
+        .with(console_layer)
+        .with(file_layer)
+        .init();
+    let _ = LOG_GUARD.set(guard);
+    tracing::info!("日志系统已初始化，日志文件: {:?}", log_path);
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() -> Result<()> {
@@ -28,6 +55,13 @@ pub fn run() -> Result<()> {
             // 1. 加载配置
             let config = config::Config::load();
             let app_handle = app.handle().clone(); // CLONE THE HANDLE HERE
+
+            // 日志初始化
+            let path_resolver = app_handle.path();
+            let app_data_dir = path_resolver.app_data_dir().expect("failed to resolve app data dir");
+            let log_dir = app_data_dir.join("logs");
+            let log_path = log_dir.join("ikuyo.log");
+            init_logging(&log_path);
 
             // 2. 设置数据库（首次运行时复制策略）
             let pool = tauri::async_runtime::block_on(async move {

@@ -324,44 +324,77 @@ const downloadMagnet = async (url: string) => {
   font-size: 0.9rem;
 }
 
+/* 新统一风格样式，参考.sort-select.unified-input */
+.filter-select {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 400;
+  color: #333;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  font-size: 16px;
+  height: 44px;
+  padding: 0 40px 0 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  background-image: url('data:image/svg+xml;utf8,<svg fill="%23666" height="20" viewBox="0 0 20 20" width="20" xmlns="http://www.w3.org/2000/svg"><path d="M5.8 8.3a1 1 0 0 1 1.4 0L10 11.09l2.8-2.8a1 1 0 1 1 1.4 1.42l-3.5 3.5a1 1 0 0 1-1.4 0l-3.5-3.5a1 1 0 0 1 0-1.42z"/></svg>');
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 20px 20px;
+  outline: none;
+  margin: 0;
+}
+.filter-select:focus {
+  border-color: #3498db;
+  box-shadow: 0 0 0 2px rgba(52,152,219,0.15);
+}
+
+/* 统一刷新按钮风格 */
+.refresh-btn {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 400;
+  color: #fff;
+  background: #3498db;
+  border: 1px solid #3498db;
+  border-radius: 12px;
+  font-size: 16px;
+  height: 44px;
+  padding: 0 24px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+  outline: none;
+  margin: 0;
+  display: inline-block;
+}
+.refresh-btn:hover:not(:disabled) {
+  background: #217dbb;
+  border-color: #217dbb;
+}
+.refresh-btn:active {
+  background: #17609c;
+  border-color: #17609c;
+}
+.refresh-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 筛选栏排版优化 */
 .filters-right {
   display: flex;
   gap: 1rem;
   align-items: center;
 }
 
-.filter-select {
-  padding: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  background: white;
-  font-size: 0.9rem;
-  cursor: pointer;
-}
-
-.filter-select:focus {
-  outline: none;
-  border-color: #3498db;
-}
-
-.refresh-btn {
-  background: #3498db;
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: background-color 0.3s;
-}
-
-.refresh-btn:hover:not(:disabled) {
-  background: #2980b9;
-}
-
-.refresh-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+/* 保证控件高度一致 */
+.filters-right .filter-select,
+.filters-right .refresh-btn {
+  height: 44px;
+  min-width: 120px;
 }
 
 /* 状态样式 */
@@ -677,14 +710,15 @@ const downloadMagnet = async (url: string) => {
     gap: 1rem;
     align-items: stretch;
   }
-
-  .filters-left, .filters-right {
-    text-align: center;
-  }
-
   .filters-right {
     flex-wrap: wrap;
     justify-content: center;
+    gap: 0.75rem;
+  }
+  .filters-right .filter-select,
+  .filters-right .refresh-btn {
+    width: 100%;
+    min-width: 0;
   }
 
   .resource-item {

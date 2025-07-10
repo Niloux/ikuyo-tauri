@@ -6,7 +6,7 @@
         <form @submit.prevent="onSubmit">
           <div class="form-group" :class="{ 'has-error': errors.mode }">
             <label for="mode">模式:</label>
-            <select id="mode" v-model="task.mode" required>
+            <select id="mode" v-model="task.mode" required class="filter-select">
               <option value="">请选择模式</option>
               <option value="homepage">首页</option>
               <option value="season">季度</option>
@@ -17,7 +17,7 @@
 
           <div class="form-group" v-if="task.mode === 'season' || task.mode === 'year'" :class="{ 'has-error': errors.year }">
             <label for="year">年份:</label>
-            <select id="year" v-model.number="task.year" required>
+            <select id="year" v-model.number="task.year" required class="filter-select">
               <option value="">请选择年份</option>
               <option v-for="year in availableYears" :key="year" :value="year">{{ year }}</option>
             </select>
@@ -26,7 +26,7 @@
 
           <div class="form-group" v-if="task.mode === 'season'" :class="{ 'has-error': errors.season }">
             <label for="season">季度:</label>
-            <select id="season" v-model="task.season" required>
+            <select id="season" v-model="task.season" required class="filter-select">
               <option value="">请选择季度</option>
               <option value="春">春</option>
               <option value="夏">夏</option>
@@ -38,7 +38,7 @@
 
           <div class="form-group" :class="{ 'has-error': errors.limit }">
             <label for="limit">限制数量 (可选):</label>
-            <input type="number" id="limit" v-model.number="task.limit" min="1" />
+            <input type="number" id="limit" v-model.number="task.limit" min="1" class="filter-input" />
             <div v-if="errors.limit" class="error-message">{{ errors.limit }}</div>
           </div>
 

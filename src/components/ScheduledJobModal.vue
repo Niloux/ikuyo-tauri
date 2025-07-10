@@ -6,23 +6,23 @@
         <form @submit.prevent="onSubmit">
           <div class="form-group" :class="{ 'has-error': errors.job_id }">
             <label for="jobId">任务ID:</label>
-            <input type="text" id="jobId" v-model="job.job_id" :disabled="editing" required />
+            <input type="text" id="jobId" v-model="job.job_id" :disabled="editing" required class="filter-input" />
             <div v-if="errors.job_id" class="error-message">{{ errors.job_id }}</div>
           </div>
           <div class="form-group" :class="{ 'has-error': errors.name }">
             <label for="name">名称:</label>
-            <input type="text" id="name" v-model="job.name" required />
+            <input type="text" id="name" v-model="job.name" required class="filter-input" />
             <div v-if="errors.name" class="error-message">{{ errors.name }}</div>
           </div>
           <div class="form-group" :class="{ 'has-error': errors.cron_expression }">
             <label for="cronExpression">Cron表达式:</label>
-            <input type="text" id="cronExpression" v-model="job.cron_expression" required />
+            <input type="text" id="cronExpression" v-model="job.cron_expression" required class="filter-input" />
             <small>例如: 0 0 * * * (每天午夜)</small>
             <div v-if="errors.cron_expression" class="error-message">{{ errors.cron_expression }}</div>
           </div>
           <div class="form-group" :class="{ 'has-error': errors.parameters_json }">
             <label for="parameters">参数 (JSON):</label>
-            <textarea id="parameters" v-model="job.parameters_json" rows="5"></textarea>
+            <textarea id="parameters" v-model="job.parameters_json" rows="5" class="filter-input"></textarea>
             <small>例如: {"mode": "homepage", "limit": 10}</small>
             <div v-if="errors.parameters_json" class="error-message">{{ errors.parameters_json }}</div>
           </div>

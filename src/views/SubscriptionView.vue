@@ -1,5 +1,34 @@
 <template>
   <div class="subscription-view">
+    <!-- 工具栏始终渲染 -->
+    <div class="toolbar toolbar-unified">
+      <div class="search-box">
+        <input
+          v-model="searchQuery"
+          type="text"
+          placeholder="搜索订阅番剧"
+          class="search-input unified-input"
+        />
+        <span v-if="loading && searchQuery" class="search-loading-spinner" style="margin-left:8px;"></span>
+      </div>
+      <div class="sort-controls">
+        <select
+          v-model="sortOption"
+          @change="handleSortOptionChange"
+          class="sort-select unified-input"
+        >
+          <option value="subscribed_at-desc">订阅时间（降序）</option>
+          <option value="subscribed_at-asc">订阅时间（升序）</option>
+          <option value="rating-desc">评分（降序）</option>
+          <option value="rating-asc">评分（升序）</option>
+          <option value="air_date-desc">首播日期（降序）</option>
+          <option value="air_date-asc">首播日期（升序）</option>
+          <option value="name-asc">名称（A→Z）</option>
+          <option value="name-desc">名称（Z→A）</option>
+        </select>
+      </div>
+    </div>
+
     <!-- 空状态 -->
     <div v-if="!loading && subscriptions.length === 0" class="empty-state">
       <h3>暂无订阅</h3>
@@ -11,16 +40,8 @@
       </p>
     </div>
 
-          <!-- 优化：骨架屏加载状态 -->
-      <div v-if="shouldShowSkeleton" class="subscription-section">
-      <div class="toolbar">
-        <div class="search-box">
-          <div class="skeleton-line search-skeleton"></div>
-        </div>
-        <div class="sort-controls">
-          <div class="skeleton-line sort-skeleton"></div>
-        </div>
-      </div>
+    <!-- 骨架屏加载状态 -->
+    <div v-if="shouldShowSkeleton" class="subscription-section">
       <div class="anime-grid">
         <Skeleton v-for="n in 12" :key="`skeleton-${n}`" type="card" />
       </div>
@@ -28,33 +49,6 @@
 
     <!-- 动画卡片网格 -->
     <div v-else-if="!loading && subscriptions.length > 0" class="subscription-section">
-      <div class="toolbar toolbar-unified">
-        <div class="search-box">
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="搜索订阅番剧"
-            class="search-input unified-input"
-          />
-          <span v-if="loading && searchQuery" class="search-loading-spinner" style="margin-left:8px;"></span>
-        </div>
-        <div class="sort-controls">
-          <select
-            v-model="sortOption"
-            @change="handleSortOptionChange"
-            class="sort-select unified-input"
-          >
-            <option value="subscribed_at-desc">订阅时间（降序）</option>
-            <option value="subscribed_at-asc">订阅时间（升序）</option>
-            <option value="rating-desc">评分（降序）</option>
-            <option value="rating-asc">评分（升序）</option>
-            <option value="air_date-desc">首播日期（降序）</option>
-            <option value="air_date-asc">首播日期（升序）</option>
-            <option value="name-asc">名称（A→Z）</option>
-            <option value="name-desc">名称（Z→A）</option>
-          </select>
-        </div>
-      </div>
       <!-- 搜索提示 -->
       <div v-if="searchQuery && subscriptions.length === 0" class="search-tip" style="color: var(--color-danger, #e74c3c); margin-bottom: 1rem; text-align: left;">
         未搜索到相关订阅

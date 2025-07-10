@@ -37,22 +37,7 @@ CREATE TABLE IF NOT EXISTS crawler_task (
 );
 
 CREATE INDEX IF NOT EXISTS idx_crawler_task_created_at ON crawler_task (created_at);
--- CREATE INDEX IF NOT EXISTS idx_crawler_task_worker_pid ON crawler_task (worker_pid); -- 若worker_pid移除则注释
 
--- AnimeSubtitleGroup表
-CREATE TABLE IF NOT EXISTS anime_subtitle_group (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    mikan_id INTEGER NOT NULL,
-    subtitle_group_id INTEGER NOT NULL,
-    first_release_date INTEGER,
-    last_update_date INTEGER,
-    resource_count INTEGER DEFAULT 0,
-    is_active BOOLEAN DEFAULT true,
-    created_at INTEGER,
-    updated_at INTEGER,
-    FOREIGN KEY (mikan_id) REFERENCES anime (mikan_id),
-    FOREIGN KEY (subtitle_group_id) REFERENCES subtitle_group (id)
-);
 
 -- ScheduledJob表
 CREATE TABLE IF NOT EXISTS scheduled_job (

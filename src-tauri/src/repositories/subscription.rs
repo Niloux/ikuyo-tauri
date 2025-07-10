@@ -1,5 +1,5 @@
-use crate::models::UserSubscription;
 use crate::error::Result;
+use crate::models::UserSubscription;
 use sqlx::SqlitePool;
 
 pub struct SubscriptionRepository<'a> {
@@ -81,7 +81,11 @@ impl<'a> SubscriptionRepository<'a> {
             _ => "subscribed_at",
         };
 
-        let order_direction = if order.eq_ignore_ascii_case("desc") { "DESC" } else { "ASC" };
+        let order_direction = if order.eq_ignore_ascii_case("desc") {
+            "DESC"
+        } else {
+            "ASC"
+        };
 
         let mut data_query = "SELECT * FROM user_subscriptions WHERE user_id = ? ".to_string();
         if search.is_some() {
@@ -110,11 +114,7 @@ impl<'a> SubscriptionRepository<'a> {
         Ok((subscriptions, total))
     }
 
-    pub async fn delete_by_user_and_bangumi(
-        &self,
-        user_id: &str,
-        bangumi_id: i64,
-    ) -> Result<u64> {
+    pub async fn delete_by_user_and_bangumi(&self, user_id: &str, bangumi_id: i64) -> Result<u64> {
         let result =
             sqlx::query("DELETE FROM user_subscriptions WHERE user_id = ? AND bangumi_id = ?")
                 .bind(user_id)
@@ -124,13 +124,12 @@ impl<'a> SubscriptionRepository<'a> {
         Ok(result.rows_affected())
     }
 
-    pub async fn get_all_bangumi_ids_by_user(
-        &self,
-        user_id: &str,
-    ) -> Result<Vec<i64>> {
-        Ok(sqlx::query_scalar("SELECT bangumi_id FROM user_subscriptions WHERE user_id = ?")
-            .bind(user_id)
-            .fetch_all(self.pool)
-            .await?)
+    pub async fn get_all_bangumi_ids_by_user(&self, user_id: &str) -> Result<Vec<i64>> {
+        Ok(
+            sqlx::query_scalar("SELECT bangumi_id FROM user_subscriptions WHERE user_id = ?")
+                .bind(user_id)
+                .fetch_all(self.pool)
+                .await?,
+        )
     }
 }

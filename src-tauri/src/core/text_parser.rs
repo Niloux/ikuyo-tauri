@@ -76,10 +76,16 @@ fn from_dimensions(title: &str) -> Option<String> {
 fn infer_from_source(title: &str) -> Option<String> {
     let title_upper = title.to_uppercase();
     let source_map = [
-        ("BDRIP", "1080p"), ("BLURAY", "1080p"), ("BD", "1080p"),
-        ("WEBRIP", "1080p"), ("WEB-DL", "1080p"), ("WEBDL", "1080p"),
-        ("HDTV", "720p"), ("HDTVRIP", "720p"),
-        ("DVDRIP", "480p"), ("DVD", "480p"),
+        ("BDRIP", "1080p"),
+        ("BLURAY", "1080p"),
+        ("BD", "1080p"),
+        ("WEBRIP", "1080p"),
+        ("WEB-DL", "1080p"),
+        ("WEBDL", "1080p"),
+        ("HDTV", "720p"),
+        ("HDTVRIP", "720p"),
+        ("DVDRIP", "480p"),
+        ("DVD", "480p"),
     ];
     for (source, resolution) in source_map.iter() {
         if title_upper.contains(source) {
@@ -95,16 +101,59 @@ fn infer_from_source(title: &str) -> Option<String> {
 
 pub fn parse_and_normalize_subtitle_type(title: &str) -> Option<String> {
     let keywords = [
-        "简繁日内封", "简繁日内嵌", "简繁日多语", "简繁英", "简体日语双语",
-        "繁体日语双语", "简日双语", "简日双字", "繁日双语", "繁日双字",
-        "中日双语", "中日双字", "简繁双语", "简繁双字", "双语字幕",
-        "简日", "繁日", "简英", "繁英", "简繁", "简日内封", "繁日内封",
-        "简日内嵌", "繁日内嵌", "简繁内封", "简繁内挂", "简繁内嵌",
-        "简体内封", "简体内挂", "简体内嵌", "繁体内封", "繁体内挂",
-        "繁体内嵌", "简体外挂", "繁体外挂", "简繁外挂", "外挂字幕",
-        "CHT", "CHS", "GB", "BIG5", "简体", "繁体", "简中", "繁中",
-        "中字", "英语", "内嵌字幕", "内挂字幕", "中文字幕", "日语原声",
-        "无字幕", "RAW",
+        "简繁日内封",
+        "简繁日内嵌",
+        "简繁日多语",
+        "简繁英",
+        "简体日语双语",
+        "繁体日语双语",
+        "简日双语",
+        "简日双字",
+        "繁日双语",
+        "繁日双字",
+        "中日双语",
+        "中日双字",
+        "简繁双语",
+        "简繁双字",
+        "双语字幕",
+        "简日",
+        "繁日",
+        "简英",
+        "繁英",
+        "简繁",
+        "简日内封",
+        "繁日内封",
+        "简日内嵌",
+        "繁日内嵌",
+        "简繁内封",
+        "简繁内挂",
+        "简繁内嵌",
+        "简体内封",
+        "简体内挂",
+        "简体内嵌",
+        "繁体内封",
+        "繁体内挂",
+        "繁体内嵌",
+        "简体外挂",
+        "繁体外挂",
+        "简繁外挂",
+        "外挂字幕",
+        "CHT",
+        "CHS",
+        "GB",
+        "BIG5",
+        "简体",
+        "繁体",
+        "简中",
+        "繁中",
+        "中字",
+        "英语",
+        "内嵌字幕",
+        "内挂字幕",
+        "中文字幕",
+        "日语原声",
+        "无字幕",
+        "RAW",
     ];
 
     for keyword in keywords.iter() {
@@ -139,7 +188,8 @@ fn normalize_subtitle_type(raw_type: &str) -> String {
     map.insert("无字幕", "无字幕");
     map.insert("RAW", "无字幕");
 
-    map.get(raw_type).map_or_else(|| raw_type.to_string(), |s| s.to_string())
+    map.get(raw_type)
+        .map_or_else(|| raw_type.to_string(), |s| s.to_string())
 }
 
 // =============================================================================

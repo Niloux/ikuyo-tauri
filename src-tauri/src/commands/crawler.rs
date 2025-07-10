@@ -4,9 +4,9 @@ use crate::{
     types::crawler::{CrawlerTaskCreate, TaskResponse},
 };
 use sqlx::SqlitePool;
+use std::sync::Arc;
 use tauri::{command, State};
 use tokio::sync::Notify;
-use std::sync::Arc;
 
 fn convert_to_response(task: CrawlerTask) -> TaskResponse {
     TaskResponse {
@@ -80,7 +80,6 @@ pub async fn get_crawler_task_status(
     task_id: i64,
     pool: State<'_, Arc<SqlitePool>>,
 ) -> Result<TaskResponse, String> {
-
     let repo = CrawlerTaskRepository::new(&pool);
     let task = repo.get_by_id(task_id).await.map_err(|e| e.to_string())?;
 

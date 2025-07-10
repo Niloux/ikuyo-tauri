@@ -1,7 +1,7 @@
+use crate::config::Config;
 use crate::types::bangumi::{BangumiEpisodesData, BangumiSubject, BangumiWeekday};
 use sqlx::SqlitePool;
 use std::sync::Arc;
-use crate::config::Config;
 
 pub struct BangumiService {
     base_url: String,
@@ -35,11 +35,12 @@ impl BangumiService {
         let cache_id = 1;
 
         // 1. 查缓存表
-        let row = sqlx::query("SELECT content, updated_at, ttl FROM bangumi_calendar_cache WHERE id = ?")
-            .bind(cache_id)
-            .fetch_optional(&*self.pool)
-            .await
-            .map_err(|e| format!("数据库查询失败: {}", e))?;
+        let row =
+            sqlx::query("SELECT content, updated_at, ttl FROM bangumi_calendar_cache WHERE id = ?")
+                .bind(cache_id)
+                .fetch_optional(&*self.pool)
+                .await
+                .map_err(|e| format!("数据库查询失败: {}", e))?;
 
         if let Some(row) = &row {
             let content: String = row.get(0);
@@ -54,16 +55,13 @@ impl BangumiService {
 
         // 2. 请求API
         let url = format!("{}/calendar", self.base_url);
-        let response = self
-            .client
-            .get(&url)
-            .send()
-            .await;
+        let response = self.client.get(&url).send().await;
         match response {
             Ok(resp) => {
                 if resp.status().is_success() {
                     let data: Vec<BangumiWeekday> = resp.json().await.map_err(|e| e.to_string())?;
-                    let content = serde_json::to_string(&data).map_err(|e| format!("序列化失败: {}", e))?;
+                    let content =
+                        serde_json::to_string(&data).map_err(|e| format!("序列化失败: {}", e))?;
                     let updated_at = Utc::now().timestamp();
                     let _ = sqlx::query(
                         "INSERT INTO bangumi_calendar_cache (id, content, updated_at, ttl) VALUES (?, ?, ?, ?) \
@@ -108,11 +106,12 @@ impl BangumiService {
         let ttl = self.config.bangumi_nonsub_ttl.unwrap_or(default_ttl); // 非订阅默认
 
         // 1. 查缓存表
-        let row = sqlx::query("SELECT content, updated_at, ttl FROM bangumi_subject_cache WHERE id = ?")
-            .bind(id)
-            .fetch_optional(&*self.pool)
-            .await
-            .map_err(|e| format!("数据库查询失败: {}", e))?;
+        let row =
+            sqlx::query("SELECT content, updated_at, ttl FROM bangumi_subject_cache WHERE id = ?")
+                .bind(id)
+                .fetch_optional(&*self.pool)
+                .await
+                .map_err(|e| format!("数据库查询失败: {}", e))?;
 
         if let Some(row) = row {
             let content: String = row.get(0);
@@ -209,16 +208,13 @@ impl BangumiService {
         if !params.is_empty() {
             url.push_str(&format!("?{}", params.join("&")));
         }
-        let response = self
-            .client
-            .get(&url)
-            .send()
-            .await;
+        let response = self.client.get(&url).send().await;
         match response {
             Ok(resp) => {
                 if resp.status().is_success() {
                     let data: BangumiEpisodesData = resp.json().await.map_err(|e| e.to_string())?;
-                    let content = serde_json::to_string(&data).map_err(|e| format!("序列化失败: {}", e))?;
+                    let content =
+                        serde_json::to_string(&data).map_err(|e| format!("序列化失败: {}", e))?;
                     let updated_at = Utc::now().timestamp();
                     let _ = sqlx::query(
                         "INSERT INTO bangumi_episodes_cache (id, params_hash, content, updated_at, ttl) VALUES (?, ?, ?, ?, ?) \

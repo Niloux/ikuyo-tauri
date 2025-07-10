@@ -13,8 +13,8 @@ use crate::{
     },
 };
 use sqlx::SqlitePool;
-use tauri::{command, State};
 use std::sync::Arc;
+use tauri::{command, State};
 
 #[command(rename_all = "snake_case")]
 pub async fn get_calendar(
@@ -58,10 +58,16 @@ pub async fn get_episode_availability(
     let anime_repo = AnimeRepository::new(&pool);
     let resource_repo = ResourceRepository::new(&pool);
 
-    let anime = anime_repo.get_by_bangumi_id(bangumi_id).await.map_err(|e| e.to_string())?;
+    let anime = anime_repo
+        .get_by_bangumi_id(bangumi_id)
+        .await
+        .map_err(|e| e.to_string())?;
 
     if let Some(anime) = anime {
-        let episode_counts = resource_repo.count_by_episode(anime.mikan_id).await.map_err(|e| e.to_string())?;
+        let episode_counts = resource_repo
+            .count_by_episode(anime.mikan_id)
+            .await
+            .map_err(|e| e.to_string())?;
 
         let mut episodes_map = std::collections::HashMap::new();
         for count in episode_counts {
@@ -93,7 +99,10 @@ pub async fn get_episode_resources(
     let resource_repo = ResourceRepository::new(&pool);
     let subtitle_group_repo = SubtitleGroupRepository::new(&pool);
 
-    let anime = anime_repo.get_by_bangumi_id(bangumi_id).await.map_err(|e| e.to_string())?;
+    let anime = anime_repo
+        .get_by_bangumi_id(bangumi_id)
+        .await
+        .map_err(|e| e.to_string())?;
 
     if let Some(anime) = anime {
         let resources = resource_repo
@@ -159,9 +168,15 @@ pub async fn search_library(
     let anime_repo = AnimeRepository::new(&pool);
 
     let offset = (page - 1) * limit;
-    let animes = anime_repo.search_by_title(&query, limit, offset).await.map_err(|e| e.to_string())?;
+    let animes = anime_repo
+        .search_by_title(&query, limit, offset)
+        .await
+        .map_err(|e| e.to_string())?;
 
-    let total_animes = anime_repo.count_by_title(&query).await.map_err(|e| e.to_string())?;
+    let total_animes = anime_repo
+        .count_by_title(&query)
+        .await
+        .map_err(|e| e.to_string())?;
 
     let bangumi_ids: Vec<i64> = animes.into_iter().map(|anime| anime.bangumi_id).collect();
 
@@ -195,7 +210,10 @@ pub async fn get_anime_resources(
     let resource_repo = ResourceRepository::new(&pool);
     let subtitle_group_repo = SubtitleGroupRepository::new(&pool);
 
-    let anime = anime_repo.get_by_bangumi_id(bangumi_id).await.map_err(|e| e.to_string())?;
+    let anime = anime_repo
+        .get_by_bangumi_id(bangumi_id)
+        .await
+        .map_err(|e| e.to_string())?;
 
     if let Some(anime) = anime {
         let resources = resource_repo

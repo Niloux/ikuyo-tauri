@@ -1,5 +1,5 @@
-use crate::models::ScheduledJob;
 use crate::error::Result;
+use crate::models::ScheduledJob;
 use crate::repositories::base::Repository;
 use async_trait::async_trait;
 use sqlx::SqlitePool;
@@ -15,10 +15,12 @@ impl<'a> ScheduledJobRepository<'a> {
 
     // ScheduledJobRepository 特有方法
     pub async fn get_by_job_id(&self, job_id: &str) -> Result<Option<ScheduledJob>> {
-        Ok(sqlx::query_as::<_, ScheduledJob>("SELECT * FROM scheduled_job WHERE job_id = ?")
-            .bind(job_id)
-            .fetch_optional(self.pool)
-            .await?)
+        Ok(
+            sqlx::query_as::<_, ScheduledJob>("SELECT * FROM scheduled_job WHERE job_id = ?")
+                .bind(job_id)
+                .fetch_optional(self.pool)
+                .await?,
+        )
     }
 
     pub async fn list_enabled(
@@ -84,10 +86,12 @@ impl<'a> Repository<ScheduledJob, i64> for ScheduledJobRepository<'a> {
     }
 
     async fn get_by_id(&self, id: i64) -> Result<Option<ScheduledJob>> {
-        Ok(sqlx::query_as::<_, ScheduledJob>("SELECT * FROM scheduled_job WHERE id = ?")
-            .bind(id)
-            .fetch_optional(self.pool)
-            .await?)
+        Ok(
+            sqlx::query_as::<_, ScheduledJob>("SELECT * FROM scheduled_job WHERE id = ?")
+                .bind(id)
+                .fetch_optional(self.pool)
+                .await?,
+        )
     }
 
     async fn list(&self, limit: i64, offset: i64) -> Result<Vec<ScheduledJob>> {

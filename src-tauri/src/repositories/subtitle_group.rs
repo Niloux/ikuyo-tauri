@@ -32,15 +32,15 @@ impl<'a> SubtitleGroupRepository<'a> {
         if groups.is_empty() {
             return Ok(());
         }
-        let mut builder = QueryBuilder::new(
-            "INSERT INTO subtitle_group (id, name, last_update, created_at) "
-        );
+        let mut builder =
+            QueryBuilder::new("INSERT INTO subtitle_group (id, name, last_update, created_at) ");
         builder.push("VALUES ");
         for (i, group) in groups.iter().enumerate() {
             if i > 0 {
                 builder.push(", ");
             }
-            builder.push("(")
+            builder
+                .push("(")
                 .push_bind(group.id)
                 .push(", ")
                 .push_bind(&group.name)
@@ -53,7 +53,7 @@ impl<'a> SubtitleGroupRepository<'a> {
         builder.push(
             " ON CONFLICT(id) DO UPDATE SET \
                 name = excluded.name,\
-                last_update = excluded.last_update"
+                last_update = excluded.last_update",
         );
         builder.build().execute(&mut **tx).await?;
         Ok(())

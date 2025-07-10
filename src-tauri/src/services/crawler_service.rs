@@ -1,15 +1,15 @@
-use crate::core::mikan_fetcher::{MikanFetcher};
+use crate::core::mikan_fetcher::MikanFetcher;
 use crate::models::{Anime, CrawlerTaskStatus, Resource, SubtitleGroup};
 use crate::repositories::{
     anime::AnimeRepository, base::Repository, crawler_task::CrawlerTaskRepository,
     resource::ResourceRepository, subtitle_group::SubtitleGroupRepository,
 };
 use crate::types::crawler::{CrawlerMode, CrawlerTaskCreate, SeasonName};
+use futures_util::stream::{self, StreamExt};
 use sqlx::SqlitePool;
 use std::collections::HashSet;
-use std::sync::Arc;
-use futures_util::stream::{self, StreamExt};
 use std::sync::atomic::{AtomicI64, Ordering};
+use std::sync::Arc;
 
 pub struct CrawlerService {
     pub pool: Arc<SqlitePool>,
@@ -75,7 +75,12 @@ impl CrawlerService {
         match params.mode {
             CrawlerMode::Year => {
                 let year = params.year.unwrap_or_default();
-                let seasons = [SeasonName::Spring, SeasonName::Summer, SeasonName::Autumn, SeasonName::Winter];
+                let seasons = [
+                    SeasonName::Spring,
+                    SeasonName::Summer,
+                    SeasonName::Autumn,
+                    SeasonName::Winter,
+                ];
                 for season in seasons.iter() {
                     let list_url = format!(
                         "{}/Home/BangumiCoverFlowByDayOfWeek?year={}&seasonStr={}",
@@ -89,7 +94,11 @@ impl CrawlerService {
                             all_detail_urls.extend(urls);
                         }
                         Err(e) => {
-                            error_message = Some(format!("Failed to fetch list page for {}: {}", season.as_str(), e));
+                            error_message = Some(format!(
+                                "Failed to fetch list page for {}: {}",
+                                season.as_str(),
+                                e
+                            ));
                             failed = true;
                             break;
                         }
@@ -101,9 +110,7 @@ impl CrawlerService {
                 let season = params.season.as_ref().map_or("春", |s| s.as_str());
                 let list_url = format!(
                     "{}/Home/BangumiCoverFlowByDayOfWeek?year={}&seasonStr={}",
-                    base_url,
-                    year,
-                    season
+                    base_url, year, season
                 );
                 match fetcher.fetch_and_parse_list(&list_url, limit).await {
                     Ok(urls) => {
@@ -134,10 +141,15 @@ impl CrawlerService {
         self.total_items = total_items as i64;
         self.processed_items = 0;
         self.update_task_status(
-            if failed { CrawlerTaskStatus::Failed } else { CrawlerTaskStatus::Running },
+            if failed {
+                CrawlerTaskStatus::Failed
+            } else {
+                CrawlerTaskStatus::Running
+            },
             0.0,
             error_message.clone(),
-        ).await;
+        )
+        .await;
         if failed {
             return;
         }
@@ -166,7 +178,12 @@ impl CrawlerService {
 
         while let Some(result) = stream.next().await {
             if self.is_task_cancelled().await {
-                self.update_task_status(CrawlerTaskStatus::Cancelled, (processed as f64) / (self.total_items as f64), Some("Task was cancelled".to_string())).await;
+                self.update_task_status(
+                    CrawlerTaskStatus::Cancelled,
+                    (processed as f64) / (self.total_items as f64),
+                    Some("Task was cancelled".to_string()),
+                )
+                .await;
                 return;
             }
             if let Some((_, anime_data)) = result {
@@ -193,7 +210,8 @@ impl CrawlerService {
                 // 每完成一部动画，主线程自增finished_count并更新进度
                 let finished = self.finished_count.fetch_add(1, Ordering::SeqCst) + 1;
                 let percent = finished as f64 / self.total_items as f64;
-                self.update_task_status(CrawlerTaskStatus::Running, percent, None).await;
+                self.update_task_status(CrawlerTaskStatus::Running, percent, None)
+                    .await;
             }
             processed += 1;
             self.processed_items = processed;
@@ -201,11 +219,17 @@ impl CrawlerService {
             if processed % 10 == 0 || processed as i64 == self.total_items {
                 // 将缓冲区数据写入self
                 self.anime_buffer.append(&mut anime_data_buffer);
-                self.subtitle_group_buffer.append(&mut subtitle_group_buffer);
+                self.subtitle_group_buffer
+                    .append(&mut subtitle_group_buffer);
                 self.resource_buffer.append(&mut resource_buffer);
                 if let Err(e) = self.flush_buffers().await {
                     let error_msg = format!("Failed to save data to database: {}", e);
-                    self.update_task_status(CrawlerTaskStatus::Failed, processed as f64 / self.total_items as f64, Some(error_msg)).await;
+                    self.update_task_status(
+                        CrawlerTaskStatus::Failed,
+                        processed as f64 / self.total_items as f64,
+                        Some(error_msg),
+                    )
+                    .await;
                     return;
                 }
             }
@@ -217,15 +241,21 @@ impl CrawlerService {
 
     async fn flush_buffers(&mut self) -> anyhow::Result<()> {
         let mut tx = self.pool.begin().await?;
-        
+
         let anime_repo = AnimeRepository::new(&self.pool);
-        anime_repo.insert_many_animes(&mut tx, &self.anime_buffer).await?;
+        anime_repo
+            .insert_many_animes(&mut tx, &self.anime_buffer)
+            .await?;
 
         let subtitle_repo = SubtitleGroupRepository::new(&self.pool);
-        subtitle_repo.insert_many_subtitle_groups(&mut tx, &self.subtitle_group_buffer).await?;
+        subtitle_repo
+            .insert_many_subtitle_groups(&mut tx, &self.subtitle_group_buffer)
+            .await?;
 
         let resource_repo = ResourceRepository::new(&self.pool);
-        resource_repo.insert_many_resources(&mut tx, &self.resource_buffer).await?;
+        resource_repo
+            .insert_many_resources(&mut tx, &self.resource_buffer)
+            .await?;
 
         tx.commit().await?;
 
@@ -271,4 +301,3 @@ impl CrawlerService {
         }
     }
 }
-

@@ -12,4 +12,4 @@ where
     async fn update(&self, entity: &T) -> Result<()>;
     async fn delete(&self, id: Id) -> Result<()>;
     async fn list(&self, limit: i64, offset: i64) -> Result<Vec<T>>;
-} 
+}

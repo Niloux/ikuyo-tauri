@@ -17,11 +17,11 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             db_url: "sqlite:ikuyo.db?mode=rwc".to_string(),
-            bangumi_sub_ttl: Some(3600), // 1小时
-            bangumi_nonsub_ttl: Some(43200), // 12小时
-            bangumi_calendar_ttl: Some(86400), // 24小时
-            bangumi_sub_refresh_interval: Some(3600), // 1小时
-            bangumi_nonsub_refresh_interval: Some(43200), // 12小时
+            bangumi_sub_ttl: Some(3600),                    // 1小时
+            bangumi_nonsub_ttl: Some(43200),                // 12小时
+            bangumi_calendar_ttl: Some(86400),              // 24小时
+            bangumi_sub_refresh_interval: Some(3600),       // 1小时
+            bangumi_nonsub_refresh_interval: Some(43200),   // 12小时
             bangumi_calendar_refresh_interval: Some(86400), // 24小时
         }
     }
@@ -38,4 +38,4 @@ impl Config {
             Self::default()
         }
     }
-} 
+}

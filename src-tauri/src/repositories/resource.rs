@@ -80,7 +80,8 @@ impl<'a> ResourceRepository<'a> {
             if i > 0 {
                 builder.push(", ");
             }
-            builder.push("(")
+            builder
+                .push("(")
                 .push_bind(resource.mikan_id)
                 .push(", ")
                 .push_bind(resource.subtitle_group_id)
@@ -122,7 +123,7 @@ impl<'a> ResourceRepository<'a> {
                 magnet_url = excluded.magnet_url,\
                 torrent_url = excluded.torrent_url,\
                 release_date = excluded.release_date,\
-                updated_at = excluded.updated_at"
+                updated_at = excluded.updated_at",
         );
         builder.build().execute(&mut **tx).await?;
         Ok(())

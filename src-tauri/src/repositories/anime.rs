@@ -68,7 +68,8 @@ impl<'a> AnimeRepository<'a> {
             if i > 0 {
                 builder.push(", ");
             }
-            builder.push("(")
+            builder
+                .push("(")
                 .push_bind(anime.mikan_id)
                 .push(", ")
                 .push_bind(anime.bangumi_id)
@@ -105,7 +106,7 @@ impl<'a> AnimeRepository<'a> {
                 bangumi_url = excluded.bangumi_url,\
                 description = excluded.description,\
                 status = excluded.status,\
-                updated_at = excluded.updated_at"
+                updated_at = excluded.updated_at",
         );
         builder.build().execute(&mut **tx).await?;
         Ok(())

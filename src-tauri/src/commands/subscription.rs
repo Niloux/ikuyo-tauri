@@ -1,13 +1,11 @@
 use crate::{
     models::UserSubscription,
     repositories::subscription::SubscriptionRepository,
-    types::subscription::{
-        SubscriptionIdsResponse, SubscriptionStatus, SubscriptionsResponse,
-    },
+    types::subscription::{SubscriptionIdsResponse, SubscriptionStatus, SubscriptionsResponse},
 };
 use sqlx::SqlitePool;
-use tauri::{command, State};
 use std::sync::Arc;
+use tauri::{command, State};
 
 #[command(rename_all = "snake_case")]
 pub async fn get_all_subscription_ids(

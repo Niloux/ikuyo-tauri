@@ -241,13 +241,35 @@ const refreshResources = () => {
 }
 
 // 下载资源
-const downloadResource = (url: string, type: 'magnet' | 'torrent') => {
+const downloadResource = async (url: string, type: 'magnet' | 'torrent') => {
   if (!url) return
 
   try {
     if (type === 'magnet') {
-      // 磁力链接可以直接在浏览器中打开
-      window.location.href = url
+      try {
+        const { openUrl } = await import('@tauri-apps/plugin-opener')
+        await openUrl(url)
+      } catch (err) {
+        // openUrl 失败，自动复制磁力链接到剪贴板
+        let copied = false
+        try {
+          const { writeText } = await import('@tauri-apps/plugin-clipboard-manager')
+          await writeText(url)
+          copied = true
+        } catch (e1) {
+          try {
+            await navigator.clipboard.writeText(url)
+            copied = true
+          } catch (e2) {
+            copied = false
+          }
+        }
+        if (copied) {
+          feedbackStore.showError('未检测到下载工具，磁力链接已复制，请手动粘贴到下载器')
+        } else {
+          feedbackStore.showError('磁力链接复制失败，请手动复制')
+        }
+      }
     } else if (type === 'torrent') {
       // 种子文件需要下载
       const link = document.createElement('a')
@@ -259,7 +281,6 @@ const downloadResource = (url: string, type: 'magnet' | 'torrent') => {
       document.body.removeChild(link)
     }
   } catch (err) {
-    console.error('下载失败:', err)
     feedbackStore.showError('下载失败，请检查链接或重试')
   }
 }

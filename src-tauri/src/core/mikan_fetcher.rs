@@ -5,7 +5,7 @@ use anyhow::Result;
 use regex::Regex;
 use reqwest::Client;
 use scraper::{ElementRef, Html, Selector};
-use std::collections::{HashSet};
+use std::collections::HashSet;
 
 // 动画详情页URL类型
 type AnimeDetailUrl = String;
@@ -126,7 +126,8 @@ impl MikanFetcher {
     }
 
     fn parse_anime_info(&self, document: &Html, mikan_id: i64) -> Anime {
-        let title = self.extract_text(document, &["p.bangumi-title", "title"])
+        let title = self
+            .extract_text(document, &["p.bangumi-title", "title"])
             .unwrap_or_else(|| "未知标题".to_string())
             .replace("Mikan Project - ", "");
 
@@ -162,7 +163,12 @@ impl MikanFetcher {
         let mut start = None;
         let selector = Selector::parse("p.bangumi-info").unwrap();
         for element in document.select(&selector) {
-            let text = element.text().collect::<String>().replace("\n", "").trim().to_string();
+            let text = element
+                .text()
+                .collect::<String>()
+                .replace("\n", "")
+                .trim()
+                .to_string();
             if text.starts_with("放送日期：") {
                 day = Some(text.replace("放送日期：", "").trim().to_string());
             }
@@ -179,7 +185,12 @@ impl MikanFetcher {
     fn extract_official_website(&self, document: &Html) -> Option<String> {
         let selector = Selector::parse("p.bangumi-info").unwrap();
         for element in document.select(&selector) {
-            let text = element.text().collect::<String>().replace("\n", "").trim().to_string();
+            let text = element
+                .text()
+                .collect::<String>()
+                .replace("\n", "")
+                .trim()
+                .to_string();
             if text.starts_with("官方网站：") {
                 // 查找a标签
                 if let Some(a_element) = element.select(&Selector::parse("a").unwrap()).next() {
@@ -263,7 +274,9 @@ impl MikanFetcher {
                     if table.value().name() == "table" {
                         let resource_selector = Selector::parse("tbody tr").unwrap();
                         for row in table.select(&resource_selector) {
-                            if let Some(resource) = self.parse_resource_row(&row, mikan_id, group_id) {
+                            if let Some(resource) =
+                                self.parse_resource_row(&row, mikan_id, group_id)
+                            {
                                 resources.push(resource);
                             }
                         }
@@ -276,7 +289,12 @@ impl MikanFetcher {
         (subtitle_groups, resources)
     }
 
-    fn parse_resource_row(&self, row: &ElementRef, mikan_id: i64, group_id: i64) -> Option<Resource> {
+    fn parse_resource_row(
+        &self,
+        row: &ElementRef,
+        mikan_id: i64,
+        group_id: i64,
+    ) -> Option<Resource> {
         let cols: Vec<_> = row.select(&Selector::parse("td").unwrap()).collect();
         if cols.len() < 4 {
             return None;
@@ -341,5 +359,3 @@ impl MikanFetcher {
         })
     }
 }
-
-

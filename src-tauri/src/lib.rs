@@ -12,12 +12,12 @@ mod worker;
 
 use crate::error::Result;
 use commands::{bangumi::*, crawler::*, scheduler::*, subscription::*};
+use once_cell::sync::OnceCell;
 use sqlx::SqlitePool;
 use tauri::path::BaseDirectory;
 use tauri::Manager;
 use tracing_appender::rolling::{RollingFileAppender, Rotation};
 use tracing_subscriber::{filter::EnvFilter, fmt, prelude::*, registry};
-use once_cell::sync::OnceCell;
 
 static LOG_GUARD: OnceCell<tracing_appender::non_blocking::WorkerGuard> = OnceCell::new();
 
@@ -29,7 +29,8 @@ fn init_logging(log_path: &std::path::Path) {
             return;
         }
     }
-    let file_appender = RollingFileAppender::new(Rotation::DAILY, log_dir, log_path.file_name().unwrap());
+    let file_appender =
+        RollingFileAppender::new(Rotation::DAILY, log_dir, log_path.file_name().unwrap());
     let (non_blocking_file_appender, guard) = tracing_appender::non_blocking(file_appender);
     let console_layer = fmt::layer().with_writer(std::io::stdout).pretty();
     let file_layer = fmt::layer().with_writer(non_blocking_file_appender).json();
@@ -49,6 +50,7 @@ pub fn run() -> Result<()> {
     let migrator = sqlx::migrate!("./migrations");
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_opener::init())
         .setup(move |app| {
             // 1. 加载配置
@@ -57,7 +59,9 @@ pub fn run() -> Result<()> {
 
             // 日志初始化
             let path_resolver = app_handle.path();
-            let app_data_dir = path_resolver.app_data_dir().expect("failed to resolve app data dir");
+            let app_data_dir = path_resolver
+                .app_data_dir()
+                .expect("failed to resolve app data dir");
             let log_dir = app_data_dir.join("logs");
             let log_path = log_dir.join("ikuyo.log");
             init_logging(&log_path);
@@ -78,9 +82,13 @@ pub fn run() -> Result<()> {
                         .app_data_dir()
                         .expect("failed to resolve app data dir");
                     if !app_data_dir.exists() {
-                        std::fs::create_dir_all(&app_data_dir).expect("failed to create app data dir");
+                        std::fs::create_dir_all(&app_data_dir)
+                            .expect("failed to create app data dir");
                     }
-                    (app_data_dir.join("ikuyo.db"), "生产环境 app_data_dir/ikuyo.db")
+                    (
+                        app_data_dir.join("ikuyo.db"),
+                        "生产环境 app_data_dir/ikuyo.db",
+                    )
                 };
 
                 if !db_path.exists() {
@@ -118,7 +126,8 @@ pub fn run() -> Result<()> {
 
             // 3. 设置并启动后台工作者
             let notify = Arc::new(Notify::new());
-            let worker = worker::Worker::new(pool_arc.clone(), notify.clone(), config.clone(), None);
+            let worker =
+                worker::Worker::new(pool_arc.clone(), notify.clone(), config.clone(), None);
             tauri::async_runtime::spawn(async move {
                 worker.run().await;
             });

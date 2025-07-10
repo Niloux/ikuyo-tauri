@@ -1,5 +1,5 @@
-use crate::models::{CrawlerTask, CrawlerTaskStatus, CrawlerTaskType};
 use crate::error::Result;
+use crate::models::{CrawlerTask, CrawlerTaskStatus, CrawlerTaskType};
 use crate::repositories::base::Repository;
 use async_trait::async_trait;
 use sqlx::SqlitePool;
@@ -100,10 +100,12 @@ impl<'a> Repository<CrawlerTask, i64> for CrawlerTaskRepository<'a> {
     }
 
     async fn get_by_id(&self, id: i64) -> Result<Option<CrawlerTask>> {
-        Ok(sqlx::query_as::<_, CrawlerTask>("SELECT * FROM crawler_task WHERE id = ?")
-            .bind(id)
-            .fetch_optional(self.pool)
-            .await?)
+        Ok(
+            sqlx::query_as::<_, CrawlerTask>("SELECT * FROM crawler_task WHERE id = ?")
+                .bind(id)
+                .fetch_optional(self.pool)
+                .await?,
+        )
     }
 
     async fn list(&self, limit: i64, offset: i64) -> Result<Vec<CrawlerTask>> {

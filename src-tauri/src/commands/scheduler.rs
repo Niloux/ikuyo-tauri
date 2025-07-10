@@ -4,9 +4,9 @@ use crate::{
     types::scheduler::{ScheduledJobCreate, ScheduledJobResponse, ScheduledJobUpdate},
 };
 use sqlx::SqlitePool;
-use tauri::{command, State};
 use std::collections::HashMap;
 use std::sync::Arc;
+use tauri::{command, State};
 
 fn convert_to_response(job: ScheduledJob) -> ScheduledJobResponse {
     let parameters: HashMap<String, serde_json::Value> = match job.parameters {
@@ -61,7 +61,10 @@ pub async fn create_scheduled_job(
     };
 
     repo.create(&new_job).await.map_err(|e| e.to_string())?;
-    let created_job = repo.get_by_job_id(&job_id_str).await.map_err(|e| e.to_string())?;
+    let created_job = repo
+        .get_by_job_id(&job_id_str)
+        .await
+        .map_err(|e| e.to_string())?;
 
     match created_job {
         Some(job) => Ok(convert_to_response(job)),
@@ -69,7 +72,7 @@ pub async fn create_scheduled_job(
     }
 }
 
-#[command(rename_all="snake_case")]
+#[command(rename_all = "snake_case")]
 pub async fn update_scheduled_job(
     job_id: String,
     updates: ScheduledJobUpdate,

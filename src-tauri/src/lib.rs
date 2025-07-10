@@ -1,7 +1,6 @@
 mod commands;
 mod config;
 mod core;
-mod db;
 mod error;
 mod models;
 mod repositories;

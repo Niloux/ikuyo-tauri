@@ -66,28 +66,41 @@ pub fn run() -> Result<()> {
             let pool = tauri::async_runtime::block_on(async move {
                 // app_handle is moved into this block
                 let path_resolver = app_handle.path();
-                let app_data_dir = path_resolver
-                    .app_data_dir()
-                    .expect("failed to resolve app data dir");
-                if !app_data_dir.exists() {
-                    std::fs::create_dir_all(&app_data_dir).expect("failed to create app data dir");
+                let is_dev = std::env::var("IKUYO_ENV").unwrap_or_default() == "dev";
+                let (db_path, db_desc) = if is_dev {
+                    // 开发环境：数据库放在当前工作目录/ikuyo.db，要求在src-tauri目录下运行
+                    let db_path = std::path::PathBuf::from("ikuyo.db");
+                    tracing::info!("当前工作目录: {:?}", std::env::current_dir().unwrap());
+                    (db_path, "开发环境 ikuyo.db（请在src-tauri目录下运行）")
+                } else {
+                    // 生产环境：数据库放在 app_data_dir/ikuyo.db
+                    let app_data_dir = path_resolver
+                        .app_data_dir()
+                        .expect("failed to resolve app data dir");
+                    if !app_data_dir.exists() {
+                        std::fs::create_dir_all(&app_data_dir).expect("failed to create app data dir");
+                    }
+                    (app_data_dir.join("ikuyo.db"), "生产环境 app_data_dir/ikuyo.db")
+                };
+
+                if !db_path.exists() {
+                    if is_dev {
+                        tracing::info!("开发环境自动新建空库并迁移，路径: {:?}", db_path);
+                        // 空文件自动由sqlite创建，无需手动touch
+                    } else {
+                        // 生产环境：必须有模板db
+                        let resource_db_path = path_resolver
+                            .resolve("ikuyo.db", BaseDirectory::Resource)
+                            .expect("ikuyo.db resource not found in production!");
+                        std::fs::copy(resource_db_path, &db_path)
+                            .expect("failed to copy database file");
+                    }
                 }
 
-                let writable_db_path = app_data_dir.join("ikuyo.db");
-
-                // 如果可写目录中不存在数据库文件，则从资源中复制
-                if !writable_db_path.exists() {
-                    let resource_db_path = path_resolver
-                        .resolve("ikuyo.db", BaseDirectory::Resource)
-                        .expect("failed to resolve resource");
-
-                    std::fs::copy(resource_db_path, &writable_db_path)
-                        .expect("failed to copy database file");
-                }
-
+                tracing::info!("数据库路径: {:?} ({})", db_path, db_desc);
                 let db_url = format!(
                     "sqlite:{}",
-                    writable_db_path
+                    db_path
                         .to_str()
                         .expect("failed to convert db path to string")
                 );
@@ -105,7 +118,7 @@ pub fn run() -> Result<()> {
 
             // 3. 设置并启动后台工作者
             let notify = Arc::new(Notify::new());
-            let worker = worker::Worker::new(pool_arc.clone(), notify.clone(), None);
+            let worker = worker::Worker::new(pool_arc.clone(), notify.clone(), config.clone(), None);
             tauri::async_runtime::spawn(async move {
                 worker.run().await;
             });

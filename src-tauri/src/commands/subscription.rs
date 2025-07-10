@@ -25,6 +25,7 @@ pub async fn get_all_subscription_ids(
 #[command(rename_all = "snake_case")]
 pub async fn subscribe(
     pool: State<'_, Arc<SqlitePool>>,
+    config: State<'_, crate::config::Config>,
     user_id: String,
     bangumi_id: i64,
     anime_name: String,
@@ -74,6 +75,26 @@ pub async fn subscribe(
         .await
         .map_err(|e| e.to_string())?;
 
+    // 创建成功后，强制刷新缓存并将TTL设为1小时
+    {
+        use crate::services::bangumi_service::BangumiService;
+        let service = BangumiService::new(pool.inner().clone(), config.inner().clone());
+        let _ = service.get_subject(bangumi_id).await;
+        let _ = service.get_episodes(bangumi_id, None, None, None).await;
+        // 更新TTL为配置值
+        let sub_ttl = config.bangumi_sub_ttl.unwrap_or(3600);
+        let _ = sqlx::query("UPDATE bangumi_subject_cache SET ttl = ? WHERE id = ?")
+            .bind(sub_ttl)
+            .bind(bangumi_id)
+            .execute(&**pool)
+            .await;
+        let _ = sqlx::query("UPDATE bangumi_episodes_cache SET ttl = ? WHERE id = ?")
+            .bind(sub_ttl)
+            .bind(bangumi_id)
+            .execute(&**pool)
+            .await;
+    }
+
     // 创建成功后，重新获取完整的订阅信息
     let created_subscription = repo
         .get_by_user_and_bangumi(&user_id_clone, bangumi_id)
@@ -87,6 +108,7 @@ pub async fn subscribe(
 #[command(rename_all = "snake_case")]
 pub async fn unsubscribe(
     pool: State<'_, Arc<SqlitePool>>,
+    config: State<'_, crate::config::Config>,
     user_id: String,
     bangumi_id: i64,
 ) -> Result<(), String> {
@@ -94,6 +116,20 @@ pub async fn unsubscribe(
     repo.delete_by_user_and_bangumi(&user_id, bangumi_id)
         .await
         .map_err(|e| e.to_string())?;
+    // 取消订阅后，将TTL设为配置值
+    {
+        let nonsub_ttl = config.bangumi_nonsub_ttl.unwrap_or(43200);
+        let _ = sqlx::query("UPDATE bangumi_subject_cache SET ttl = ? WHERE id = ?")
+            .bind(nonsub_ttl)
+            .bind(bangumi_id)
+            .execute(&**pool)
+            .await;
+        let _ = sqlx::query("UPDATE bangumi_episodes_cache SET ttl = ? WHERE id = ?")
+            .bind(nonsub_ttl)
+            .bind(bangumi_id)
+            .execute(&**pool)
+            .await;
+    }
     Ok(())
 }
 

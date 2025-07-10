@@ -143,7 +143,7 @@ impl CrawlerService {
         }
 
         // 分批调度爬取详情，边爬边flush
-        let max_concurrent = 10;
+        let max_concurrent = 16;
         let mut processed = 0;
         let mut anime_data_buffer = Vec::new();
         let mut subtitle_group_buffer = Vec::new();

@@ -17,14 +17,21 @@ use tauri::{command, State};
 use std::sync::Arc;
 
 #[command(rename_all = "snake_case")]
-pub async fn get_calendar() -> Result<Vec<BangumiWeekday>, String> {
-    let service = BangumiService::new();
+pub async fn get_calendar(
+    pool: State<'_, Arc<SqlitePool>>,
+    config: State<'_, crate::config::Config>,
+) -> Result<Vec<BangumiWeekday>, String> {
+    let service = BangumiService::new(pool.inner().clone(), config.inner().clone());
     service.get_calendar().await
 }
 
 #[command(rename_all = "snake_case")]
-pub async fn get_subject(id: i64) -> Result<BangumiSubject, String> {
-    let service = BangumiService::new();
+pub async fn get_subject(
+    id: i64,
+    pool: State<'_, Arc<SqlitePool>>,
+    config: State<'_, crate::config::Config>,
+) -> Result<BangumiSubject, String> {
+    let service = BangumiService::new(pool.inner().clone(), config.inner().clone());
     service.get_subject(id).await
 }
 
@@ -34,8 +41,10 @@ pub async fn get_episodes(
     episode_type: Option<i64>,
     limit: Option<i64>,
     offset: Option<i64>,
+    pool: State<'_, Arc<SqlitePool>>,
+    config: State<'_, crate::config::Config>,
 ) -> Result<BangumiEpisodesData, String> {
-    let service = BangumiService::new();
+    let service = BangumiService::new(pool.inner().clone(), config.inner().clone());
     service
         .get_episodes(subject_id, episode_type, limit, offset)
         .await

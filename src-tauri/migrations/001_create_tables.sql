@@ -127,3 +127,30 @@ CREATE INDEX IF NOT EXISTS idx_resource_title ON resource (title);
 CREATE INDEX IF NOT EXISTS idx_resource_resolution ON resource (resolution);
 CREATE INDEX IF NOT EXISTS idx_resource_subtitle_type ON resource (subtitle_type);
 CREATE INDEX IF NOT EXISTS idx_release_date_desc ON resource (release_date DESC);
+
+-- Bangumi subject 缓存表
+CREATE TABLE IF NOT EXISTS bangumi_subject_cache (
+    id INTEGER PRIMARY KEY,
+    content TEXT NOT NULL,
+    updated_at INTEGER NOT NULL,
+    ttl INTEGER NOT NULL
+);
+
+-- Bangumi episodes 缓存表
+CREATE TABLE IF NOT EXISTS bangumi_episodes_cache (
+    id INTEGER NOT NULL,
+    params_hash TEXT NOT NULL,
+    content TEXT NOT NULL,
+    updated_at INTEGER NOT NULL,
+    ttl INTEGER NOT NULL,
+    PRIMARY KEY (id, params_hash)
+);
+
+-- Bangumi calendar 缓存表
+CREATE TABLE IF NOT EXISTS bangumi_calendar_cache (
+    id INTEGER PRIMARY KEY,
+    content TEXT NOT NULL,
+    updated_at INTEGER NOT NULL,
+    ttl INTEGER NOT NULL
+);
+-- 以上为缓存相关表结构

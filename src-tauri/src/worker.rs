@@ -2,12 +2,14 @@ use crate::repositories::crawler_task::CrawlerTaskRepository;
 use crate::repositories::base::Repository;
 use crate::models::{CrawlerTaskStatus};
 use crate::services::crawler_service::CrawlerService;
+use crate::services::bangumi_service::BangumiService;
 use sqlx::SqlitePool;
 use std::sync::Arc;
 use tokio::sync::Notify;
-use tokio::time::{sleep, Duration};
+use tokio::time::{sleep, Duration, Instant};
 use tracing::info;
 use tokio::sync::Semaphore;
+use crate::config::Config;
 
 pub struct Worker {
     pool: Arc<SqlitePool>,
@@ -15,10 +17,11 @@ pub struct Worker {
     semaphore: Arc<Semaphore>,
     retry_count: usize,
     retry_delay_ms: u64,
+    config: Config,
 }
 
 impl Worker {
-    pub fn new(pool: Arc<SqlitePool>, notify: Arc<Notify>, permits: Option<usize>) -> Self {
+    pub fn new(pool: Arc<SqlitePool>, notify: Arc<Notify>, config: Config, permits: Option<usize>) -> Self {
         let permits = permits.unwrap_or(1);
         Self {
             pool,
@@ -26,10 +29,18 @@ impl Worker {
             semaphore: Arc::new(Semaphore::new(permits)),
             retry_count: 3,
             retry_delay_ms: 1000,
+            config,
         }
     }
 
     pub async fn run(&self) {
+        // 启动Bangumi缓存定时刷新任务
+        let pool_clone = self.pool.clone();
+        let config_clone = self.config.clone();
+        tokio::spawn(async move {
+            bangumi_cache_refresh_loop(pool_clone, config_clone).await;
+        });
+
         loop {
             let permit = self.semaphore.clone().acquire_owned().await.unwrap();
             let repo = CrawlerTaskRepository::new(&self.pool);
@@ -73,5 +84,71 @@ impl Worker {
                 }
             }
         }
+    }
+}
+
+// Bangumi缓存定时刷新主循环
+async fn bangumi_cache_refresh_loop(pool: Arc<SqlitePool>, config: Config) {
+    use chrono::Utc;
+    info!("Bangumi缓存定时刷新任务启动");
+    // 启动时立即刷新所有订阅subject/episodes缓存
+    refresh_all_subscribed_bangumi(&pool, &config).await;
+    let mut last_sub = Utc::now().timestamp();
+    let mut last_non_sub = Utc::now().timestamp();
+    let mut last_calendar = Utc::now().timestamp();
+    loop {
+        let now = Utc::now().timestamp();
+        let sub_interval = config.bangumi_sub_refresh_interval.unwrap_or(3600);
+        let nonsub_interval = config.bangumi_nonsub_refresh_interval.unwrap_or(43200);
+        let calendar_interval = config.bangumi_calendar_refresh_interval.unwrap_or(86400);
+        if now - last_sub >= sub_interval {
+            refresh_all_subscribed_bangumi(&pool, &config).await;
+            last_sub = now;
+        }
+        if now - last_non_sub >= nonsub_interval {
+            refresh_all_non_subscribed_bangumi(&pool, &config).await;
+            last_non_sub = now;
+        }
+        if now - last_calendar >= calendar_interval {
+            let service = BangumiService::new(pool.clone(), config.clone());
+            let _ = service.get_calendar().await;
+            last_calendar = now;
+        }
+        sleep(Duration::from_secs(60)).await; // 每分钟检查一次
+    }
+}
+
+// 刷新所有订阅subject/episodes缓存
+async fn refresh_all_subscribed_bangumi(pool: &Arc<SqlitePool>, config: &Config) {
+    use crate::services::bangumi_service::BangumiService;
+    use sqlx::Row;
+    use std::collections::HashSet;
+    // 获取所有订阅subject_id（去重）
+    let rows = sqlx::query("SELECT DISTINCT bangumi_id FROM user_subscriptions").fetch_all(&**pool).await.unwrap_or_default();
+    let ids: HashSet<i64> = rows.iter().map(|r| r.get::<i64, _>(0)).collect();
+    let service = BangumiService::new(pool.clone(), config.clone());
+    for id in ids {
+        let _ = service.get_subject(id).await;
+        let _ = service.get_episodes(id, None, None, None).await;
+    }
+}
+
+// 刷新所有非订阅subject/episodes缓存
+async fn refresh_all_non_subscribed_bangumi(pool: &Arc<SqlitePool>, config: &Config) {
+    use sqlx::Row;
+    use crate::services::bangumi_service::BangumiService;
+    use std::collections::HashSet;
+    // 获取所有subject_id
+    let rows = sqlx::query("SELECT id FROM bangumi_subject_cache").fetch_all(&**pool).await.unwrap_or_default();
+    let all_ids: HashSet<i64> = rows.iter().map(|r| r.get::<i64, _>(0)).collect();
+    // 获取所有订阅subject_id
+    let sub_rows = sqlx::query("SELECT DISTINCT bangumi_id FROM user_subscriptions").fetch_all(&**pool).await.unwrap_or_default();
+    let sub_ids: HashSet<i64> = sub_rows.iter().map(|r| r.get::<i64, _>(0)).collect();
+    // 非订阅id = all_ids - sub_ids
+    let non_sub_ids: Vec<i64> = all_ids.difference(&sub_ids).cloned().collect();
+    let service = BangumiService::new(pool.clone(), config.clone());
+    for id in non_sub_ids {
+        let _ = service.get_subject(id).await;
+        let _ = service.get_episodes(id, None, None, None).await;
     }
 } 

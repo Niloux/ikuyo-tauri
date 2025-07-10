@@ -1,16 +1,7 @@
 <template>
   <div class="subscription-view">
-    <!-- 页面标题 -->
-    <div class="page-header">
-      <h1>我的订阅</h1>
-      <p v-if="!loading && subscriptions.length > 0">
-        共 {{ pagination.total }} 部番剧
-      </p>
-    </div>
-
     <!-- 空状态 -->
     <div v-if="!loading && subscriptions.length === 0" class="empty-state">
-      <div class="empty-icon">📺</div>
       <h3>暂无订阅</h3>
       <p v-if="searchQuery">
         没有找到匹配 "{{ searchQuery }}" 的订阅番剧
@@ -37,40 +28,32 @@
 
     <!-- 动画卡片网格 -->
     <div v-else-if="!loading && subscriptions.length > 0" class="subscription-section">
-      <div class="toolbar">
+      <div class="toolbar toolbar-unified">
         <div class="search-box">
           <input
             v-model="searchQuery"
             @input="handleSearch"
+            @keyup.enter="handleSearch"
             type="text"
             placeholder="搜索订阅番剧"
-            class="search-input"
+            class="search-input unified-input"
           />
-          <button @click="handleSearch" class="search-btn">搜索</button>
         </div>
         <div class="sort-controls">
           <select
-            v-model="sortBy"
-            @change="handleSort"
-            class="sort-select"
+            v-model="sortOption"
+            @change="handleSortOptionChange"
+            class="sort-select unified-input"
           >
-            <option value="subscribed_at">订阅时间</option>
-            <option value="rating">评分</option>
-            <option value="air_date">首播日期</option>
-            <option value="name">名称</option>
+            <option value="subscribed_at-desc">订阅时间（降序）</option>
+            <option value="subscribed_at-asc">订阅时间（升序）</option>
+            <option value="rating-desc">评分（降序）</option>
+            <option value="rating-asc">评分（升序）</option>
+            <option value="air_date-desc">首播日期（降序）</option>
+            <option value="air_date-asc">首播日期（升序）</option>
+            <option value="name-asc">名称（A→Z）</option>
+            <option value="name-desc">名称（Z→A）</option>
           </select>
-          <button
-            @click="toggleSortOrder"
-            :class="{ 'sort-order-btn': true, active: sortOrder === 'desc' }"
-          >
-            降序
-          </button>
-          <button
-            @click="toggleSortOrder"
-            :class="{ 'sort-order-btn': true, active: sortOrder === 'asc' }"
-          >
-            升序
-          </button>
         </div>
       </div>
       <div class="anime-grid">
@@ -130,6 +113,15 @@ const subscriptionStore = useSubscriptionStore()
 const searchQuery = ref('')
 const sortBy = ref<GetSubscriptionsParams['sort']>('subscribed_at')
 const sortOrder = ref<GetSubscriptionsParams['order']>('desc')
+const sortOption = ref('subscribed_at-desc')
+
+const handleSortOptionChange = () => {
+  const [sort, order] = sortOption.value.split('-') as [
+    'subscribed_at' | 'rating' | 'air_date' | 'name',
+    'asc' | 'desc'
+  ]
+  subscriptionStore.sortSubscriptions(sort, order)
+}
 
 // 计算属性
 const subscriptions = computed(() => subscriptionStore.subscriptions)
@@ -257,6 +249,13 @@ onActivated(() => {
   gap: 20px;
 }
 
+.toolbar-unified {
+  /* background: var(--color-background-mute); */
+  /* border-radius: var(--radius-md, 16px); */
+  /* padding: 1rem; */
+  /* box-shadow: 0 2px 8px rgba(0,0,0,0.08); */
+}
+
 .search-box {
   display: flex;
   flex: 1;
@@ -270,6 +269,14 @@ onActivated(() => {
   border-radius: 8px 0 0 8px;
   font-size: 14px;
   outline: none;
+}
+
+.unified-input {
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  font-size: 14px;
+  padding: 10px 15px;
+  height: 40px;
 }
 
 .search-input:focus {
@@ -430,7 +437,18 @@ onActivated(() => {
     gap: 10px;
     margin-bottom: 1rem;
   }
+  .toolbar-unified {
+    /* flex-direction: column; */
+    /* gap: 10px; */
+    /* padding: 0.7rem 0.2rem; */
+    /* border-radius: 8px; */
+  }
   .search-input {
+    font-size: 1rem;
+    padding: 0.7rem 0.5rem;
+    border-radius: 8px 0 0 8px;
+  }
+  .unified-input {
     font-size: 1rem;
     padding: 0.7rem 0.5rem;
     border-radius: 8px 0 0 8px;
@@ -448,6 +466,11 @@ onActivated(() => {
     padding: 0.5rem 0.7rem;
     border-radius: 6px;
   }
+  .unified-input {
+    font-size: 0.98rem;
+    padding: 0.5rem 0.7rem;
+    border-radius: 6px;
+  }
   .pagination {
     gap: 8px;
     margin-top: 1rem;
@@ -459,6 +482,61 @@ onActivated(() => {
   }
   .page-info {
     font-size: 0.95rem;
+  }
+  .toolbar-unified {
+    /* flex-direction: column; */
+    /* gap: 10px; */
+    /* padding: 0.7rem 0.2rem; */
+    /* border-radius: 8px; */
+  }
+  .sort-controls {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .unified-input {
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
+.sort-select.unified-input {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 400;
+  color: #333;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  font-size: 16px;
+  height: 44px;
+  padding: 0 40px 0 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  background-image: url('data:image/svg+xml;utf8,<svg fill="%23666" height="20" viewBox="0 0 20 20" width="20" xmlns="http://www.w3.org/2000/svg"><path d="M5.8 8.3a1 1 0 0 1 1.4 0L10 11.09l2.8-2.8a1 1 0 1 1 1.4 1.42l-3.5 3.5a1 1 0 0 1-1.4 0l-3.5-3.5a1 1 0 0 1 0-1.42z"/></svg>');
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 20px 20px;
+}
+.sort-select.unified-input:hover {
+  background: #f5f5f7;
+}
+.sort-select.unified-input:focus {
+  border-color: #007AFF;
+  box-shadow: 0 0 0 2px rgba(0,122,255,0.12);
+  outline: none;
+}
+.sort-select.unified-input option {
+  background: #fff;
+  color: #222;
+}
+.sort-select.unified-input option:checked {
+  background: #eaf4ff;
+}
+@media (max-width: 768px) {
+  .sort-select.unified-input {
+    width: 100%;
+    min-width: 0;
   }
 }
 </style>

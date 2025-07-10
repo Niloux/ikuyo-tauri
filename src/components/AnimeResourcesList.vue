@@ -96,14 +96,14 @@
                 </div>
 
                 <div class="resource-actions">
-                  <a
+                  <button
                     v-if="resource.magnet_url"
-                    :href="resource.magnet_url"
+                    @click="downloadMagnet(resource.magnet_url)"
                     class="action-btn magnet-btn"
                     title="磁力链接"
                   >
-                    🧲
-                  </a>
+                    磁力
+                  </button>
                   <a
                     v-if="resource.torrent_url"
                     :href="resource.torrent_url"
@@ -111,7 +111,7 @@
                     title="种子下载"
                     download
                   >
-                    📄
+                    种子
                   </a>
                 </div>
               </div>
@@ -157,6 +157,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { useResourceStore } from '../stores/resourceStore'
+import { useFeedbackStore } from '../stores/feedbackStore'
 
 // Props定义
 interface Props {
@@ -165,6 +166,7 @@ interface Props {
 const props = defineProps<Props>()
 
 const resourceStore = useResourceStore()
+const feedbackStore = useFeedbackStore()
 
 // 分页和筛选状态
 const selectedResolution = ref('')
@@ -262,6 +264,35 @@ const toggleGroup = (groupId: number) => {
 }
 const isGroupExpanded = (groupId: number): boolean => {
   return expandedGroups.value.has(groupId)
+}
+
+// 磁力链接下载逻辑
+const downloadMagnet = async (url: string) => {
+  if (!url) return
+  try {
+    const { openUrl } = await import('@tauri-apps/plugin-opener')
+    await openUrl(url)
+  } catch (err) {
+    // openUrl 失败，自动复制磁力链接到剪贴板
+    let copied = false
+    try {
+      const { writeText } = await import('@tauri-apps/plugin-clipboard-manager')
+      await writeText(url)
+      copied = true
+    } catch (e1) {
+      try {
+        await navigator.clipboard.writeText(url)
+        copied = true
+      } catch (e2) {
+        copied = false
+      }
+    }
+    if (copied) {
+      feedbackStore.showError('未检测到下载工具，磁力链接已复制，请手动粘贴到下载器')
+    } else {
+      feedbackStore.showError('磁力链接复制失败，请手动复制')
+    }
+  }
 }
 </script>
 
@@ -557,39 +588,51 @@ const isGroupExpanded = (groupId: number): boolean => {
 .resource-actions {
   display: flex;
   gap: 0.5rem;
-  flex-shrink: 0;
-}
-
-.action-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  text-decoration: none;
-  font-size: 1rem;
-  transition: all 0.2s ease;
 }
 
 .magnet-btn {
-  background-color: #ff6b6b;
+  background-color: #e74c3c;
   color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.85rem;
+  min-width: 60px;
+  transition: all 0.3s;
 }
-
 .magnet-btn:hover {
-  background-color: #ff5252;
+  background-color: #c0392b;
   transform: translateY(-1px);
 }
 
 .torrent-btn {
-  background-color: #4ecdc4;
+  background-color: #3498db;
   color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.85rem;
+  min-width: 60px;
+  transition: all 0.3s;
+}
+.torrent-btn:hover {
+  background-color: #2980b9;
+  transform: translateY(-1px);
 }
 
-.torrent-btn:hover {
-  background-color: #26a69a;
-  transform: translateY(-1px);
+.download-btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.85rem;
+  transition: all 0.3s;
+  min-width: 60px;
 }
 
 /* 分页控制 */

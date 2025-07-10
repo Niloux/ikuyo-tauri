@@ -29,15 +29,15 @@
       </div>
     </div>
 
+    <!-- 搜索无结果提示，仅提示，内容保持不变 -->
+    <div v-if="showSearchNoResult" class="search-tip" style="color: var(--color-danger, #e74c3c); margin-bottom: 1rem; text-align: left;">
+      未搜索到相关订阅
+    </div>
+
     <!-- 空状态 -->
-    <div v-if="!loading && subscriptions.length === 0" class="empty-state">
+    <div v-if="isInitialized && !loading && !shouldShowSkeleton && subscriptions.length === 0 && !searchQuery && lastNonEmptySubscriptions.length === 0" class="empty-state">
       <h3>暂无订阅</h3>
-      <p v-if="searchQuery">
-        没有找到匹配 "{{ searchQuery }}" 的订阅番剧
-      </p>
-      <p v-else>
-        去<router-link to="/">首页</router-link>发现你喜欢的番剧吧！
-      </p>
+      <p>去<router-link to="/">首页</router-link>发现你喜欢的番剧吧！</p>
     </div>
 
     <!-- 骨架屏加载状态 -->
@@ -48,36 +48,32 @@
     </div>
 
     <!-- 动画卡片网格 -->
-    <div v-else-if="!loading && subscriptions.length > 0" class="subscription-section">
-      <!-- 搜索提示 -->
-      <div v-if="searchQuery && subscriptions.length === 0" class="search-tip" style="color: var(--color-danger, #e74c3c); margin-bottom: 1rem; text-align: left;">
-        未搜索到相关订阅
-      </div>
+    <div v-else-if="!loading && (subscriptions.length > 0 || showSearchNoResult)" class="subscription-section">
       <div class="anime-grid">
         <AnimeCard
-          v-for="subscription in subscriptions"
+          v-for="subscription in showSearchNoResult ? lastNonEmptySubscriptions : subscriptions"
           :key="subscription.bangumi_id"
           :anime="subscription.anime"
           :show-subscription-button="true"
           @click="goToDetail(subscription.anime)"
         />
       </div>
-      <div v-if="pagination.pages > 1" class="pagination">
+      <div v-if="(showSearchNoResult ? lastNonEmptyPagination.pages : pagination.pages) > 1" class="pagination">
         <button
-          @click="goToPage(pagination.page - 1)"
-          :disabled="pagination.page <= 1"
+          @click="goToPage((showSearchNoResult ? lastNonEmptyPagination.page : pagination.page) - 1)"
+          :disabled="(showSearchNoResult ? lastNonEmptyPagination.page : pagination.page) <= 1"
           class="page-btn"
         >
           上一页
         </button>
 
         <span class="page-info">
-          {{ pagination.page }} / {{ pagination.pages }}
+          {{ showSearchNoResult ? lastNonEmptyPagination.page : pagination.page }} / {{ showSearchNoResult ? lastNonEmptyPagination.pages : pagination.pages }}
         </span>
 
         <button
-          @click="goToPage(pagination.page + 1)"
-          :disabled="pagination.page >= pagination.pages"
+          @click="goToPage((showSearchNoResult ? lastNonEmptyPagination.page : pagination.page) + 1)"
+          :disabled="(showSearchNoResult ? lastNonEmptyPagination.page : pagination.page) >= (showSearchNoResult ? lastNonEmptyPagination.pages : pagination.pages)"
           class="page-btn"
         >
           下一页
@@ -111,6 +107,13 @@ const subscriptionStore = useSubscriptionStore()
 const searchQuery = ref('')
 const sortOption = ref('subscribed_at-desc')
 
+// 新增：缓存上一次有内容的订阅和分页
+const lastNonEmptySubscriptions = ref<any[]>([])
+const lastNonEmptyPagination = ref<any>({ page: 1, pages: 1 })
+
+// 新增：数据初始化标志
+const isInitialized = ref(false)
+
 // 防抖搜索
 const handleSearch = debounce((val: string) => {
   subscriptionStore.searchSubscriptions(val)
@@ -119,6 +122,18 @@ const handleSearch = debounce((val: string) => {
 watch(searchQuery, (val) => {
   handleSearch(val)
 })
+
+// 监听订阅数据，缓存上一次有内容的订阅和分页
+watch(
+  () => subscriptionStore.subscriptions,
+  (subs) => {
+    if (subs.length > 0) {
+      lastNonEmptySubscriptions.value = subs.slice()
+      lastNonEmptyPagination.value = { ...subscriptionStore.pagination }
+    }
+  },
+  { immediate: true }
+)
 
 const handleSortOptionChange = () => {
   const [sort, order] = sortOption.value.split('-') as [
@@ -138,6 +153,11 @@ const shouldShowSkeleton = computed(() => {
   return loading.value && subscriptions.value.length === 0 && !searchQuery.value
 })
 
+// 新增：判断是否处于“搜索无结果但有缓存”状态
+const showSearchNoResult = computed(() => {
+  return searchQuery.value && subscriptions.value.length === 0 && lastNonEmptySubscriptions.value.length > 0
+})
+
 // 翻页
 const goToPage = (page: number) => {
   subscriptionStore.goToPage(page)
@@ -152,6 +172,7 @@ const goToDetail = (anime: BangumiCalendarItem) => {
 // 数据获取
 const loadSubscriptions = async () => {
   await subscriptionStore.fetchSubscriptions()
+  isInitialized.value = true
 }
 
 // 页面初始化

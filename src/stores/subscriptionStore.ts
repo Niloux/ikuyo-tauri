@@ -24,7 +24,7 @@ export const useSubscriptionStore = defineStore('subscription', () => {
     const error = ref<string | null>(null)
     const pagination = ref<PaginationInfo>({
         page: 1,
-        limit: 20,
+        limit: 8,
         total: 0,
         pages: 0
     })
@@ -34,7 +34,7 @@ export const useSubscriptionStore = defineStore('subscription', () => {
         sort: 'subscribed_at',
         order: 'desc',
         page: 1,
-        limit: 20
+        limit: 8
     })
 
     const feedbackStore = useFeedbackStore()

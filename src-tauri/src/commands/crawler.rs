@@ -1,6 +1,6 @@
 use crate::{
     error::{AppError, TaskError},
-    models::{CrawlerTask, CrawlerTaskStatus},
+    models::{CrawlerTask},
     repositories::{base::Repository, crawler_task::CrawlerTaskRepository},
     types::crawler::{CrawlerTaskCreate, TaskResponse},
 };
@@ -34,45 +34,11 @@ pub async fn create_crawler_task(
     pool: State<'_, Arc<SqlitePool>>,
     notify: State<'_, Arc<Notify>>,
 ) -> Result<TaskResponse, AppError> {
-    tracing::info!("Creating crawler task: {:?}", task);
-
-    let repo = CrawlerTaskRepository::new(&pool);
-    let parameters = serde_json::to_string(&task).unwrap_or_default();
-    let current_time = chrono::Utc::now().timestamp_millis();
-
-    let new_task = CrawlerTask {
-        id: None,
-        task_type: crate::models::CrawlerTaskType::Manual,
-        status: crate::models::CrawlerTaskStatus::Pending,
-        parameters: Some(parameters),
-        result_summary: None,
-        created_at: Some(current_time),
-        started_at: None,
-        completed_at: None,
-        error_message: None,
-        percentage: Some(0.0),
-        processed_items: Some(0),
-        total_items: Some(0),
-        processing_speed: None,
-        estimated_remaining: None,
-    };
-
-    repo.create(&new_task).await?;
-
-    // 因为 create 不再返回 id，我们获取最新创建的 pending 任务
-    let created_task = repo
-        .list_by_status(CrawlerTaskStatus::Pending, 1, 0)
-        .await?
-        .into_iter()
-        .next();
-
-    // 唤醒worker
-    notify.notify_one();
-
-    match created_task {
-        Some(task) => Ok(convert_to_response(task)),
-        None => Err(AppError::Task(TaskError::Failed("任务创建失败".to_string()))),
-    }
+    crate::services::crawler_service::CrawlerService::create_task(
+        pool.inner().clone(),
+        notify.inner().clone(),
+        task,
+    ).await
 }
 
 #[command(rename_all = "snake_case")]
@@ -136,36 +102,11 @@ pub async fn cancel_crawler_task(
     pool: State<'_, Arc<SqlitePool>>,
     worker: State<'_, Arc<crate::worker::Worker>>,
 ) -> Result<TaskResponse, AppError> {
-    tracing::info!("Cancelling crawler task ID: {}", task_id);
-
-    // 作用域内获取 token 并 clone，避免持有 MutexGuard 进入 await
-    let token_opt = {
-        let token_map = worker.get_token_map();
-        let map = token_map.lock().unwrap();
-        map.get(&task_id).cloned()
-    };
-    if let Some(token) = token_opt {
-        token.cancel();
-    }
-
-    // 仍然更新数据库状态用于 UI 展示
-    let repo = CrawlerTaskRepository::new(&pool);
-    let task = repo.get_by_id(task_id).await?;
-    match task {
-        Some(mut task) => {
-            match task.status {
-                crate::models::CrawlerTaskStatus::Pending
-                | crate::models::CrawlerTaskStatus::Running => {
-                    task.status = crate::models::CrawlerTaskStatus::Cancelled;
-                    task.completed_at = Some(chrono::Utc::now().timestamp_millis());
-                    repo.update(&task).await?;
-                    Ok(convert_to_response(task))
-                }
-                _ => Err(AppError::Task(TaskError::Cancel("任务无法取消，当前状态不允许取消操作".to_string()))),
-            }
-        }
-        None => Err(AppError::Task(TaskError::Failed("任务不存在".to_string()))),
-    }
+    crate::services::crawler_service::CrawlerService::cancel_task(
+        pool.inner().clone(),
+        worker.inner().clone(),
+        task_id,
+    ).await
 }
 
 #[command(rename_all = "snake_case")]

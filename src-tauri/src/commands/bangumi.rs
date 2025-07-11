@@ -1,15 +1,12 @@
 use crate::{
     repositories::{
         anime::AnimeRepository,
-        base::Repository, // <--- 导入 trait
         resource::ResourceRepository,
-        subtitle_group::SubtitleGroupRepository,
     },
     services::bangumi_service::BangumiService,
     types::bangumi::{
         BangumiEpisodesData, BangumiSubject, BangumiWeekday, EpisodeAvailabilityData,
-        EpisodeResource, EpisodeResourcesData, Pagination, SearchLibraryResponse,
-        SubtitleGroupResource,
+        EpisodeResourcesData, Pagination, SearchLibraryResponse,
     },
 };
 use crate::error::AppError;
@@ -93,65 +90,12 @@ pub async fn get_episode_resources(
     bangumi_id: i64,
     episode: i64,
     pool: State<'_, Arc<SqlitePool>>,
+    config: State<'_, crate::config::Config>,
 ) -> Result<Option<EpisodeResourcesData>, AppError> {
-    let anime_repo = AnimeRepository::new(&pool);
-    let resource_repo = ResourceRepository::new(&pool);
-    let subtitle_group_repo = SubtitleGroupRepository::new(&pool);
-
-    let anime = anime_repo
-        .get_by_bangumi_id(bangumi_id)
-        .await?;
-
-    if let Some(anime) = anime {
-        let resources = resource_repo
-            .filter(anime.mikan_id, None, Some(episode as i32), None, 0, 0)
-            .await?;
-
-        let mut subtitle_groups_map: std::collections::HashMap<i64, SubtitleGroupResource> =
-            std::collections::HashMap::new();
-        let mut total_resources = 0;
-
-        for res in resources {
-            total_resources += 1;
-            let group_id = res.subtitle_group_id;
-            let group_name = subtitle_group_repo
-                .get_by_id(group_id)
-                .await?
-                .map_or("Unknown".to_string(), |g| g.name);
-
-            let entry =
-                subtitle_groups_map
-                    .entry(group_id)
-                    .or_insert_with(|| SubtitleGroupResource {
-                        id: group_id,
-                        name: group_name.clone(),
-                        resource_count: 0,
-                        resources: Vec::new(),
-                    });
-
-            entry.resource_count += 1;
-            entry.resources.push(EpisodeResource {
-                id: res.id.unwrap_or_default(),
-                episode_number: res.episode_number.unwrap_or_default() as i64,
-                title: res.title,
-                resolution: res.resolution.unwrap_or_default(),
-                subtitle_type: res.subtitle_type.unwrap_or_default(),
-                magnet_url: res.magnet_url.unwrap_or_default(),
-                torrent_url: res.torrent_url.unwrap_or_default(),
-                release_date: res.release_date.unwrap_or_default().to_string(),
-                size: res.file_size.unwrap_or_default(),
-                group_id: res.subtitle_group_id,
-                group_name,
-            });
-        }
-
-        Ok(Some(EpisodeResourcesData {
-            total_resources,
-            subtitle_groups: subtitle_groups_map.into_values().collect(),
-        }))
-    } else {
-        Ok(None)
-    }
+    let service = BangumiService::new(pool.inner().clone(), config.inner().clone());
+    service
+        .aggregate_resources(bangumi_id, Some(episode), None, None, None, None)
+        .await
 }
 
 #[command(rename_all = "snake_case")]
@@ -199,70 +143,10 @@ pub async fn get_anime_resources(
     limit: Option<i64>,
     offset: Option<i64>,
     pool: State<'_, Arc<SqlitePool>>,
+    config: State<'_, crate::config::Config>,
 ) -> Result<Option<EpisodeResourcesData>, AppError> {
-    let anime_repo = AnimeRepository::new(&pool);
-    let resource_repo = ResourceRepository::new(&pool);
-    let subtitle_group_repo = SubtitleGroupRepository::new(&pool);
-
-    let anime = anime_repo
-        .get_by_bangumi_id(bangumi_id)
-        .await?;
-
-    if let Some(anime) = anime {
-        let resources = resource_repo
-            .filter(
-                anime.mikan_id,
-                resolution,
-                None,
-                subtitle_type,
-                limit.unwrap_or(0),
-                offset.unwrap_or(0),
-            )
-            .await?;
-
-        let mut subtitle_groups_map: std::collections::HashMap<i64, SubtitleGroupResource> =
-            std::collections::HashMap::new();
-        let mut total_resources = 0;
-
-        for res in resources {
-            total_resources += 1;
-            let group_id = res.subtitle_group_id;
-            let group_name = subtitle_group_repo
-                .get_by_id(group_id)
-                .await?
-                .map_or("Unknown".to_string(), |g| g.name);
-
-            let entry =
-                subtitle_groups_map
-                    .entry(group_id)
-                    .or_insert_with(|| SubtitleGroupResource {
-                        id: group_id,
-                        name: group_name.clone(),
-                        resource_count: 0,
-                        resources: Vec::new(),
-                    });
-
-            entry.resource_count += 1;
-            entry.resources.push(EpisodeResource {
-                id: res.id.unwrap_or_default(),
-                episode_number: res.episode_number.unwrap_or_default() as i64,
-                title: res.title,
-                resolution: res.resolution.unwrap_or_default(),
-                subtitle_type: res.subtitle_type.unwrap_or_default(),
-                magnet_url: res.magnet_url.unwrap_or_default(),
-                torrent_url: res.torrent_url.unwrap_or_default(),
-                release_date: res.release_date.unwrap_or_default().to_string(),
-                size: res.file_size.unwrap_or_default(),
-                group_id: res.subtitle_group_id,
-                group_name,
-            });
-        }
-
-        Ok(Some(EpisodeResourcesData {
-            total_resources,
-            subtitle_groups: subtitle_groups_map.into_values().collect(),
-        }))
-    } else {
-        Ok(None)
-    }
+    let service = BangumiService::new(pool.inner().clone(), config.inner().clone());
+    service
+        .aggregate_resources(bangumi_id, None, resolution, subtitle_type, limit, offset)
+        .await
 }

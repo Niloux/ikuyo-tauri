@@ -8,7 +8,6 @@ use crate::types::crawler::{CrawlerMode, CrawlerTaskCreate, SeasonName};
 use futures_util::stream::{self, StreamExt};
 use sqlx::SqlitePool;
 use std::collections::HashSet;
-use std::sync::atomic::AtomicI64;
 use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
 
@@ -23,7 +22,6 @@ pub struct CrawlerService {
     pub resource_hashes: HashSet<String>,
     pub processed_items: i64,
     pub total_items: i64,
-    pub finished_count: Arc<AtomicI64>,
     // 新增：任务取消信号
     cancellation_token: Option<CancellationToken>,
 }
@@ -41,7 +39,6 @@ impl CrawlerService {
             resource_hashes: HashSet::new(),
             processed_items: 0,
             total_items: 0,
-            finished_count: Arc::new(AtomicI64::new(0)),
             cancellation_token: None,
         }
     }
@@ -322,14 +319,6 @@ impl CrawlerService {
         Ok(())
     }
 
-    async fn is_task_cancelled(&self) -> bool {
-        if let Some(token) = &self.cancellation_token {
-            token.is_cancelled()
-        } else {
-            false
-        }
-    }
-
     async fn update_task_status(
         &self,
         status: CrawlerTaskStatus,
@@ -363,6 +352,118 @@ impl CrawlerService {
             if let Err(e) = repo.update(&task).await {
                 tracing::error!("更新任务[{}]状态失败: {}", self.task_id, e);
             }
+        }
+    }
+
+    /// 创建爬虫任务并唤醒worker
+    pub async fn create_task(
+        pool: Arc<SqlitePool>,
+        notify: Arc<tokio::sync::Notify>,
+        task: crate::types::crawler::CrawlerTaskCreate,
+    ) -> Result<crate::types::crawler::TaskResponse, crate::error::AppError> {
+        use crate::models::{CrawlerTask, CrawlerTaskType, CrawlerTaskStatus};
+        use crate::repositories::crawler_task::CrawlerTaskRepository;
+        use crate::types::crawler::TaskResponse;
+        use crate::error::{AppError, TaskError};
+        let repo = CrawlerTaskRepository::new(&pool);
+        let parameters = serde_json::to_string(&task).unwrap_or_default();
+        let current_time = chrono::Utc::now().timestamp_millis();
+        let new_task = CrawlerTask {
+            id: None,
+            task_type: CrawlerTaskType::Manual,
+            status: CrawlerTaskStatus::Pending,
+            parameters: Some(parameters),
+            result_summary: None,
+            created_at: Some(current_time),
+            started_at: None,
+            completed_at: None,
+            error_message: None,
+            percentage: Some(0.0),
+            processed_items: Some(0),
+            total_items: Some(0),
+            processing_speed: None,
+            estimated_remaining: None,
+        };
+        repo.create(&new_task).await?;
+        // 获取最新创建的 pending 任务
+        let created_task = repo
+            .list_by_status(CrawlerTaskStatus::Pending, 1, 0)
+            .await?
+            .into_iter()
+            .next();
+        // 唤醒worker
+        notify.notify_one();
+        match created_task {
+            Some(task) => Ok(TaskResponse {
+                id: task.id.unwrap_or_default(),
+                task_type: task.task_type.into(),
+                status: task.status.into(),
+                parameters: task.parameters,
+                result_summary: task.result_summary,
+                created_at: Some(task.created_at.unwrap_or_default()),
+                started_at: task.started_at,
+                completed_at: task.completed_at,
+                error_message: task.error_message,
+                percentage: Some(task.percentage.unwrap_or_default()),
+                processed_items: Some(task.processed_items.unwrap_or_default()),
+                total_items: Some(task.total_items.unwrap_or_default()),
+                processing_speed: task.processing_speed,
+                estimated_remaining: task.estimated_remaining,
+            }),
+            None => Err(AppError::Task(TaskError::Failed("任务创建失败".to_string()))),
+        }
+    }
+
+    /// 取消爬虫任务并更新状态
+    pub async fn cancel_task(
+        pool: Arc<SqlitePool>,
+        worker: Arc<crate::worker::Worker>,
+        task_id: i64,
+    ) -> Result<crate::types::crawler::TaskResponse, crate::error::AppError> {
+        use crate::repositories::crawler_task::CrawlerTaskRepository;
+        use crate::models::{CrawlerTaskStatus};
+        use crate::types::crawler::TaskResponse;
+        use crate::error::{AppError, TaskError};
+        // 作用域内获取 token 并 clone，避免持有 MutexGuard 进入 await
+        let token_opt = {
+            let token_map = worker.get_token_map();
+            let map = token_map.lock().unwrap();
+            map.get(&task_id).cloned()
+        };
+        if let Some(token) = token_opt {
+            token.cancel();
+        }
+        // 仍然更新数据库状态用于 UI 展示
+        let repo = CrawlerTaskRepository::new(&pool);
+        let task = repo.get_by_id(task_id).await?;
+        match task {
+            Some(mut task) => {
+                match task.status {
+                    CrawlerTaskStatus::Pending | CrawlerTaskStatus::Running => {
+                        task.status = CrawlerTaskStatus::Cancelled;
+                        task.completed_at = Some(chrono::Utc::now().timestamp_millis());
+                        repo.update(&task).await?;
+                        Ok(TaskResponse {
+                            id: task.id.unwrap_or_default(),
+                            task_type: task.task_type.into(),
+                            status: task.status.into(),
+                            parameters: task.parameters,
+                            result_summary: task.result_summary,
+                            created_at: Some(task.created_at.unwrap_or_default()),
+                            started_at: task.started_at,
+                            completed_at: task.completed_at,
+                            error_message: task.error_message,
+                            percentage: Some(task.percentage.unwrap_or_default()),
+                            processed_items: Some(task.processed_items.unwrap_or_default()),
+                            total_items: Some(task.total_items.unwrap_or_default()),
+                            processing_speed: task.processing_speed,
+                            estimated_remaining: task.estimated_remaining,
+                        })
+                    }
+                    _ => Err(AppError::Task(TaskError::Cancel("任务无法取消，当前状态不允许取消操作".to_string()))),
+                }
+            }
+            None => Err(AppError::Task(TaskError::Failed("任务不存在".to_string()))),
         }
     }
 }

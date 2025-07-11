@@ -23,6 +23,27 @@ impl<'a> SubtitleGroupRepository<'a> {
         )
     }
 
+    /// 批量获取字幕组
+    pub async fn get_by_ids(&self, ids: &[i64]) -> Result<Vec<SubtitleGroup>> {
+        if ids.is_empty() {
+            return Ok(vec![]);
+        }
+        let mut query = String::from("SELECT * FROM subtitle_group WHERE id IN ("
+        );
+        for (i, _) in ids.iter().enumerate() {
+            if i > 0 {
+                query.push_str(", ");
+            }
+            query.push_str("?");
+        }
+        query.push(')');
+        let mut q = sqlx::query_as::<_, SubtitleGroup>(&query);
+        for id in ids {
+            q = q.bind(id);
+        }
+        Ok(q.fetch_all(self.pool).await?)
+    }
+
     pub async fn insert_many_subtitle_groups(
         &self,
         tx: &mut Transaction<'_, sqlx::Sqlite>,

@@ -239,4 +239,81 @@ impl BangumiService {
             }
         }
     }
+
+    /// 通用资源聚合函数
+    pub async fn aggregate_resources(
+        &self,
+        bangumi_id: i64,
+        episode: Option<i64>,
+        resolution: Option<String>,
+        subtitle_type: Option<String>,
+        limit: Option<i64>,
+        offset: Option<i64>,
+    ) -> Result<Option<crate::types::bangumi::EpisodeResourcesData>, AppError> {
+        use crate::repositories::anime::AnimeRepository;
+        use crate::repositories::resource::ResourceRepository;
+        use crate::repositories::subtitle_group::SubtitleGroupRepository;
+        use crate::types::bangumi::{EpisodeResource, SubtitleGroupResource, EpisodeResourcesData};
+        use std::collections::HashMap;
+        let anime_repo = AnimeRepository::new(&self.pool);
+        let resource_repo = ResourceRepository::new(&self.pool);
+        let subtitle_group_repo = SubtitleGroupRepository::new(&self.pool);
+
+        let anime = anime_repo.get_by_bangumi_id(bangumi_id).await?;
+        if let Some(anime) = anime {
+            let resources = resource_repo
+                .filter(
+                    anime.mikan_id,
+                    resolution,
+                    episode.map(|e| e as i32),
+                    subtitle_type,
+                    limit.unwrap_or(0),
+                    offset.unwrap_or(0),
+                )
+                .await?;
+
+            // 收集所有 group_id
+            let group_ids: Vec<i64> = resources.iter().map(|r| r.subtitle_group_id).collect();
+            let groups = subtitle_group_repo.get_by_ids(&group_ids).await?;
+            let group_map: HashMap<i64, String> = groups.into_iter().filter_map(|g| g.id.map(|id| (id, g.name))).collect();
+
+            let mut subtitle_groups_map: HashMap<i64, SubtitleGroupResource> = HashMap::new();
+            let mut total_resources = 0;
+
+            for res in resources {
+                total_resources += 1;
+                let group_id = res.subtitle_group_id;
+                let group_name = group_map.get(&group_id).cloned().unwrap_or_else(|| "Unknown".to_string());
+
+                let entry = subtitle_groups_map.entry(group_id).or_insert_with(|| SubtitleGroupResource {
+                    id: group_id,
+                    name: group_name.clone(),
+                    resource_count: 0,
+                    resources: Vec::new(),
+                });
+
+                entry.resource_count += 1;
+                entry.resources.push(EpisodeResource {
+                    id: res.id.unwrap_or_default(),
+                    episode_number: res.episode_number.unwrap_or_default() as i64,
+                    title: res.title,
+                    resolution: res.resolution.unwrap_or_default(),
+                    subtitle_type: res.subtitle_type.unwrap_or_default(),
+                    magnet_url: res.magnet_url.unwrap_or_default(),
+                    torrent_url: res.torrent_url.unwrap_or_default(),
+                    release_date: res.release_date.unwrap_or_default().to_string(),
+                    size: res.file_size.unwrap_or_default(),
+                    group_id: res.subtitle_group_id,
+                    group_name,
+                });
+            }
+
+            Ok(Some(EpisodeResourcesData {
+                total_resources,
+                subtitle_groups: subtitle_groups_map.into_values().collect(),
+            }))
+        } else {
+            Ok(None)
+        }
+    }
 }

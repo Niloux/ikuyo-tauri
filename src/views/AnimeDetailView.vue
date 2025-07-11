@@ -10,7 +10,15 @@
     <Skeleton :loading="loading" type="card" customClass="detail-skeleton" />
     <div v-if="!loading && subject" class="detail-container">
       <!-- 番剧基本信息 -->
-      <div class="anime-header">
+      <div class="anime-header" style="position:relative;">
+        <!-- 右上角订阅按钮 -->
+        <div style="position:absolute;top:16px;right:16px;z-index:2;">
+          <SubscriptionButton
+            v-if="calendarItem"
+            :anime="calendarItem!"
+            size="large"
+          />
+        </div>
         <div class="anime-cover">
           <img
             :src="subject.images.large"
@@ -99,6 +107,8 @@ import { useEpisodeAvailabilityStore } from '../stores/episodeAvailabilityStore'
 import { useFeedbackStore } from '../stores/feedbackStore'
 import { ensureScrollToTop } from '../utils/scrollUtils'
 import Skeleton from '../components/common/Skeleton.vue'
+import SubscriptionButton from '../components/common/SubscriptionButton.vue'
+import { convertSubjectToCalendarItem } from '../services/bangumi/bangumiApiService'
 
 const route = useRoute()
 const router = useRouter()
@@ -203,6 +213,7 @@ const onImageError = (event: Event) => {
 
 const AnimeResourcesList = defineAsyncComponent(() => import('../components/AnimeResourcesList.vue'))
 const EpisodeDisplay = defineAsyncComponent(() => import('../components/EpisodeDisplay.vue'))
+const calendarItem = computed(() => subject.value ? convertSubjectToCalendarItem(subject.value) : null)
 </script>
 
 <style scoped>

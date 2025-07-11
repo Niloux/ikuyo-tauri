@@ -2,6 +2,12 @@
   <div class="anime-card" @click="handleCardClick" ref="cardRef">
     <!-- 番剧封面 -->
     <div class="card-image">
+      <SubscriptionButton
+        v-if="props.showSubscriptionButton"
+        :anime="props.anime"
+        size="small"
+        class="card-subscription-btn"
+      />
       <img
         v-if="shouldLoadImage"
         :src="imageUrl"
@@ -13,41 +19,19 @@
       <div class="rating-badge" v-if="props.anime.rating && props.anime.rating.score > 0">
         {{ props.anime.rating.score.toFixed(1) }}
       </div>
-
-      <!-- 订阅按钮 -->
-      <button
-        v-if="props.showSubscriptionButton"
-        @click.stop="handleSubscriptionToggle"
-        class="subscription-btn"
-        :class="{ subscribed: isSubscribed }"
-        :disabled="subscriptionLoading"
-        :title="isSubscribed ? '取消订阅' : '订阅'"
-      >
-        <span v-if="subscriptionLoading">⏳</span>
-        <span v-else>
-          <!-- Material Design标准心形icon -->
-          <svg v-if="!isSubscribed" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#e50914" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M16.5 3c-1.74 0-3.41 1.01-4.5 2.09C10.91 4.01 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54a2 2 0 0 0 2.9 0C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3z"/>
-          </svg>
-          <svg v-else width="22" height="22" viewBox="0 0 24 24" fill="#e50914" stroke="#e50914" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M16.5 3c-1.74 0-3.41 1.01-4.5 2.09C10.91 4.01 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54a2 2 0 0 0 2.9 0C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3z"/>
-          </svg>
-        </span>
-      </button>
     </div>
-
     <!-- 番剧信息 -->
     <div class="card-content">
       <h3 class="anime-title">
-        {{ anime.name_cn || anime.name }}
+        {{ props.anime.name_cn || props.anime.name }}
       </h3>
-      <p class="anime-subtitle" v-if="anime.name_cn && anime.name !== anime.name_cn">
-        {{ anime.name }}
+      <p class="anime-subtitle" v-if="props.anime.name_cn && props.anime.name !== props.anime.name_cn">
+        {{ props.anime.name }}
       </p>
       <div class="anime-meta">
         <span class="air-date">{{ formattedAirDate }}</span>
-        <span class="rating-count" v-if="anime.rating && anime.rating.total > 0">
-          {{ anime.rating.total }}人评价
+        <span class="rating-count" v-if="props.anime.rating && props.anime.rating.total > 0">
+          {{ props.anime.rating.total }}人评价
         </span>
       </div>
     </div>
@@ -60,8 +44,7 @@ import type { BangumiCalendarItem } from '../services/bangumi/bangumiTypes'
 import defaultCover from '../assets/ikuyo-avatar.png'
 import { createLazyObserver } from '../utils/lazyLoad'
 import Skeleton from './common/Skeleton.vue'
-import { useSubscriptionStore } from '../stores/subscriptionStore'
-import { useFeedbackStore } from '../stores/feedbackStore'
+import SubscriptionButton from './common/SubscriptionButton.vue'
 
 // Props定义（修正默认值）
 const props = withDefaults(defineProps<{
@@ -81,44 +64,6 @@ const emit = defineEmits<{
 const shouldLoadImage = ref(false)
 const cardRef = ref<HTMLElement | null>(null)
 let observer: IntersectionObserver | null = null
-
-// 订阅功能
-const subscriptionStore = useSubscriptionStore()
-const subscriptionLoading = ref(false)
-
-// 检查是否已订阅
-const isSubscribed = computed(() => {
-  return subscriptionStore.isSubscribed(props.anime.id)
-})
-
-// 处理订阅状态切换
-const handleSubscriptionToggle = async () => {
-  try {
-    subscriptionLoading.value = true
-    await subscriptionStore.toggleSubscription(props.anime)
-  } catch (error) {
-    const feedbackStore = useFeedbackStore();
-    feedbackStore.showError('订阅操作失败，请重试')
-    console.error('订阅操作失败:', error)
-  } finally {
-    subscriptionLoading.value = false
-  }
-}
-
-onMounted(() => {
-  if (cardRef.value) {
-    observer = createLazyObserver(cardRef.value, () => {
-      shouldLoadImage.value = true
-    })
-  }
-})
-
-onUnmounted(() => {
-  if (observer) {
-    observer.disconnect()
-    observer = null
-  }
-})
 
 // 优化：缓存格式化的播出日期
 const formattedAirDate = computed(() => {
@@ -155,6 +100,21 @@ const onImageError = (event: Event) => {
 const handleCardClick = () => {
   emit('click')
 }
+
+onMounted(() => {
+  if (cardRef.value) {
+    observer = createLazyObserver(cardRef.value, () => {
+      shouldLoadImage.value = true
+    })
+  }
+})
+
+onUnmounted(() => {
+  if (observer) {
+    observer.disconnect()
+    observer = null
+  }
+})
 </script>
 
 <style scoped>
@@ -205,6 +165,13 @@ const handleCardClick = () => {
   border-radius: 4px;
   font-size: 0.875rem;
   font-weight: 600;
+}
+
+.card-subscription-btn {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 10;
 }
 
 .subscription-btn {

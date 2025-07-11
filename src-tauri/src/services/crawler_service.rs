@@ -301,7 +301,7 @@ impl CrawlerService {
             }
 
             if let Err(e) = repo.update(&task).await {
-                tracing::error!("Failed to update task progress: {}", e);
+                tracing::error!("更新任务[{}]状态失败: {}", self.task_id, e);
             }
         }
     }

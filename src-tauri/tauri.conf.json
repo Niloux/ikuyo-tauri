@@ -2,7 +2,7 @@
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "ikuyo-app",
   "version": "0.1.0",
-  "identifier": "com.ikuyo-app.app",
+  "identifier": "com.ikuyo-app",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",

@@ -27,6 +27,19 @@ jobs:
       - name: Install pnpm
         run: npm install -g pnpm@10.12.4
 
+      # 👉 缓存 pnpm store、Rust 依赖、Rust target
+      - name: Setup Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pnpm-store
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: ${{ runner.os }}-build-${{ hashFiles('**/pnpm-lock.yaml', '**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-build-
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 

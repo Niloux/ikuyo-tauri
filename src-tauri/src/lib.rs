@@ -14,6 +14,7 @@ use crate::error::Result;
 use commands::{bangumi::*, crawler::*, subscription::*};
 use once_cell::sync::OnceCell;
 use sqlx::SqlitePool;
+use sqlx::sqlite::SqlitePoolOptions;
 use tauri::Manager;
 use tracing_appender::rolling::{RollingFileAppender, Rotation};
 use tracing_subscriber::{filter::EnvFilter, fmt, prelude::*, registry};
@@ -150,7 +151,9 @@ pub fn run() -> Result<()> {
             // 连接数据库
             let db_url = format!("sqlite:{}?mode=rwc", db_path.to_str().unwrap());
             let pool = tauri::async_runtime::block_on(async move {
-                SqlitePool::connect(&db_url)
+                SqlitePoolOptions::new()
+                    .max_connections(8)
+                    .connect(&db_url)
                     .await
                     .expect("failed to connect to database")
             });

@@ -71,11 +71,11 @@ pub fn run() -> Result<()> {
                 // app_handle is moved into this block
                 let path_resolver = app_handle.path();
                 let is_dev = std::env::var("IKUYO_ENV").unwrap_or_default() == "dev";
-                let (db_path, db_desc) = if is_dev {
+                let db_path = if is_dev {
                     // 开发环境：数据库放在当前工作目录/ikuyo.db，要求在src-tauri目录下运行
                     let db_path = std::path::PathBuf::from("ikuyo.db");
                     tracing::info!("当前工作目录: {:?}", std::env::current_dir().unwrap());
-                    (db_path, "开发环境 ikuyo.db（请在src-tauri目录下运行）")
+                    db_path
                 } else {
                     // 生产环境：数据库放在 app_data_dir/ikuyo.db
                     let app_data_dir = path_resolver
@@ -85,10 +85,7 @@ pub fn run() -> Result<()> {
                         std::fs::create_dir_all(&app_data_dir)
                             .expect("failed to create app data dir");
                     }
-                    (
-                        app_data_dir.join("ikuyo.db"),
-                        "生产环境 app_data_dir/ikuyo.db",
-                    )
+                    app_data_dir.join("ikuyo.db")
                 };
 
                 if !db_path.exists() {
@@ -105,13 +102,14 @@ pub fn run() -> Result<()> {
                     }
                 }
 
-                tracing::info!("数据库路径: {:?} ({})", db_path, db_desc);
+                tracing::info!("数据库路径: {:?}", db_path.display());
                 let db_url = format!(
-                    "sqlite:{}",
+                    "sqlite:{}?mode=rwc",
                     db_path
                         .to_str()
                         .expect("failed to convert db path to string")
                 );
+                tracing::info!("数据库URL: {:?}", db_url);
 
                 let pool = SqlitePool::connect(&db_url)
                     .await

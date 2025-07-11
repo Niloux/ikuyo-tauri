@@ -78,7 +78,8 @@ pub async fn subscribe(
         use crate::services::bangumi_service::BangumiService;
         let service = BangumiService::new(pool.inner().clone(), config.inner().clone());
         let _ = service.get_subject(bangumi_id).await;
-        let _ = service.get_episodes(bangumi_id, None, None, None).await;
+        // TODO:如果要启用缓存，读写的传参必须一致，否则缓存会失效。如果修改前端的调用，需要同步修改这里。
+        let _ = service.get_episodes(bangumi_id, Some(0), Some(1000), Some(0)).await;
         // 更新TTL为配置值
         let sub_ttl = config.bangumi_sub_ttl.unwrap_or(3600);
         let _ = sqlx::query("UPDATE bangumi_subject_cache SET ttl = ? WHERE id = ?")

@@ -28,9 +28,6 @@
         <RouterLink to="/tasks" class="nav-item" active-class="active">
           <span class="nav-text">任务</span>
         </RouterLink>
-        <RouterLink to="/about" class="nav-item" active-class="active">
-          <span class="nav-text">关于</span>
-        </RouterLink>
       </nav>
 
       <!-- 移动端菜单按钮 -->
@@ -58,9 +55,6 @@
       </RouterLink>
       <RouterLink to="/tasks" class="mobile-nav-item" @click="closeMobileMenu">
         任务
-      </RouterLink>
-      <RouterLink to="/about" class="mobile-nav-item" @click="closeMobileMenu">
-        关于
       </RouterLink>
     </div>
   </header>

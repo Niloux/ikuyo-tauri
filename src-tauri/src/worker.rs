@@ -8,7 +8,7 @@ use sqlx::SqlitePool;
 use std::sync::Arc;
 use tokio::sync::Notify;
 use tokio::sync::Semaphore;
-use tokio::time::{sleep, Duration, Instant};
+use tokio::time::{sleep, Duration};
 use tracing::info;
 
 pub struct Worker {
@@ -39,11 +39,11 @@ impl Worker {
     }
 
     pub async fn run(&self) {
-        // 启动Bangumi缓存定时刷新任务
+        // 启动内容缓存与资源刷新主循环
         let pool_clone = self.pool.clone();
         let config_clone = self.config.clone();
         tokio::spawn(async move {
-            bangumi_cache_refresh_loop(pool_clone, config_clone).await;
+            main_refresh_loop(pool_clone, config_clone).await;
         });
 
         loop {
@@ -93,32 +93,86 @@ impl Worker {
     }
 }
 
-// Bangumi缓存定时刷新主循环
-async fn bangumi_cache_refresh_loop(pool: Arc<SqlitePool>, config: Config) {
-    use chrono::Utc;
-    info!("Bangumi缓存定时刷新任务启动");
+// 内容缓存与资源刷新主循环
+// 该主循环负责：
+// 1. 定时刷新Bangumi订阅/非订阅/日历缓存
+// 2. 每天0点自动插入首页资源爬取任务（Schedule+homepage），并在应用启动/恢复时补发当天缺失的自动任务
+// 3. 未来可扩展更多定时内容刷新任务
+async fn main_refresh_loop(pool: Arc<SqlitePool>, config: Config) {
+    use chrono::{Datelike, Utc};
+    use crate::models::{CrawlerTask, CrawlerTaskStatus, CrawlerTaskType};
+    use crate::repositories::crawler_task::CrawlerTaskRepository;
+    use crate::types::crawler::{CrawlerMode, CrawlerTaskCreate};
+    use serde_json;
+    info!("内容缓存与资源刷新主循环启动");
     // 启动时立即刷新所有订阅subject/episodes缓存
     refresh_all_subscribed_bangumi(&pool, &config).await;
     let mut last_sub = Utc::now().timestamp();
     let mut last_non_sub = Utc::now().timestamp();
     let mut last_calendar = Utc::now().timestamp();
+    let mut last_homepage_task_date = None;
     loop {
-        let now = Utc::now().timestamp();
+        let now = Utc::now();
+        let today = (now.year(), now.month(), now.day());
+        // 检查当天是否已插入Schedule+homepage任务
+        if last_homepage_task_date != Some(today) {
+            let repo = CrawlerTaskRepository::new(&pool);
+            // 查询当天是否已有Schedule+homepage任务
+            let start_of_day = now.date_naive().and_hms_opt(0, 0, 0).unwrap().and_utc().timestamp_millis();
+            let end_of_day = now.date_naive().and_hms_opt(23, 59, 59).unwrap().and_utc().timestamp_millis();
+            let tasks = repo.list_by_type(CrawlerTaskType::Scheduled, -1, 0).await.unwrap_or_default();
+            let already_exists = tasks.iter().any(|t| {
+                if let Some(params) = &t.parameters {
+                    if let Ok(parsed) = serde_json::from_str::<CrawlerTaskCreate>(params) {
+                        t.created_at.unwrap_or(0) >= start_of_day && t.created_at.unwrap_or(0) <= end_of_day && parsed.mode == CrawlerMode::Homepage
+                    } else { false }
+                } else { false }
+            });
+            if !already_exists {
+                // 插入Schedule+homepage任务
+                let parameters = serde_json::to_string(&CrawlerTaskCreate {
+                    mode: CrawlerMode::Homepage,
+                    year: None,
+                    season: None,
+                    limit: None,
+                }).unwrap();
+                let new_task = CrawlerTask {
+                    id: None,
+                    task_type: CrawlerTaskType::Scheduled,
+                    status: CrawlerTaskStatus::Pending,
+                    parameters: Some(parameters),
+                    result_summary: None,
+                    created_at: Some(now.timestamp_millis()),
+                    started_at: None,
+                    completed_at: None,
+                    error_message: None,
+                    percentage: Some(0.0),
+                    processed_items: Some(0),
+                    total_items: Some(100),
+                    processing_speed: None,
+                    estimated_remaining: None,
+                };
+                let _ = repo.create(&new_task).await;
+                info!("自动插入首页资源爬取任务（Schedule+homepage）");
+            }
+            last_homepage_task_date = Some(today);
+        }
+        let now_ts = now.timestamp();
         let sub_interval = config.bangumi_sub_refresh_interval.unwrap_or(3600);
         let nonsub_interval = config.bangumi_nonsub_refresh_interval.unwrap_or(43200);
         let calendar_interval = config.bangumi_calendar_refresh_interval.unwrap_or(86400);
-        if now - last_sub >= sub_interval {
+        if now_ts - last_sub >= sub_interval {
             refresh_all_subscribed_bangumi(&pool, &config).await;
-            last_sub = now;
+            last_sub = now_ts;
         }
-        if now - last_non_sub >= nonsub_interval {
+        if now_ts - last_non_sub >= nonsub_interval {
             refresh_all_non_subscribed_bangumi(&pool, &config).await;
-            last_non_sub = now;
+            last_non_sub = now_ts;
         }
-        if now - last_calendar >= calendar_interval {
+        if now_ts - last_calendar >= calendar_interval {
             let service = BangumiService::new(pool.clone(), config.clone());
             let _ = service.get_calendar().await;
-            last_calendar = now;
+            last_calendar = now_ts;
         }
         sleep(Duration::from_secs(60)).await; // 每分钟检查一次
     }

@@ -81,7 +81,6 @@ router.beforeEach(async (to, from, next) => {
   if (to.name === 'task-management') {
     import('../views/TaskManagementView.vue')
     import('../components/TaskModal.vue')
-    import('../components/ScheduledJobModal.vue')
   }
   // 预取资源库页chunk
   if (to.name === 'resource-library') {

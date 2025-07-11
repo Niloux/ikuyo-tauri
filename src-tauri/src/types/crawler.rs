@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 // Crawler Types
 // =============================================================================
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum CrawlerMode {
     #[serde(rename = "homepage")]
     Homepage,

@@ -11,7 +11,7 @@ use tokio::sync::Notify;
 mod worker;
 
 use crate::error::Result;
-use commands::{bangumi::*, crawler::*, scheduler::*, subscription::*};
+use commands::{bangumi::*, crawler::*, subscription::*};
 use once_cell::sync::OnceCell;
 use sqlx::SqlitePool;
 use tauri::path::BaseDirectory;
@@ -155,13 +155,6 @@ pub fn run() -> Result<()> {
             get_crawler_task,
             cancel_crawler_task,
             delete_crawler_task,
-            // Scheduler commands
-            create_scheduled_job,
-            update_scheduled_job,
-            get_scheduled_jobs,
-            get_scheduled_job,
-            delete_scheduled_job,
-            toggle_scheduled_job,
             // Subscription commands
             subscribe,
             unsubscribe,

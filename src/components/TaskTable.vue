@@ -86,7 +86,6 @@
 import type { TaskResponse } from '../services/crawler/crawlerTypes'
 import { getParameter, formatDateTime, formatTime } from '../utils/taskUtils'
 import Skeleton from './common/Skeleton.vue'
-import { defineAsyncComponent } from 'vue'
 
 const props = defineProps<{
   tasks: TaskResponse[]
@@ -101,9 +100,6 @@ const emit = defineEmits<{
   retry: []
   'page-change': [page: number]
 }>()
-
-const TaskModal = defineAsyncComponent(() => import('./TaskModal.vue'))
-const ScheduledJobModal = defineAsyncComponent(() => import('./ScheduledJobModal.vue'))
 
 // 获取状态文本
 const getStatusText = (status: string): string => {

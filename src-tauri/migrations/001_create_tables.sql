@@ -39,20 +39,6 @@ CREATE TABLE IF NOT EXISTS crawler_task (
 CREATE INDEX IF NOT EXISTS idx_crawler_task_created_at ON crawler_task (created_at);
 
 
--- ScheduledJob表
-CREATE TABLE IF NOT EXISTS scheduled_job (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    job_id TEXT NOT NULL,
-    name TEXT NOT NULL,
-    description TEXT,
-    cron_expression TEXT NOT NULL,
-    crawler_mode TEXT,
-    parameters TEXT,
-    enabled BOOLEAN NOT NULL DEFAULT true,
-    created_at INTEGER,
-    updated_at INTEGER
-);
-
 -- SubtitleGroup表
 CREATE TABLE IF NOT EXISTS subtitle_group (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

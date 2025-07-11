@@ -79,20 +79,6 @@ pub struct CrawlerTask {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, FromRow)]
-pub struct ScheduledJob {
-    pub id: Option<i64>,
-    pub job_id: String,
-    pub name: String,
-    pub description: Option<String>,
-    pub cron_expression: String,
-    pub crawler_mode: Option<String>,
-    pub parameters: Option<String>,
-    pub enabled: bool,
-    pub created_at: Option<i64>,
-    pub updated_at: Option<i64>,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, FromRow)]
 pub struct SubtitleGroup {
     pub id: Option<i64>,
     pub name: String,

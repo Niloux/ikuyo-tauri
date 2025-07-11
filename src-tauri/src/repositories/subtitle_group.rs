@@ -13,16 +13,6 @@ impl<'a> SubtitleGroupRepository<'a> {
         Self { pool }
     }
 
-    // SubtitleGroupRepository 特有方法
-    pub async fn get_by_name(&self, name: &str) -> Result<Option<SubtitleGroup>> {
-        Ok(
-            sqlx::query_as::<_, SubtitleGroup>("SELECT * FROM subtitle_group WHERE name = ?")
-                .bind(name)
-                .fetch_optional(self.pool)
-                .await?,
-        )
-    }
-
     /// 批量获取字幕组
     pub async fn get_by_ids(&self, ids: &[i64]) -> Result<Vec<SubtitleGroup>> {
         if ids.is_empty() {

@@ -14,15 +14,6 @@ pub enum CrawlerMode {
     Year,
 }
 
-impl CrawlerMode {
-    pub fn as_str(&self) -> &str {
-        match self {
-            CrawlerMode::Homepage => "homepage",
-            CrawlerMode::Season => "season",
-            CrawlerMode::Year => "year",
-        }
-    }
-}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum SeasonName {

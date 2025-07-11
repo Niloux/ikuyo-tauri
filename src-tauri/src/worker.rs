@@ -19,7 +19,6 @@ pub struct Worker {
     notify: Arc<Notify>,
     semaphore: Arc<Semaphore>,
     retry_count: usize,
-    retry_delay_ms: u64,
     config: Config,
     exit_flag: Arc<std::sync::atomic::AtomicBool>,
     // 新增：任务ID到CancellationToken的映射
@@ -40,7 +39,6 @@ impl Worker {
             notify,
             semaphore: Arc::new(Semaphore::new(permits)),
             retry_count: 3,
-            retry_delay_ms: 1000,
             config,
             exit_flag,
             cancel_tokens: Arc::new(Mutex::new(HashMap::new())),

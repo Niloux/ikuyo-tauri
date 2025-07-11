@@ -52,27 +52,6 @@ impl<'a> CrawlerTaskRepository<'a> {
             .await?)
     }
 
-    pub async fn list_by_time_range(
-        &self,
-        start: i64,
-        end: i64,
-        limit: i64,
-        offset: i64,
-    ) -> Result<Vec<CrawlerTask>> {
-        let query = if limit > 0 {
-            "SELECT * FROM crawler_task WHERE created_at >= ? AND created_at <= ? ORDER BY created_at DESC LIMIT ? OFFSET ?"
-        } else {
-            "SELECT * FROM crawler_task WHERE created_at >= ? AND created_at <= ? ORDER BY created_at DESC LIMIT -1 OFFSET 0"
-        };
-        Ok(sqlx::query_as::<_, CrawlerTask>(query)
-            .bind(start)
-            .bind(end)
-            .bind(limit)
-            .bind(offset)
-            .fetch_all(self.pool)
-            .await?)
-    }
-
     // 批量将Running状态的任务标记为Failed，并写入错误信息
     pub async fn mark_all_running_as_failed(&self, error_message: &str) -> Result<u64> {
         let now = chrono::Utc::now().timestamp_millis();

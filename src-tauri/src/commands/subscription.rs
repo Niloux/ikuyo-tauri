@@ -6,7 +6,7 @@ use crate::{
 use sqlx::SqlitePool;
 use std::sync::Arc;
 use tauri::{command, State};
-use crate::error::{AppError, DomainError};
+use crate::error::AppError;
 
 #[command(rename_all = "snake_case")]
 pub async fn get_all_subscription_ids(

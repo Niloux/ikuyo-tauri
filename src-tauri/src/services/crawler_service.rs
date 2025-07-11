@@ -63,7 +63,8 @@ impl CrawlerService {
             .await;
 
         let base_url = "https://mikanani.me"; // TODO: Get from config
-        let proxy = Some("http://127.0.0.1:7890"); // TODO: Get from config
+        // let proxy = Some("http://127.0.0.1:7890"); // TODO: Get from config
+        let proxy = None;
         let fetcher = MikanFetcher::new(base_url, proxy);
         let limit = params.limit.map(|v| v as i64);
 

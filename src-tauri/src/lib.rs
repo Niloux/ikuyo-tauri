@@ -98,9 +98,7 @@ pub fn run() -> Result<()> {
         .plugin(tauri_plugin_opener::init())
         .setup(move |app| {
             // 环境识别
-            let is_dev = std::env::var("TAURI_DEV").unwrap_or_default() == "1"
-                || std::env::var("NODE_ENV").unwrap_or_default() == "development"
-                || std::env::var("IKUYO_ENV").unwrap_or_default() == "dev";
+            let is_dev = cfg!(debug_assertions);
             let app_handle = app.handle().clone();
             let path_resolver = app_handle.path();
             // 日志路径
@@ -113,6 +111,7 @@ pub fn run() -> Result<()> {
                 app_data_dir.join("logs/ikuyo.log")
             };
             init_logging(&log_path);
+            tracing::info!("is_dev: {}", is_dev);
 
             // 数据库路径
             let db_path = if is_dev {
@@ -156,6 +155,7 @@ pub fn run() -> Result<()> {
                     .expect("failed to connect to database")
             });
             let pool_arc = Arc::new(pool);
+            tracing::info!("数据库连接成功: {:?}", db_path);
 
             // 启动worker前，批量将所有Running状态的任务标记为Failed
             {

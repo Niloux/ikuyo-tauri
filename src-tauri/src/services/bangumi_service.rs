@@ -12,9 +12,9 @@ pub struct BangumiService {
 
 impl BangumiService {
     pub fn new(pool: Arc<SqlitePool>, config: Config) -> Self {
-        let proxy = reqwest::Proxy::all("http://127.0.0.1:7890").expect("代理配置失败");
+        // let proxy = reqwest::Proxy::all("http://127.0.0.1:7890").expect("代理配置失败");
         let client = reqwest::Client::builder()
-            .proxy(proxy)
+            // .proxy(proxy)
             .user_agent("Ikuyo-App/1.0 (https://github.com/your-repo-link)") // 添加User-Agent
             .build()
             .expect("reqwest client 构建失败");

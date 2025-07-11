@@ -133,7 +133,6 @@ pub fn run() -> Result<()> {
                 worker.run().await;
             });
 
-            let pool_arc_ptr = pool_arc.clone();
             // 4. 将所有状态注入Tauri
             app.manage(pool_arc.clone());
             app.manage(config);
@@ -145,14 +144,16 @@ pub fn run() -> Result<()> {
             window.on_window_event(move |event| {
                 if let tauri::WindowEvent::CloseRequested { .. } = event {
                     exit_flag.store(true, Ordering::SeqCst);
-                    // 退出流程：异步执行checkpoint和关闭连接
-                    let pool = pool_arc_ptr.clone();
-                    tauri::async_runtime::spawn(async move {
+                    // 退出流程：同步阻塞执行，确保所有操作完成
+                    let pool = pool_arc.clone();
+                    tauri::async_runtime::block_on(async {
                         tracing::info!("应用退出：执行PRAGMA wal_checkpoint(FULL)");
-                        let _ = sqlx::query("PRAGMA wal_checkpoint(FULL);").execute(pool.as_ref()).await;
+                        match sqlx::query("PRAGMA wal_checkpoint(FULL);").execute(pool.as_ref()).await {
+                            Ok(res) => tracing::info!("wal_checkpoint执行成功: {:?}", res),
+                            Err(e) => tracing::error!("wal_checkpoint执行失败: {}", e),
+                        }
                         tracing::info!("应用退出：关闭数据库连接池");
                         pool.close().await;
-                        tracing::info!("应用退出：数据库连接已关闭");
                     });
                 }
             });

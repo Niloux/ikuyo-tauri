@@ -1,56 +1,27 @@
-// src-tauri/src/core/mikan_fetcher.rs
-use crate::core::text_parser;
+use crate::core::anime_parser::AnimeParser;
+use crate::core::AnimeData;
 use crate::error::{AppError, DomainError, Result};
-use crate::models::{Anime, Resource, SubtitleGroup};
-use regex::Regex;
-use reqwest::Client;
 use scraper::{ElementRef, Html, Selector};
+use regex::Regex;
 use std::collections::HashSet;
 
-// 动画详情页URL类型
-type AnimeDetailUrl = String;
-
-// 动画、字幕组、资源等结构体（可根据models完善）
-#[derive(Debug)]
-pub struct AnimeData {
-    pub anime: Option<Anime>,
-    pub subtitle_groups: Vec<SubtitleGroup>,
-    pub resources: Vec<Resource>,
+pub struct MikanParser {
+    pub base_url: String,
 }
 
-pub struct MikanFetcher {
-    client: Client,
-    base_url: String,
-}
-
-impl MikanFetcher {
-    pub fn new(base_url: &str, proxy: Option<&str>) -> Self {
-        let client = if let Some(proxy_url) = proxy {
-            reqwest::Client::builder()
-                .proxy(reqwest::Proxy::all(proxy_url).expect("无效的代理地址"))
-                .build()
-                .expect("创建带代理的Client失败")
-        } else {
-            reqwest::Client::new()
-        };
+impl MikanParser {
+    pub fn new(base_url: &str) -> Self {
         Self {
-            client,
             base_url: base_url.to_string(),
         }
     }
+}
 
-    pub async fn fetch_and_parse_list(
-        &self,
-        url: &str,
-        limit: Option<i64>,
-    ) -> Result<Vec<AnimeDetailUrl>> {
-        tracing::info!("MikanFetcher: 抓取列表页开始，URL: {}", url);
-        let resp = self.client.get(url).send().await?.text().await?;
-        let document = Html::parse_document(&resp);
+impl AnimeParser for MikanParser {
+    fn parse_list(&self, html: &str) -> Result<Vec<String>> {
+        let document = Html::parse_document(html);
         let mut urls = Vec::new();
-        let limit = limit.map(|l| l as usize);
-
-        // 极宽泛选择器，抓所有番剧详情页链接
+        // 选择器抓取详情页链接
         let selector = Selector::parse("a[href*='/Home/Bangumi/']")
             .map_err(|e| AppError::Domain(DomainError::Serialization(e.to_string())))?;
         for element in document.select(&selector) {
@@ -61,96 +32,53 @@ impl MikanFetcher {
                     format!("{}{}", self.base_url, href)
                 };
                 urls.push(full_url);
-                if let Some(lim) = limit {
-                    if urls.len() >= lim {
-                        break;
-                    }
-                }
             }
         }
-
         // 去重
-        let mut seen = std::collections::HashSet::new();
+        let mut seen = HashSet::new();
         urls.retain(|url| seen.insert(url.clone()));
-
         // 若抓不到，用正则兜底
         if urls.is_empty() {
-            tracing::warn!("MikanFetcher: 选择器未命中，尝试正则兜底");
-            let re = regex::Regex::new(r#"/Home/Bangumi/(\\d+)"#)
+            let re = Regex::new(r#"/Home/Bangumi/(\\d+)"#)
                 .map_err(|e| AppError::Domain(DomainError::Other(e.to_string())))?;
-            for cap in re.captures_iter(&resp) {
+            for cap in re.captures_iter(html) {
                 let mikan_id = &cap[1];
                 let full_url = format!("{}/Home/Bangumi/{}", self.base_url, mikan_id);
                 if !urls.contains(&full_url) {
                     urls.push(full_url);
-                    if let Some(lim) = limit {
-                        if urls.len() >= lim {
-                            break;
-                        }
-                    }
                 }
             }
         }
-
-        // 日志输出所有抓到的URL
-        for (i, url) in urls.iter().enumerate() {
-            tracing::debug!("MikanFetcher: [{}] 抓到URL: {}", i + 1, url);
-        }
-        tracing::info!("MikanFetcher: 抓取列表页完成，共抓取{}个URL", urls.len());
         Ok(urls)
     }
 
-    pub async fn fetch_and_parse_detail(&self, url: &str) -> Result<AnimeData> {
-        tracing::info!("MikanFetcher: 抓取详情页开始，URL: {}", url);
-        let resp = self
-            .client
-            .get(url)
-            .send()
-            .await?
-            .text()
-            .await?;
-        let document = Html::parse_document(&resp);
-        let mikan_id = url
-            .split('/')
-            .last()
-            .and_then(|s| s.parse::<i64>().ok())
-            .unwrap_or(0);
-
+    fn parse_detail(&self, html: &str, mikan_id: i64) -> Result<AnimeData> {
+        let document = Html::parse_document(html);
         let anime = self.parse_anime_info(&document, mikan_id);
         let (subtitle_groups, resources) = self.parse_groups_and_resources(&document, mikan_id);
-
-        tracing::info!(
-            "MikanFetcher: 抓取详情页完成, Anime: {}, Groups: {}, Resources: {}",
-            anime.title,
-            subtitle_groups.len(),
-            resources.len()
-        );
-
         Ok(AnimeData {
             anime: Some(anime),
             subtitle_groups,
             resources,
         })
     }
+}
 
-    fn parse_anime_info(&self, document: &Html, mikan_id: i64) -> Anime {
+impl MikanParser {
+    fn parse_anime_info(&self, document: &Html, mikan_id: i64) -> crate::models::Anime {
         let title = self
             .extract_text(document, &["p.bangumi-title", "title"])
             .unwrap_or_else(|| "未知标题".to_string())
             .replace("Mikan Project - ", "");
-
         let bangumi_url = self.extract_href(document, &["a[href*='bgm.tv/subject/']"]);
         let bangumi_id = bangumi_url
             .as_ref()
             .and_then(|u| u.split('/').last().and_then(|id| id.parse::<i64>().ok()))
             .unwrap_or(0);
-
         let (broadcast_day, broadcast_start) = self.extract_broadcast_info(document);
-
         let official_website = self.extract_official_website(document);
         let description = self.extract_text(document, &["div.bangumi-desc", ".header2-desc"]);
-
-        Anime {
+        crate::models::Anime {
             mikan_id,
             bangumi_id,
             title,
@@ -199,19 +127,16 @@ impl MikanFetcher {
                 .replace("\n", "")
                 .trim()
                 .to_string();
-            if text.starts_with("官方网站：") {
-                // 查找a标签
-                if let Some(a_element) = element.select(&Selector::parse("a").unwrap()).next() {
-                    if let Some(href) = a_element.value().attr("href") {
-                        return Some(href.to_string());
-                    }
+            if text.contains("官方网站：") {
+                let parts: Vec<&str> = text.split("官方网站：").collect();
+                if parts.len() > 1 {
+                    return Some(parts[1].trim().to_string());
                 }
             }
         }
         None
     }
 
-    // Helper to extract text from the first matching selector
     fn extract_text(&self, document: &Html, selectors: &[&str]) -> Option<String> {
         for selector_str in selectors {
             let selector = Selector::parse(selector_str).ok()?;
@@ -225,7 +150,6 @@ impl MikanFetcher {
         None
     }
 
-    // Helper to extract href from the first matching selector
     fn extract_href(&self, document: &Html, selectors: &[&str]) -> Option<String> {
         for selector_str in selectors {
             let selector = Selector::parse(selector_str).ok()?;
@@ -242,11 +166,10 @@ impl MikanFetcher {
         &self,
         document: &Html,
         mikan_id: i64,
-    ) -> (Vec<SubtitleGroup>, Vec<Resource>) {
+    ) -> (Vec<crate::models::SubtitleGroup>, Vec<crate::models::Resource>) {
         let mut subtitle_groups = Vec::new();
         let mut resources = Vec::new();
         let mut seen_groups = HashSet::new();
-
         let group_selector = Selector::parse("div.subgroup-text").unwrap();
         for group_element in document.select(&group_selector) {
             let group_id = group_element
@@ -261,20 +184,17 @@ impl MikanFetcher {
                 .map_or("".to_string(), |a| {
                     a.text().collect::<String>().trim().to_string()
                 });
-
             if group_id == 0 || group_name.is_empty() {
                 continue;
             }
-
             if seen_groups.insert(group_id) {
-                subtitle_groups.push(SubtitleGroup {
+                subtitle_groups.push(crate::models::SubtitleGroup {
                     id: Some(group_id),
                     name: group_name,
                     last_update: Some(chrono::Utc::now().timestamp_millis()),
                     created_at: Some(chrono::Utc::now().timestamp_millis()),
                 });
             }
-
             // Find the following sibling table
             let mut next_node = group_element.next_sibling();
             while let Some(node) = next_node {
@@ -288,7 +208,7 @@ impl MikanFetcher {
                                 resources.push(resource);
                             }
                         }
-                        break; // Found the table for this group, move to the next group
+                        break;
                     }
                 }
                 next_node = node.next_sibling();
@@ -302,17 +222,15 @@ impl MikanFetcher {
         row: &ElementRef,
         mikan_id: i64,
         group_id: i64,
-    ) -> Option<Resource> {
+    ) -> Option<crate::models::Resource> {
         let cols: Vec<_> = row.select(&Selector::parse("td").unwrap()).collect();
         if cols.len() < 4 {
             return None;
         }
-
         let title_cell = &cols[0];
         let size_cell = &cols[1];
         let date_cell = &cols[2];
         let torrent_cell = &cols[3];
-
         let resource_title = title_cell
             .select(&Selector::parse("a.magnet-link-wrap").unwrap())
             .next()?
@@ -320,35 +238,29 @@ impl MikanFetcher {
             .collect::<String>()
             .trim()
             .to_string();
-
         let magnet_url = title_cell
             .select(&Selector::parse("a.js-magnet").unwrap())
             .next()?
             .value()
             .attr("data-clipboard-text")?
             .to_string();
-
         let torrent_url = torrent_cell
             .select(&Selector::parse("a").unwrap())
             .next()
             .and_then(|a| a.value().attr("href"))
             .map(|s| format!("{}{}", self.base_url, s));
-
         let file_size = Some(size_cell.text().collect::<String>().trim().to_string());
         let release_date_str = date_cell.text().collect::<String>().trim().to_string();
-        let release_date = text_parser::parse_datetime_to_timestamp(&release_date_str);
-
+        let release_date = crate::core::text_parser::parse_datetime_to_timestamp(&release_date_str);
         let magnet_hash = {
             let re = Regex::new(r"xt=urn:btih:([a-fA-F0-9]{40})").unwrap();
             re.captures(&magnet_url)
                 .and_then(|caps| caps.get(1).map(|m| m.as_str().to_lowercase()))
         };
-
-        let episode_number = text_parser::parse_episode_number(&resource_title);
-        let resolution = text_parser::parse_resolution(&resource_title);
-        let subtitle_type = text_parser::parse_and_normalize_subtitle_type(&resource_title);
-
-        Some(Resource {
+        let episode_number = crate::core::text_parser::parse_episode_number(&resource_title);
+        let resolution = crate::core::text_parser::parse_resolution(&resource_title);
+        let subtitle_type = crate::core::text_parser::parse_and_normalize_subtitle_type(&resource_title);
+        Some(crate::models::Resource {
             id: None,
             mikan_id,
             subtitle_group_id: group_id,
@@ -366,4 +278,4 @@ impl MikanFetcher {
             updated_at: Some(chrono::Utc::now().timestamp_millis()),
         })
     }
-}
+} 

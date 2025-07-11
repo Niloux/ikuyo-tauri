@@ -1,4 +1,6 @@
-use crate::core::mikan_fetcher::MikanFetcher;
+use crate::core::http_fetcher::HttpFetcher;
+use crate::core::mikan_parser::MikanParser;
+use crate::core::anime_parser::AnimeParser;
 use crate::models::{Anime, CrawlerTaskStatus, Resource, SubtitleGroup};
 use crate::repositories::{
     anime::AnimeRepository, base::Repository, crawler_task::CrawlerTaskRepository,
@@ -52,7 +54,7 @@ impl CrawlerService {
         let task = match repo.get_by_id(self.task_id).await {
             Ok(Some(task)) => task,
             _ => {
-                tracing::error!("Task {} not found, aborting run.", self.task_id);
+                tracing::error!("任务{}不存在，停止运行。", self.task_id);
                 return;
             }
         };
@@ -68,9 +70,8 @@ impl CrawlerService {
             .await;
 
         let base_url = "https://mikanani.me"; // TODO: Get from config
-                                              // let proxy = Some("http://127.0.0.1:7890"); // TODO: Get from config
-        let proxy = None;
-        let fetcher = MikanFetcher::new(base_url, proxy);
+        let fetcher = HttpFetcher::new();
+        let parser = MikanParser::new(base_url);
         let limit = params.limit.map(|v| v as i64);
 
         // 统一收集所有目标urls
@@ -95,17 +96,23 @@ impl CrawlerService {
                         year,
                         season.as_str()
                     );
-                    match fetcher.fetch_and_parse_list(&list_url, limit).await {
-                        Ok(urls) => {
-                            total_items += urls.len();
-                            all_detail_urls.extend(urls);
-                        }
+                    match fetcher.fetch(&list_url).await {
+                        Ok(html) => match parser.parse_list(&html) {
+                            Ok(mut urls) => {
+                                if let Some(lim) = limit {
+                                    urls.truncate(lim as usize);
+                                }
+                                total_items += urls.len();
+                                all_detail_urls.extend(urls);
+                            }
+                            Err(e) => {
+                                error_message = Some(format!("解析列表页失败: {}", e));
+                                failed = true;
+                                break;
+                            }
+                        },
                         Err(e) => {
-                            error_message = Some(format!(
-                                "Failed to fetch list page for {}: {}",
-                                season.as_str(),
-                                e
-                            ));
+                            error_message = Some(format!("fetch列表页失败: {}", e));
                             failed = true;
                             break;
                         }
@@ -119,26 +126,44 @@ impl CrawlerService {
                     "{}/Home/BangumiCoverFlowByDayOfWeek?year={}&seasonStr={}",
                     base_url, year, season
                 );
-                match fetcher.fetch_and_parse_list(&list_url, limit).await {
-                    Ok(urls) => {
-                        total_items = urls.len();
-                        all_detail_urls = urls;
-                    }
+                match fetcher.fetch(&list_url).await {
+                    Ok(html) => match parser.parse_list(&html) {
+                        Ok(mut urls) => {
+                            if let Some(lim) = limit {
+                                urls.truncate(lim as usize);
+                            }
+                            total_items = urls.len();
+                            all_detail_urls = urls;
+                        }
+                        Err(e) => {
+                            error_message = Some(format!("解析列表页失败: {}", e));
+                            failed = true;
+                        }
+                    },
                     Err(e) => {
-                        error_message = Some(format!("Failed to fetch list page: {}", e));
+                        error_message = Some(format!("fetch列表页失败: {}", e));
                         failed = true;
                     }
                 }
             }
             CrawlerMode::Homepage => {
                 let list_url = format!("{}/Home", base_url);
-                match fetcher.fetch_and_parse_list(&list_url, limit).await {
-                    Ok(urls) => {
-                        total_items = urls.len();
-                        all_detail_urls = urls;
-                    }
+                match fetcher.fetch(&list_url).await {
+                    Ok(html) => match parser.parse_list(&html) {
+                        Ok(mut urls) => {
+                            if let Some(lim) = limit {
+                                urls.truncate(lim as usize);
+                            }
+                            total_items = urls.len();
+                            all_detail_urls = urls;
+                        }
+                        Err(e) => {
+                            error_message = Some(format!("解析首页列表页失败: {}", e));
+                            failed = true;
+                        }
+                    },
                     Err(e) => {
-                        error_message = Some(format!("Failed to fetch homepage list: {}", e));
+                        error_message = Some(format!("fetch首页列表页失败: {}", e));
                         failed = true;
                     }
                 }
@@ -173,11 +198,21 @@ impl CrawlerService {
         let mut stream = stream::iter(all_detail_urls.into_iter().enumerate())
             .map(|(i, url)| {
                 let fetcher = &fetcher;
+                let parser = &parser;
+                let mikan_id = url.split('/').last().and_then(|s| s.parse::<i64>().ok()).unwrap_or(0);
                 async move {
                     use tokio::time::{timeout, Duration};
                     match timeout(
                         Duration::from_secs(30),
-                        fetcher.fetch_and_parse_detail(&url),
+                        async {
+                            match fetcher.fetch(&url).await {
+                                Ok(html) => match parser.parse_detail(&html, mikan_id) {
+                                    Ok(anime_data) => Ok(anime_data),
+                                    Err(e) => Err(e),
+                                },
+                                Err(e) => Err(e.into()),
+                            }
+                        },
                     )
                     .await
                     {
@@ -265,7 +300,7 @@ impl CrawlerService {
                     .append(&mut subtitle_group_buffer);
                 self.resource_buffer.append(&mut resource_buffer);
                 if let Err(e) = self.flush_buffers().await {
-                    let error_msg = format!("Failed to save data to database: {}", e);
+                    let error_msg = format!("保存数据到数据库失败: {}", e);
                     self.update_task_status(
                         CrawlerTaskStatus::Failed,
                         Some(error_msg),

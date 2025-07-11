@@ -82,10 +82,7 @@ impl Worker {
                             // 这里run内部已处理状态与错误，无需run_result占位
                             // 可根据实际需求补充成功/失败判断
                             success = true; // 假设run内部已处理所有异常
-                            task.status = CrawlerTaskStatus::Completed;
-                            task.completed_at = Some(chrono::Utc::now().timestamp_millis());
-                            let repo = CrawlerTaskRepository::new(&pool);
-                            let _ = repo.update(&task).await;
+                            // 所有进度和完成状态由CrawlerService::run负责
                             info!("Worker: 任务完成: {:?}", task.id);
                         }
                         drop(permit);

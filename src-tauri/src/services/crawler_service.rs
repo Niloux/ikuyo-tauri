@@ -58,7 +58,8 @@ impl CrawlerService {
             .and_then(|p| serde_json::from_str(p).ok())
             .unwrap_or_default();
 
-        self.update_task_status(CrawlerTaskStatus::Running, 0.0, None)
+        let start_time = chrono::Utc::now().timestamp_millis();
+        self.update_task_status(CrawlerTaskStatus::Running, None, Some(0.0), None)
             .await;
 
         let base_url = "https://mikanani.me"; // TODO: Get from config
@@ -139,6 +140,7 @@ impl CrawlerService {
         }
 
         self.total_items = total_items as i64;
+        tracing::info!("总动画数: {}", self.total_items);
         self.processed_items = 0;
         self.update_task_status(
             if failed {
@@ -146,8 +148,9 @@ impl CrawlerService {
             } else {
                 CrawlerTaskStatus::Running
             },
-            0.0,
             error_message.clone(),
+            Some(0.0),
+            None,
         )
         .await;
         if failed {
@@ -183,10 +186,13 @@ impl CrawlerService {
 
         while let Some(result) = stream.next().await {
             if self.is_task_cancelled().await {
+                let elapsed = chrono::Utc::now().timestamp_millis() - start_time;
+                let speed = if elapsed > 0 { self.processed_items as f64 / (elapsed as f64 / 1000.0) } else { 0.0 };
                 self.update_task_status(
                     CrawlerTaskStatus::Cancelled,
-                    (processed as f64) / (self.total_items as f64),
                     Some("Task was cancelled".to_string()),
+                    Some(speed),
+                    None,
                 )
                 .await;
                 return;
@@ -213,9 +219,14 @@ impl CrawlerService {
                     }
                 }
                 // 每完成一部动画，主线程自增finished_count并更新进度
-                let finished = self.finished_count.fetch_add(1, Ordering::SeqCst) + 1;
-                let percent = finished as f64 / self.total_items as f64;
-                self.update_task_status(CrawlerTaskStatus::Running, percent, None)
+                let elapsed = chrono::Utc::now().timestamp_millis() - start_time;
+                let speed = if elapsed > 0 { self.processed_items as f64 / (elapsed as f64 / 1000.0) } else { 0.0 };
+                let remaining = if speed > 0.0 {
+                    (self.total_items - self.processed_items) as f64 / speed
+                } else {
+                    None.unwrap_or(0.0)
+                };
+                self.update_task_status(CrawlerTaskStatus::Running, None, Some(speed), Some(remaining))
                     .await;
             }
             processed += 1;
@@ -231,8 +242,9 @@ impl CrawlerService {
                     let error_msg = format!("Failed to save data to database: {}", e);
                     self.update_task_status(
                         CrawlerTaskStatus::Failed,
-                        processed as f64 / self.total_items as f64,
                         Some(error_msg),
+                        Some(0.0),
+                        None,
                     )
                     .await;
                     return;
@@ -240,7 +252,9 @@ impl CrawlerService {
             }
         }
 
-        self.update_task_status(CrawlerTaskStatus::Completed, 1.0, None)
+        let elapsed = chrono::Utc::now().timestamp_millis() - start_time;
+        let speed = if elapsed > 0 { self.processed_items as f64 / (elapsed as f64 / 1000.0) } else { 0.0 };
+        self.update_task_status(CrawlerTaskStatus::Completed, None, Some(speed), Some(0.0))
             .await;
     }
 
@@ -282,16 +296,25 @@ impl CrawlerService {
     async fn update_task_status(
         &self,
         status: CrawlerTaskStatus,
-        percentage: f64,
         error_message: Option<String>,
+        processing_speed: Option<f64>,
+        estimated_remaining: Option<f64>,
     ) {
         let repo = CrawlerTaskRepository::new(&self.pool);
         if let Ok(Some(mut task)) = repo.get_by_id(self.task_id).await {
             task.status = status;
-            task.percentage = Some(percentage * 100.0);
+            // 统一由此处维护进度
+            let percentage = if self.total_items > 0 {
+                (self.processed_items as f64) / (self.total_items as f64) * 100.0
+            } else {
+                0.0
+            };
+            task.percentage = Some(percentage);
             task.processed_items = Some(self.processed_items);
             task.total_items = Some(self.total_items);
             task.error_message = error_message;
+            task.processing_speed = processing_speed;
+            task.estimated_remaining = estimated_remaining;
 
             if task.status == CrawlerTaskStatus::Completed
                 || task.status == CrawlerTaskStatus::Failed

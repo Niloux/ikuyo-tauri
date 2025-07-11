@@ -36,7 +36,6 @@
             <span class="task-meta-label">创建时间</span>
             <span class="task-meta-value">{{ formatDateTime(task.created_at) }}</span>
           </div>
-          <!-- 错误信息展示，聚合在meta信息下方 -->
           <div v-if="task.error_message" class="task-meta-item task-error-message">
             <span class="task-error-label">错误信息：</span>
             <span class="task-error-value">{{ task.error_message }}</span>

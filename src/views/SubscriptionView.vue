@@ -1,55 +1,48 @@
 <template>
   <div class="subscription-view">
-    <!-- 工具栏始终渲染 -->
-    <div class="toolbar toolbar-unified">
-      <div class="search-box">
-        <input
-          v-model="searchQuery"
-          type="text"
-          placeholder="搜索订阅番剧"
-          class="search-input unified-input"
-        />
-        <span v-if="loading && searchQuery" class="search-loading-spinner" style="margin-left:8px;"></span>
+    <!-- subscription-section 始终渲染，内部包含工具栏和内容区 -->
+    <div class="subscription-section">
+      <!-- 工具栏始终渲染 -->
+      <div class="toolbar toolbar-unified">
+        <div class="search-box">
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="搜索订阅番剧"
+            class="search-input unified-input"
+          />
+          <span v-if="loading && searchQuery" class="search-loading-spinner" style="margin-left:8px;"></span>
+        </div>
+        <div class="sort-controls">
+          <select
+            v-model="sortOption"
+            @change="handleSortOptionChange"
+            class="sort-select unified-input"
+          >
+            <option value="subscribed_at-desc">订阅时间（降序）</option>
+            <option value="subscribed_at-asc">订阅时间（升序）</option>
+            <option value="rating-desc">评分（降序）</option>
+            <option value="rating-asc">评分（升序）</option>
+            <option value="air_date-desc">首播日期（降序）</option>
+            <option value="air_date-asc">首播日期（升序）</option>
+            <option value="name-asc">名称（A→Z）</option>
+            <option value="name-desc">名称（Z→A）</option>
+          </select>
+        </div>
       </div>
-      <div class="sort-controls">
-        <select
-          v-model="sortOption"
-          @change="handleSortOptionChange"
-          class="sort-select unified-input"
-        >
-          <option value="subscribed_at-desc">订阅时间（降序）</option>
-          <option value="subscribed_at-asc">订阅时间（升序）</option>
-          <option value="rating-desc">评分（降序）</option>
-          <option value="rating-asc">评分（升序）</option>
-          <option value="air_date-desc">首播日期（降序）</option>
-          <option value="air_date-asc">首播日期（升序）</option>
-          <option value="name-asc">名称（A→Z）</option>
-          <option value="name-desc">名称（Z→A）</option>
-        </select>
+
+      <!-- 搜索无结果提示，仅提示，内容保持不变 -->
+      <div v-if="showSearchNoResult" class="search-tip" style="color: var(--color-danger, #e74c3c); margin-bottom: 1rem; text-align: left;">
+        未搜索到相关订阅
       </div>
-    </div>
 
-    <!-- 搜索无结果提示，仅提示，内容保持不变 -->
-    <div v-if="showSearchNoResult" class="search-tip" style="color: var(--color-danger, #e74c3c); margin-bottom: 1rem; text-align: left;">
-      未搜索到相关订阅
-    </div>
-
-    <!-- 空状态 -->
-    <div v-if="isInitialized && !loading && !shouldShowSkeleton && subscriptions.length === 0 && !searchQuery && lastNonEmptySubscriptions.length === 0" class="empty-state">
-      <h3>暂无订阅</h3>
-      <p>去<router-link to="/">首页</router-link>发现你喜欢的番剧吧！</p>
-    </div>
-
-    <!-- 骨架屏加载状态 -->
-    <div v-if="shouldShowSkeleton" class="subscription-section">
-      <div class="anime-grid">
+      <!-- 骨架屏加载状态 -->
+      <div v-if="shouldShowSkeleton" class="anime-grid">
         <Skeleton v-for="n in 12" :key="`skeleton-${n}`" type="card" />
       </div>
-    </div>
 
-    <!-- 动画卡片网格 -->
-    <div v-else-if="!loading && (subscriptions.length > 0 || showSearchNoResult)" class="subscription-section">
-      <div class="anime-grid">
+      <!-- 动画卡片网格，仅在有订阅数据或搜索无结果时渲染 -->
+      <div v-else-if="!loading && (subscriptions.length > 0 || showSearchNoResult)" class="anime-grid">
         <AnimeCard
           v-for="subscription in showSearchNoResult ? lastNonEmptySubscriptions : subscriptions"
           :key="subscription.bangumi_id"
@@ -58,7 +51,9 @@
           @click="goToDetail(subscription.anime)"
         />
       </div>
-      <div v-if="(showSearchNoResult ? lastNonEmptyPagination.pages : pagination.pages) > 1" class="pagination">
+
+      <!-- 分页控件，仅在有数据时显示 -->
+      <div v-if="!loading && (subscriptions.length > 0 || showSearchNoResult) && (showSearchNoResult ? lastNonEmptyPagination.pages : pagination.pages) > 1" class="pagination">
         <button
           @click="goToPage((showSearchNoResult ? lastNonEmptyPagination.page : pagination.page) - 1)"
           :disabled="(showSearchNoResult ? lastNonEmptyPagination.page : pagination.page) <= 1"
@@ -79,12 +74,18 @@
           下一页
         </button>
       </div>
-    </div>
 
-    <!-- 传统加载状态保持作为兜底 -->
-    <div v-else-if="loading" class="loading-state">
-      <div class="loading-spinner"></div>
-      <p>加载中...</p>
+      <!-- 中央提示区块：无订阅且无搜索条件时显示 -->
+      <div v-if="!loading && subscriptions.length === 0 && !searchQuery" class="empty-center-block">
+        <h3>暂无订阅</h3>
+        <p>去<router-link to="/">首页</router-link>发现你喜欢的番剧吧！</p>
+      </div>
+
+      <!-- 传统加载状态兜底（极少出现） -->
+      <div v-else-if="loading" class="loading-state">
+        <div class="loading-spinner"></div>
+        <p>加载中...</p>
+      </div>
     </div>
   </div>
 </template>
@@ -206,36 +207,6 @@ onActivated(() => {
 .page-header p {
   color: var(--color-text-muted);
   margin: 0;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 80px 20px;
-  color: var(--color-text-muted);
-}
-
-.empty-icon {
-  font-size: 4rem;
-  margin-bottom: 20px;
-}
-
-.empty-state h3 {
-  font-size: 1.5rem;
-  margin-bottom: 10px;
-  color: var(--color-text);
-}
-
-.empty-state p {
-  margin-bottom: 5px;
-}
-
-.empty-state a {
-  color: var(--color-primary);
-  text-decoration: none;
-}
-
-.empty-state a:hover {
-  text-decoration: underline;
 }
 
 .subscription-section {
@@ -532,5 +503,30 @@ onActivated(() => {
   border-radius: 50%;
   animation: spin 1s linear infinite;
   vertical-align: middle;
+}
+.empty-center-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 320px;
+  color: var(--color-text-muted);
+  text-align: center;
+  padding: 60px 20px 40px 20px;
+}
+.empty-center-block h3 {
+  font-size: 1.5rem;
+  margin-bottom: 10px;
+  color: var(--color-text);
+}
+.empty-center-block p {
+  margin-bottom: 5px;
+}
+.empty-center-block a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+.empty-center-block a:hover {
+  text-decoration: underline;
 }
 </style>

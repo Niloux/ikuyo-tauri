@@ -51,7 +51,7 @@ pub async fn create_crawler_task(
         error_message: None,
         percentage: Some(0.0),
         processed_items: Some(0),
-        total_items: Some(100), // 默认值，实际执行时会更新
+        total_items: Some(0),
         processing_speed: None,
         estimated_remaining: None,
     };

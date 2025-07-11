@@ -160,7 +160,7 @@ async fn main_refresh_loop(pool: Arc<SqlitePool>, config: Config) {
                     error_message: None,
                     percentage: Some(0.0),
                     processed_items: Some(0),
-                    total_items: Some(100),
+                    total_items: Some(0),
                     processing_speed: None,
                     estimated_remaining: None,
                 };

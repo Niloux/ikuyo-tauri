@@ -40,6 +40,10 @@
             <span class="task-error-label">错误信息：</span>
             <span class="task-error-value">{{ task.error_message }}</span>
           </div>
+          <div v-if="task.status !== 'failed'" class="task-meta-item task-progress-meta">
+            <span class="task-meta-label">进度</span>
+            <span class="task-meta-value">{{ task.processed_items || 0 }} / {{ task.total_items || 0 }}</span>
+          </div>
         </div>
 
         <div class="progress-section" v-if="task.status === 'running'">
@@ -506,6 +510,12 @@ const getCancelButtonText = (status: string): string => {
   margin-right: 0.5em;
 }
 .task-error-value {
+  font-weight: 600;
+}
+.task-progress-meta .task-meta-label {
+  color: var(--color-primary);
+}
+.task-progress-meta .task-meta-value {
   font-weight: 600;
 }
 </style>

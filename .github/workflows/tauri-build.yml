@@ -16,22 +16,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Enable Corepack (for pnpm)
-        run: corepack enable
-
-      - name: Prepare pnpm (version 10.12.4)
-        run: corepack prepare pnpm@10.12.4 --activate
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
       - name: Install Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
+      - name: Install pnpm
+        run: npm install -g pnpm@10.12.4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Install Dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Show pnpm version
         run: pnpm --version
@@ -40,6 +37,7 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         with:
           args: --release
+          installCommand: pnpm install --frozen-lockfile
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -52,4 +50,4 @@ jobs:
         with:
           files: src-tauri/target/release/bundle/**/*
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

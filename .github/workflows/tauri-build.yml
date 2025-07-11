@@ -9,13 +9,8 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        platform: [macos-latest, ubuntu-latest, windows-latest]
-
-    runs-on: ${{ matrix.platform }}
-
+  build-windows:
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -27,7 +22,6 @@ jobs:
       - name: Install pnpm
         run: npm install -g pnpm@10.12.4
 
-      # 👉 缓存 pnpm store、Rust 依赖、Rust target
       - name: Setup Cache
         uses: actions/cache@v4
         with:
@@ -36,9 +30,9 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             src-tauri/target
-          key: ${{ runner.os }}-build-${{ hashFiles('**/pnpm-lock.yaml', '**/Cargo.lock') }}
+          key: windows-build-${{ hashFiles('**/pnpm-lock.yaml', '**/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-build-
+            windows-build-
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -55,7 +49,59 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: tauri-build-${{ matrix.platform }}
+          name: tauri-build-windows
+          path: src-tauri/target/release/bundle
+
+      - name: Create GitHub Release and Upload Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            src-tauri/target/release/bundle/**/*.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-macos:
+    runs-on: macos-latest
+    needs: build-windows
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        run: npm install -g pnpm@10.12.4
+
+      - name: Setup Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pnpm-store
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: macos-build-${{ hashFiles('**/pnpm-lock.yaml', '**/Cargo.lock') }}
+          restore-keys: |
+            macos-build-
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Show pnpm version
+        run: pnpm --version
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tauri-build-macos
           path: src-tauri/target/release/bundle
 
       - name: Create GitHub Release and Upload Assets
@@ -64,7 +110,5 @@ jobs:
           files: |
             src-tauri/target/release/bundle/**/*.dmg
             src-tauri/target/release/bundle/**/*.app.tar.gz
-            src-tauri/target/release/bundle/**/*.exe
-            src-tauri/target/release/bundle/**/*.deb
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

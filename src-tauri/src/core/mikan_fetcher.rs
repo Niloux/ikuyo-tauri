@@ -1,7 +1,7 @@
 // src-tauri/src/core/mikan_fetcher.rs
 use crate::core::text_parser;
 use crate::models::{Anime, Resource, SubtitleGroup};
-use anyhow::Result;
+use crate::error::{Result, AppError, ApiError, DomainError};
 use regex::Regex;
 use reqwest::Client;
 use scraper::{ElementRef, Html, Selector};
@@ -45,13 +45,13 @@ impl MikanFetcher {
         limit: Option<i64>,
     ) -> Result<Vec<AnimeDetailUrl>> {
         tracing::info!("MikanFetcher: 抓取列表页开始，URL: {}", url);
-        let resp = self.client.get(url).send().await?.text().await?;
+        let resp = self.client.get(url).send().await.map_err(|e| AppError::Api(ApiError::Request(e.to_string())))?.text().await.map_err(|e| AppError::Api(ApiError::Request(e.to_string())))?;
         let document = Html::parse_document(&resp);
         let mut urls = Vec::new();
         let limit = limit.map(|l| l as usize);
 
         // 极宽泛选择器，抓所有番剧详情页链接
-        let selector = Selector::parse("a[href*='/Home/Bangumi/']").unwrap();
+        let selector = Selector::parse("a[href*='/Home/Bangumi/']").map_err(|e| AppError::Domain(DomainError::Other(e.to_string())))?;
         for element in document.select(&selector) {
             if let Some(href) = element.value().attr("href") {
                 let full_url = if href.starts_with("http") {
@@ -75,7 +75,7 @@ impl MikanFetcher {
         // 若抓不到，用正则兜底
         if urls.is_empty() {
             tracing::warn!("MikanFetcher: 选择器未命中，尝试正则兜底");
-            let re = regex::Regex::new(r#"/Home/Bangumi/(\\d+)"#).unwrap();
+            let re = regex::Regex::new(r#"/Home/Bangumi/(\\d+)"#).map_err(|e| AppError::Domain(DomainError::Other(e.to_string())))?;
             for cap in re.captures_iter(&resp) {
                 let mikan_id = &cap[1];
                 let full_url = format!("{}/Home/Bangumi/{}", self.base_url, mikan_id);
@@ -100,7 +100,7 @@ impl MikanFetcher {
 
     pub async fn fetch_and_parse_detail(&self, url: &str) -> Result<AnimeData> {
         tracing::info!("MikanFetcher: 抓取详情页开始，URL: {}", url);
-        let resp = self.client.get(url).send().await?.text().await?;
+        let resp = self.client.get(url).send().await.map_err(|e| AppError::Api(ApiError::Request(e.to_string())))?.text().await.map_err(|e| AppError::Api(ApiError::Request(e.to_string())))?;
         let document = Html::parse_document(&resp);
         let mikan_id = url
             .split('/')

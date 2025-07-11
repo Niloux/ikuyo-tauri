@@ -31,7 +31,10 @@ impl<'a> SubscriptionRepository<'a> {
         .bind(subscription.rank)
         .bind(&subscription.images)
         .execute(self.pool)
-        .await?;
+        .await
+        .map_err(|e| {
+            crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string()))
+        })?;
         Ok(())
     }
 
@@ -46,7 +49,10 @@ impl<'a> SubscriptionRepository<'a> {
         .bind(user_id)
         .bind(bangumi_id)
         .fetch_optional(self.pool)
-        .await?)
+        .await
+        .map_err(|e| {
+            crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string()))
+        })?)
     }
 
     pub async fn list_with_sort_search_page(
@@ -72,7 +78,9 @@ impl<'a> SubscriptionRepository<'a> {
         if let Some(ref pattern) = search_pattern {
             count_query_builder = count_query_builder.bind(pattern).bind(pattern);
         }
-        let total: i64 = count_query_builder.fetch_one(self.pool).await?;
+        let total: i64 = count_query_builder.fetch_one(self.pool).await.map_err(|e| {
+            crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string()))
+        })?;
 
         let sort_field = match sort {
             "rating" => "anime_rating",
@@ -109,7 +117,9 @@ impl<'a> SubscriptionRepository<'a> {
         }
         data_query_builder = data_query_builder.bind((page - 1) * limit);
 
-        let subscriptions = data_query_builder.fetch_all(self.pool).await?;
+        let subscriptions = data_query_builder.fetch_all(self.pool).await.map_err(|e| {
+            crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string()))
+        })?;
 
         Ok((subscriptions, total))
     }
@@ -120,7 +130,10 @@ impl<'a> SubscriptionRepository<'a> {
                 .bind(user_id)
                 .bind(bangumi_id)
                 .execute(self.pool)
-                .await?;
+                .await
+                .map_err(|e| {
+                    crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string()))
+                })?;
         Ok(result.rows_affected())
     }
 
@@ -129,7 +142,10 @@ impl<'a> SubscriptionRepository<'a> {
             sqlx::query_scalar("SELECT bangumi_id FROM user_subscriptions WHERE user_id = ?")
                 .bind(user_id)
                 .fetch_all(self.pool)
-                .await?,
+                .await
+                .map_err(|e| {
+                    crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string()))
+                })?,
         )
     }
 }

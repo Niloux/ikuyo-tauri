@@ -1,4 +1,5 @@
 use crate::config::Config;
+use crate::error::{ApiError, AppError};
 use crate::types::bangumi::{BangumiEpisodesData, BangumiSubject, BangumiWeekday};
 use sqlx::SqlitePool;
 use std::sync::Arc;
@@ -26,7 +27,7 @@ impl BangumiService {
         }
     }
 
-    pub async fn get_calendar(&self) -> Result<Vec<BangumiWeekday>, String> {
+    pub async fn get_calendar(&self) -> Result<Vec<BangumiWeekday>, AppError> {
         use chrono::Utc;
         use sqlx::Row;
         let now = Utc::now().timestamp();
@@ -40,15 +41,15 @@ impl BangumiService {
                 .bind(cache_id)
                 .fetch_optional(&*self.pool)
                 .await
-                .map_err(|e| format!("数据库查询失败: {}", e))?;
+                .map_err(|e| AppError::Database(e.into()))?;
 
         if let Some(row) = &row {
             let content: String = row.get(0);
             let updated_at: i64 = row.get(1);
             let ttl: i64 = row.get(2);
             if now - updated_at < ttl {
-                let data: Vec<BangumiWeekday> = serde_json::from_str(&content)
-                    .map_err(|e| format!("缓存反序列化失败: {}", e))?;
+                let data: Vec<BangumiWeekday> =
+                    serde_json::from_str(&content).map_err(|e| AppError::Domain(e.into()))?;
                 return Ok(data);
             }
         }
@@ -59,9 +60,10 @@ impl BangumiService {
         match response {
             Ok(resp) => {
                 if resp.status().is_success() {
-                    let data: Vec<BangumiWeekday> = resp.json().await.map_err(|e| e.to_string())?;
+                    let data: Vec<BangumiWeekday> =
+                        resp.json().await.map_err(|e| AppError::Api(e.into()))?;
                     let content =
-                        serde_json::to_string(&data).map_err(|e| format!("序列化失败: {}", e))?;
+                        serde_json::to_string(&data).map_err(|e| AppError::Domain(e.into()))?;
                     let updated_at = Utc::now().timestamp();
                     let _ = sqlx::query(
                         "INSERT INTO bangumi_calendar_cache (id, content, updated_at, ttl) VALUES (?, ?, ?, ?) \
@@ -79,26 +81,29 @@ impl BangumiService {
                     if let Some(row) = row {
                         let content: String = row.get(0);
                         let data: Vec<BangumiWeekday> = serde_json::from_str(&content)
-                            .map_err(|e| format!("缓存反序列化失败: {}", e))?;
+                            .map_err(|e| AppError::Domain(e.into()))?;
                         return Ok(data);
                     }
-                    Err(format!("请求失败: {}", resp.status()))
+                    Err(AppError::Api(ApiError::Response(format!(
+                        "请求失败: {}",
+                        resp.status()
+                    ))))
                 }
             }
             Err(e) => {
                 // API失败，降级返回旧缓存
                 if let Some(row) = row {
                     let content: String = row.get(0);
-                    let data: Vec<BangumiWeekday> = serde_json::from_str(&content)
-                        .map_err(|e| format!("缓存反序列化失败: {}", e))?;
+                    let data: Vec<BangumiWeekday> =
+                        serde_json::from_str(&content).map_err(|e| AppError::Domain(e.into()))?;
                     return Ok(data);
                 }
-                Err(format!("请求失败: {}", e))
+                Err(AppError::Api(ApiError::Request(e.to_string())))
             }
         }
     }
 
-    pub async fn get_subject(&self, id: i64) -> Result<BangumiSubject, String> {
+    pub async fn get_subject(&self, id: i64) -> Result<BangumiSubject, AppError> {
         use chrono::Utc;
         use sqlx::Row;
         let now = Utc::now().timestamp();
@@ -111,7 +116,7 @@ impl BangumiService {
                 .bind(id)
                 .fetch_optional(&*self.pool)
                 .await
-                .map_err(|e| format!("数据库查询失败: {}", e))?;
+                .map_err(|e| AppError::Database(e.into()))?;
 
         if let Some(row) = row {
             let content: String = row.get(0);
@@ -119,8 +124,8 @@ impl BangumiService {
             let ttl: i64 = row.get(2);
             if now - updated_at < ttl {
                 // 未过期，直接返回
-                let subject: BangumiSubject = serde_json::from_str(&content)
-                    .map_err(|e| format!("缓存反序列化失败: {}", e))?;
+                let subject: BangumiSubject =
+                    serde_json::from_str(&content).map_err(|e| AppError::Domain(e.into()))?;
                 return Ok(subject);
             }
         }
@@ -132,9 +137,9 @@ impl BangumiService {
             .get(&url)
             .send()
             .await
-            .map_err(|e| e.to_string())?;
-        let data: BangumiSubject = response.json().await.map_err(|e| e.to_string())?;
-        let content = serde_json::to_string(&data).map_err(|e| format!("序列化失败: {}", e))?;
+            .map_err(|e| AppError::Api(e.into()))?;
+        let data: BangumiSubject = response.json().await.map_err(|e| AppError::Api(e.into()))?;
+        let content = serde_json::to_string(&data).map_err(|e| AppError::Domain(e.into()))?;
         let updated_at = Utc::now().timestamp();
         // 3. 写入/更新缓存
         let _ = sqlx::query(
@@ -156,7 +161,7 @@ impl BangumiService {
         episode_type: Option<i64>,
         limit: Option<i64>,
         offset: Option<i64>,
-    ) -> Result<BangumiEpisodesData, String> {
+    ) -> Result<BangumiEpisodesData, AppError> {
         use chrono::Utc;
         use sqlx::Row;
         use std::collections::hash_map::DefaultHasher;
@@ -179,15 +184,15 @@ impl BangumiService {
             .bind(&params_hash)
             .fetch_optional(&*self.pool)
             .await
-            .map_err(|e| format!("数据库查询失败: {}", e))?;
+            .map_err(|e| AppError::Database(e.into()))?;
 
         if let Some(row) = &row {
             let content: String = row.get(0);
             let updated_at: i64 = row.get(1);
             let ttl: i64 = row.get(2);
             if now - updated_at < ttl {
-                let data: BangumiEpisodesData = serde_json::from_str(&content)
-                    .map_err(|e| format!("缓存反序列化失败: {}", e))?;
+                let data: BangumiEpisodesData =
+                    serde_json::from_str(&content).map_err(|e| AppError::Domain(e.into()))?;
                 return Ok(data);
             }
         }
@@ -199,56 +204,36 @@ impl BangumiService {
         if let Some(ep_type) = episode_type {
             params.push(format!("type={}", ep_type));
         }
-        if let Some(l) = limit {
-            params.push(format!("limit={}", l));
+        if let Some(lim) = limit {
+            params.push(format!("limit={}", lim));
         }
-        if let Some(o) = offset {
-            params.push(format!("offset={}", o));
+        if let Some(off) = offset {
+            params.push(format!("offset={}", off));
         }
         if !params.is_empty() {
-            url.push_str(&format!("?{}", params.join("&")));
+            url = format!("{}?{}", url, params.join("&"));
         }
-        let response = self.client.get(&url).send().await;
-        match response {
-            Ok(resp) => {
-                if resp.status().is_success() {
-                    let data: BangumiEpisodesData = resp.json().await.map_err(|e| e.to_string())?;
-                    let content =
-                        serde_json::to_string(&data).map_err(|e| format!("序列化失败: {}", e))?;
-                    let updated_at = Utc::now().timestamp();
-                    let _ = sqlx::query(
-                        "INSERT INTO bangumi_episodes_cache (id, params_hash, content, updated_at, ttl) VALUES (?, ?, ?, ?, ?) \
-                        ON CONFLICT(id, params_hash) DO UPDATE SET content=excluded.content, updated_at=excluded.updated_at, ttl=excluded.ttl"
-                    )
-                    .bind(subject_id)
-                    .bind(&params_hash)
-                    .bind(&content)
-                    .bind(updated_at)
-                    .bind(ttl)
-                    .execute(&*self.pool)
-                    .await;
-                    Ok(data)
-                } else {
-                    // API失败，降级返回旧缓存
-                    if let Some(row) = row {
-                        let content: String = row.get(0);
-                        let data: BangumiEpisodesData = serde_json::from_str(&content)
-                            .map_err(|e| format!("缓存反序列化失败: {}", e))?;
-                        return Ok(data);
-                    }
-                    Err(format!("请求失败: {}", resp.status()))
-                }
-            }
-            Err(e) => {
-                // API失败，降级返回旧缓存
-                if let Some(row) = row {
-                    let content: String = row.get(0);
-                    let data: BangumiEpisodesData = serde_json::from_str(&content)
-                        .map_err(|e| format!("缓存反序列化失败: {}", e))?;
-                    return Ok(data);
-                }
-                Err(format!("请求失败: {}", e))
-            }
-        }
+        let response = self
+            .client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| AppError::Api(e.into()))?;
+        let data: BangumiEpisodesData =
+            response.json().await.map_err(|e| AppError::Api(e.into()))?;
+        let content = serde_json::to_string(&data).map_err(|e| AppError::Domain(e.into()))?;
+        let updated_at = Utc::now().timestamp();
+        let _ = sqlx::query(
+            "INSERT INTO bangumi_episodes_cache (id, params_hash, content, updated_at, ttl) VALUES (?, ?, ?, ?, ?) \
+            ON CONFLICT(id, params_hash) DO UPDATE SET content=excluded.content, updated_at=excluded.updated_at, ttl=excluded.ttl"
+        )
+        .bind(subject_id)
+        .bind(&params_hash)
+        .bind(&content)
+        .bind(updated_at)
+        .bind(ttl)
+        .execute(&*self.pool)
+        .await;
+        Ok(data)
     }
 }

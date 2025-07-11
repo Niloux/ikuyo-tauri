@@ -1,4 +1,5 @@
 use crate::{
+    error::{AppError, TaskError},
     models::{CrawlerTask, CrawlerTaskStatus},
     repositories::{base::Repository, crawler_task::CrawlerTaskRepository},
     types::crawler::{CrawlerTaskCreate, TaskResponse},
@@ -32,7 +33,7 @@ pub async fn create_crawler_task(
     task: CrawlerTaskCreate,
     pool: State<'_, Arc<SqlitePool>>,
     notify: State<'_, Arc<Notify>>,
-) -> Result<TaskResponse, String> {
+) -> Result<TaskResponse, AppError> {
     tracing::info!("Creating crawler task: {:?}", task);
 
     let repo = CrawlerTaskRepository::new(&pool);
@@ -56,13 +57,12 @@ pub async fn create_crawler_task(
         estimated_remaining: None,
     };
 
-    repo.create(&new_task).await.map_err(|e| e.to_string())?;
+    repo.create(&new_task).await?;
 
     // 因为 create 不再返回 id，我们获取最新创建的 pending 任务
     let created_task = repo
         .list_by_status(CrawlerTaskStatus::Pending, 1, 0)
-        .await
-        .map_err(|e| e.to_string())?
+        .await?
         .into_iter()
         .next();
 
@@ -71,7 +71,7 @@ pub async fn create_crawler_task(
 
     match created_task {
         Some(task) => Ok(convert_to_response(task)),
-        None => Err("任务创建失败或无法立即找到".to_string()),
+        None => Err(AppError::Task(TaskError::Failed("任务创建失败".to_string()))),
     }
 }
 
@@ -79,13 +79,13 @@ pub async fn create_crawler_task(
 pub async fn get_crawler_task_status(
     task_id: i64,
     pool: State<'_, Arc<SqlitePool>>,
-) -> Result<TaskResponse, String> {
+) -> Result<TaskResponse, AppError> {
     let repo = CrawlerTaskRepository::new(&pool);
-    let task = repo.get_by_id(task_id).await.map_err(|e| e.to_string())?;
+    let task = repo.get_by_id(task_id).await?;
 
     match task {
         Some(task) => Ok(convert_to_response(task)),
-        None => Err("任务不存在".to_string()),
+        None => Err(AppError::Task(TaskError::Failed("任务不存在".to_string()))),
     }
 }
 
@@ -94,7 +94,7 @@ pub async fn list_crawler_tasks(
     page: Option<i64>,
     page_size: Option<i64>,
     pool: State<'_, Arc<SqlitePool>>,
-) -> Result<Vec<TaskResponse>, String> {
+) -> Result<Vec<TaskResponse>, AppError> {
     tracing::info!(
         "Listing crawler tasks with page: {:?}, page_size: {:?}",
         page,
@@ -108,8 +108,7 @@ pub async fn list_crawler_tasks(
 
     let tasks = repo
         .list(current_page_size, offset)
-        .await
-        .map_err(|e| e.to_string())?;
+        .await?;
     let responses: Vec<TaskResponse> = tasks.into_iter().map(convert_to_response).collect();
 
     Ok(responses)
@@ -119,15 +118,15 @@ pub async fn list_crawler_tasks(
 pub async fn get_crawler_task(
     task_id: i64,
     pool: State<'_, Arc<SqlitePool>>,
-) -> Result<TaskResponse, String> {
+) -> Result<TaskResponse, AppError> {
     tracing::info!("Getting crawler task ID: {}", task_id);
 
     let repo = CrawlerTaskRepository::new(&pool);
-    let task = repo.get_by_id(task_id).await.map_err(|e| e.to_string())?;
+    let task = repo.get_by_id(task_id).await?;
 
     match task {
         Some(task) => Ok(convert_to_response(task)),
-        None => Err("任务不存在".to_string()),
+        None => Err(AppError::Task(TaskError::Failed("任务不存在".to_string()))),
     }
 }
 
@@ -135,11 +134,11 @@ pub async fn get_crawler_task(
 pub async fn cancel_crawler_task(
     task_id: i64,
     pool: State<'_, Arc<SqlitePool>>,
-) -> Result<TaskResponse, String> {
+) -> Result<TaskResponse, AppError> {
     tracing::info!("Cancelling crawler task ID: {}", task_id);
 
     let repo = CrawlerTaskRepository::new(&pool);
-    let task = repo.get_by_id(task_id).await.map_err(|e| e.to_string())?;
+    let task = repo.get_by_id(task_id).await?;
 
     match task {
         Some(mut task) => {
@@ -149,13 +148,13 @@ pub async fn cancel_crawler_task(
                 | crate::models::CrawlerTaskStatus::Running => {
                     task.status = crate::models::CrawlerTaskStatus::Cancelled;
                     task.completed_at = Some(chrono::Utc::now().timestamp_millis());
-                    repo.update(&task).await.map_err(|e| e.to_string())?;
+                    repo.update(&task).await?;
                     Ok(convert_to_response(task))
                 }
-                _ => Err("任务无法取消，当前状态不允许取消操作".to_string()),
+                _ => Err(AppError::Task(TaskError::Cancel("任务无法取消，当前状态不允许取消操作".to_string()))),
             }
         }
-        None => Err("任务不存在".to_string()),
+        None => Err(AppError::Task(TaskError::Failed("任务不存在".to_string()))),
     }
 }
 
@@ -163,11 +162,11 @@ pub async fn cancel_crawler_task(
 pub async fn delete_crawler_task(
     task_id: i64,
     pool: State<'_, Arc<SqlitePool>>,
-) -> Result<(), String> {
+) -> Result<(), AppError> {
     tracing::info!("Deleting crawler task ID: {}", task_id);
 
     let repo = CrawlerTaskRepository::new(&pool);
-    repo.delete(task_id).await.map_err(|e| e.to_string())?;
+    repo.delete(task_id).await?;
 
     Ok(())
 }

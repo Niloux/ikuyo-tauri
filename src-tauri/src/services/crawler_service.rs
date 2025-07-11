@@ -1,4 +1,5 @@
 use crate::core::mikan_fetcher::MikanFetcher;
+use crate::error::AppError;
 use crate::models::{Anime, CrawlerTaskStatus, Resource, SubtitleGroup};
 use crate::repositories::{
     anime::AnimeRepository, base::Repository, crawler_task::CrawlerTaskRepository,
@@ -63,7 +64,7 @@ impl CrawlerService {
             .await;
 
         let base_url = "https://mikanani.me"; // TODO: Get from config
-        // let proxy = Some("http://127.0.0.1:7890"); // TODO: Get from config
+                                              // let proxy = Some("http://127.0.0.1:7890"); // TODO: Get from config
         let proxy = None;
         let fetcher = MikanFetcher::new(base_url, proxy);
         let limit = params.limit.map(|v| v as i64);
@@ -170,7 +171,12 @@ impl CrawlerService {
                 let fetcher = &fetcher;
                 async move {
                     use tokio::time::{timeout, Duration};
-                    match timeout(Duration::from_secs(30), fetcher.fetch_and_parse_detail(&url)).await {
+                    match timeout(
+                        Duration::from_secs(30),
+                        fetcher.fetch_and_parse_detail(&url),
+                    )
+                    .await
+                    {
                         Ok(Ok(anime_data)) => Some((i, anime_data)),
                         Ok(Err(e)) => {
                             tracing::warn!("爬取详情页{}失败: {}", url, e);
@@ -188,7 +194,11 @@ impl CrawlerService {
         while let Some(result) = stream.next().await {
             if self.is_task_cancelled().await {
                 let elapsed = chrono::Utc::now().timestamp_millis() - start_time;
-                let speed = if elapsed > 0 { self.processed_items as f64 / (elapsed as f64 / 1000.0) } else { 0.0 };
+                let speed = if elapsed > 0 {
+                    self.processed_items as f64 / (elapsed as f64 / 1000.0)
+                } else {
+                    0.0
+                };
                 self.update_task_status(
                     CrawlerTaskStatus::Cancelled,
                     Some("Task was cancelled".to_string()),
@@ -221,14 +231,23 @@ impl CrawlerService {
                 }
                 // 每完成一部动画，主线程自增finished_count并更新进度
                 let elapsed = chrono::Utc::now().timestamp_millis() - start_time;
-                let speed = if elapsed > 0 { self.processed_items as f64 / (elapsed as f64 / 1000.0) } else { 0.0 };
+                let speed = if elapsed > 0 {
+                    self.processed_items as f64 / (elapsed as f64 / 1000.0)
+                } else {
+                    0.0
+                };
                 let remaining = if speed > 0.0 {
                     (self.total_items - self.processed_items) as f64 / speed
                 } else {
                     None.unwrap_or(0.0)
                 };
-                self.update_task_status(CrawlerTaskStatus::Running, None, Some(speed), Some(remaining))
-                    .await;
+                self.update_task_status(
+                    CrawlerTaskStatus::Running,
+                    None,
+                    Some(speed),
+                    Some(remaining),
+                )
+                .await;
             }
             processed += 1;
             self.processed_items = processed;
@@ -254,13 +273,21 @@ impl CrawlerService {
         }
 
         let elapsed = chrono::Utc::now().timestamp_millis() - start_time;
-        let speed = if elapsed > 0 { self.processed_items as f64 / (elapsed as f64 / 1000.0) } else { 0.0 };
+        let speed = if elapsed > 0 {
+            self.processed_items as f64 / (elapsed as f64 / 1000.0)
+        } else {
+            0.0
+        };
         self.update_task_status(CrawlerTaskStatus::Completed, None, Some(speed), Some(0.0))
             .await;
     }
 
-    async fn flush_buffers(&mut self) -> anyhow::Result<()> {
-        let mut tx = self.pool.begin().await?;
+    async fn flush_buffers(&mut self) -> crate::error::Result<()> {
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| AppError::Database(e.into()))?;
 
         let anime_repo = AnimeRepository::new(&self.pool);
         anime_repo
@@ -277,7 +304,9 @@ impl CrawlerService {
             .insert_many_resources(&mut tx, &self.resource_buffer)
             .await?;
 
-        tx.commit().await?;
+        tx.commit()
+            .await
+            .map_err(|e| AppError::Database(e.into()))?;
 
         self.anime_buffer.clear();
         self.subtitle_group_buffer.clear();

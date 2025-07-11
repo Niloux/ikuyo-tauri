@@ -12,6 +12,7 @@ use crate::{
         SubtitleGroupResource,
     },
 };
+use crate::error::AppError;
 use sqlx::SqlitePool;
 use std::sync::Arc;
 use tauri::{command, State};
@@ -20,7 +21,7 @@ use tauri::{command, State};
 pub async fn get_calendar(
     pool: State<'_, Arc<SqlitePool>>,
     config: State<'_, crate::config::Config>,
-) -> Result<Vec<BangumiWeekday>, String> {
+) -> Result<Vec<BangumiWeekday>, AppError> {
     let service = BangumiService::new(pool.inner().clone(), config.inner().clone());
     service.get_calendar().await
 }
@@ -30,7 +31,7 @@ pub async fn get_subject(
     id: i64,
     pool: State<'_, Arc<SqlitePool>>,
     config: State<'_, crate::config::Config>,
-) -> Result<BangumiSubject, String> {
+) -> Result<BangumiSubject, AppError> {
     let service = BangumiService::new(pool.inner().clone(), config.inner().clone());
     service.get_subject(id).await
 }
@@ -43,7 +44,7 @@ pub async fn get_episodes(
     offset: Option<i64>,
     pool: State<'_, Arc<SqlitePool>>,
     config: State<'_, crate::config::Config>,
-) -> Result<BangumiEpisodesData, String> {
+) -> Result<BangumiEpisodesData, AppError> {
     let service = BangumiService::new(pool.inner().clone(), config.inner().clone());
     service
         .get_episodes(subject_id, episode_type, limit, offset)
@@ -54,20 +55,18 @@ pub async fn get_episodes(
 pub async fn get_episode_availability(
     bangumi_id: i64,
     pool: State<'_, Arc<SqlitePool>>,
-) -> Result<Option<EpisodeAvailabilityData>, String> {
+) -> Result<Option<EpisodeAvailabilityData>, AppError> {
     let anime_repo = AnimeRepository::new(&pool);
     let resource_repo = ResourceRepository::new(&pool);
 
     let anime = anime_repo
         .get_by_bangumi_id(bangumi_id)
-        .await
-        .map_err(|e| e.to_string())?;
+        .await?;
 
     if let Some(anime) = anime {
         let episode_counts = resource_repo
             .count_by_episode(anime.mikan_id)
-            .await
-            .map_err(|e| e.to_string())?;
+            .await?;
 
         let mut episodes_map = std::collections::HashMap::new();
         for count in episode_counts {
@@ -94,21 +93,19 @@ pub async fn get_episode_resources(
     bangumi_id: i64,
     episode: i64,
     pool: State<'_, Arc<SqlitePool>>,
-) -> Result<Option<EpisodeResourcesData>, String> {
+) -> Result<Option<EpisodeResourcesData>, AppError> {
     let anime_repo = AnimeRepository::new(&pool);
     let resource_repo = ResourceRepository::new(&pool);
     let subtitle_group_repo = SubtitleGroupRepository::new(&pool);
 
     let anime = anime_repo
         .get_by_bangumi_id(bangumi_id)
-        .await
-        .map_err(|e| e.to_string())?;
+        .await?;
 
     if let Some(anime) = anime {
         let resources = resource_repo
             .filter(anime.mikan_id, None, Some(episode as i32), None, 0, 0)
-            .await
-            .map_err(|e| e.to_string())?;
+            .await?;
 
         let mut subtitle_groups_map: std::collections::HashMap<i64, SubtitleGroupResource> =
             std::collections::HashMap::new();
@@ -119,8 +116,7 @@ pub async fn get_episode_resources(
             let group_id = res.subtitle_group_id;
             let group_name = subtitle_group_repo
                 .get_by_id(group_id)
-                .await
-                .map_err(|e| e.to_string())?
+                .await?
                 .map_or("Unknown".to_string(), |g| g.name);
 
             let entry =
@@ -164,19 +160,17 @@ pub async fn search_library(
     page: i64,
     limit: i64,
     pool: State<'_, Arc<SqlitePool>>,
-) -> Result<SearchLibraryResponse, String> {
+) -> Result<SearchLibraryResponse, AppError> {
     let anime_repo = AnimeRepository::new(&pool);
 
     let offset = (page - 1) * limit;
     let animes = anime_repo
         .search_by_title(&query, limit, offset)
-        .await
-        .map_err(|e| e.to_string())?;
+        .await?;
 
     let total_animes = anime_repo
         .count_by_title(&query)
-        .await
-        .map_err(|e| e.to_string())?;
+        .await?;
 
     let bangumi_ids: Vec<i64> = animes.into_iter().map(|anime| anime.bangumi_id).collect();
 
@@ -205,15 +199,14 @@ pub async fn get_anime_resources(
     limit: Option<i64>,
     offset: Option<i64>,
     pool: State<'_, Arc<SqlitePool>>,
-) -> Result<Option<EpisodeResourcesData>, String> {
+) -> Result<Option<EpisodeResourcesData>, AppError> {
     let anime_repo = AnimeRepository::new(&pool);
     let resource_repo = ResourceRepository::new(&pool);
     let subtitle_group_repo = SubtitleGroupRepository::new(&pool);
 
     let anime = anime_repo
         .get_by_bangumi_id(bangumi_id)
-        .await
-        .map_err(|e| e.to_string())?;
+        .await?;
 
     if let Some(anime) = anime {
         let resources = resource_repo
@@ -225,8 +218,7 @@ pub async fn get_anime_resources(
                 limit.unwrap_or(0),
                 offset.unwrap_or(0),
             )
-            .await
-            .map_err(|e| e.to_string())?;
+            .await?;
 
         let mut subtitle_groups_map: std::collections::HashMap<i64, SubtitleGroupResource> =
             std::collections::HashMap::new();
@@ -237,8 +229,7 @@ pub async fn get_anime_resources(
             let group_id = res.subtitle_group_id;
             let group_name = subtitle_group_repo
                 .get_by_id(group_id)
-                .await
-                .map_err(|e| e.to_string())?
+                .await?
                 .map_or("Unknown".to_string(), |g| g.name);
 
             let entry =

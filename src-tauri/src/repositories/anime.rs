@@ -19,7 +19,12 @@ impl<'a> AnimeRepository<'a> {
             sqlx::query_as::<_, Anime>("SELECT * FROM anime WHERE bangumi_id = ?")
                 .bind(bangumi_id)
                 .fetch_optional(self.pool)
-                .await?,
+                .await
+                .map_err(|e| {
+                    crate::error::AppError::Database(crate::error::DatabaseError::Other(
+                        e.to_string(),
+                    ))
+                })?,
         )
     }
 
@@ -39,7 +44,10 @@ impl<'a> AnimeRepository<'a> {
             .bind(limit)
             .bind(offset)
             .fetch_all(self.pool)
-            .await?)
+            .await
+            .map_err(|e| {
+                crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string()))
+            })?)
     }
 
     pub async fn count_by_title(&self, title: &str) -> Result<i64> {
@@ -47,7 +55,12 @@ impl<'a> AnimeRepository<'a> {
             sqlx::query_scalar("SELECT COUNT(*) FROM anime WHERE lower(title) LIKE ?")
                 .bind(format!("%{}%", title.to_lowercase()))
                 .fetch_one(self.pool)
-                .await?,
+                .await
+                .map_err(|e| {
+                    crate::error::AppError::Database(crate::error::DatabaseError::Other(
+                        e.to_string(),
+                    ))
+                })?,
         )
     }
 
@@ -108,7 +121,9 @@ impl<'a> AnimeRepository<'a> {
                 status = excluded.status,\
                 updated_at = excluded.updated_at",
         );
-        builder.build().execute(&mut **tx).await?;
+        builder.build().execute(&mut **tx).await.map_err(|e| {
+            crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string()))
+        })?;
         Ok(())
     }
 }
@@ -144,7 +159,7 @@ impl<'a> Repository<Anime, i64> for AnimeRepository<'a> {
         .bind(&anime.created_at)
         .bind(&anime.updated_at)
         .execute(self.pool)
-        .await?;
+        .await.map_err(|e| crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string())))?;
         Ok(())
     }
 
@@ -153,7 +168,12 @@ impl<'a> Repository<Anime, i64> for AnimeRepository<'a> {
             sqlx::query_as::<_, Anime>("SELECT * FROM anime WHERE mikan_id = ?")
                 .bind(mikan_id)
                 .fetch_optional(self.pool)
-                .await?,
+                .await
+                .map_err(|e| {
+                    crate::error::AppError::Database(crate::error::DatabaseError::Other(
+                        e.to_string(),
+                    ))
+                })?,
         )
     }
 
@@ -167,7 +187,10 @@ impl<'a> Repository<Anime, i64> for AnimeRepository<'a> {
             .bind(limit)
             .bind(offset)
             .fetch_all(self.pool)
-            .await?)
+            .await
+            .map_err(|e| {
+                crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string()))
+            })?)
     }
 
     async fn update(&self, anime: &Anime) -> Result<()> {
@@ -186,7 +209,7 @@ impl<'a> Repository<Anime, i64> for AnimeRepository<'a> {
         .bind(&anime.updated_at)
         .bind(anime.mikan_id)
         .execute(self.pool)
-        .await?;
+        .await.map_err(|e| crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string())))?;
         Ok(())
     }
 
@@ -194,7 +217,10 @@ impl<'a> Repository<Anime, i64> for AnimeRepository<'a> {
         sqlx::query("DELETE FROM anime WHERE mikan_id = ?")
             .bind(mikan_id)
             .execute(self.pool)
-            .await?;
+            .await
+            .map_err(|e| {
+                crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string()))
+            })?;
         Ok(())
     }
 }

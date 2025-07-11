@@ -30,7 +30,10 @@ impl<'a> CrawlerTaskRepository<'a> {
             .bind(limit)
             .bind(offset)
             .fetch_all(self.pool)
-            .await?)
+            .await
+            .map_err(|e| {
+                crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string()))
+            })?)
     }
 
     pub async fn list_by_type(
@@ -49,7 +52,10 @@ impl<'a> CrawlerTaskRepository<'a> {
             .bind(limit)
             .bind(offset)
             .fetch_all(self.pool)
-            .await?)
+            .await
+            .map_err(|e| {
+                crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string()))
+            })?)
     }
 
     pub async fn list_by_time_range(
@@ -70,7 +76,10 @@ impl<'a> CrawlerTaskRepository<'a> {
             .bind(limit)
             .bind(offset)
             .fetch_all(self.pool)
-            .await?)
+            .await
+            .map_err(|e| {
+                crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string()))
+            })?)
     }
 
     // 批量将Running状态的任务标记为Failed，并写入错误信息
@@ -84,7 +93,9 @@ impl<'a> CrawlerTaskRepository<'a> {
         .bind(error_message)
         .bind(CrawlerTaskStatus::Running)
         .execute(self.pool)
-        .await?;
+        .await.map_err(|e| {
+            crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string()))
+        })?;
         Ok(result.rows_affected())
     }
 }
@@ -110,7 +121,9 @@ impl<'a> Repository<CrawlerTask, i64> for CrawlerTaskRepository<'a> {
         .bind(task.processing_speed)
         .bind(task.estimated_remaining)
         .execute(self.pool)
-        .await?;
+        .await.map_err(|e| {
+            crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string()))
+        })?;
         Ok(())
     }
 
@@ -119,7 +132,12 @@ impl<'a> Repository<CrawlerTask, i64> for CrawlerTaskRepository<'a> {
             sqlx::query_as::<_, CrawlerTask>("SELECT * FROM crawler_task WHERE id = ?")
                 .bind(id)
                 .fetch_optional(self.pool)
-                .await?,
+                .await
+                .map_err(|e| {
+                    crate::error::AppError::Database(crate::error::DatabaseError::Other(
+                        e.to_string(),
+                    ))
+                })?,
         )
     }
 
@@ -133,7 +151,10 @@ impl<'a> Repository<CrawlerTask, i64> for CrawlerTaskRepository<'a> {
             .bind(limit)
             .bind(offset)
             .fetch_all(self.pool)
-            .await?)
+            .await
+            .map_err(|e| {
+                crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string()))
+            })?)
     }
 
     async fn update(&self, task: &CrawlerTask) -> Result<()> {
@@ -154,7 +175,9 @@ impl<'a> Repository<CrawlerTask, i64> for CrawlerTaskRepository<'a> {
         .bind(task.estimated_remaining)
         .bind(task.id)
         .execute(self.pool)
-        .await?;
+        .await.map_err(|e| {
+            crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string()))
+        })?;
         Ok(())
     }
 
@@ -162,7 +185,10 @@ impl<'a> Repository<CrawlerTask, i64> for CrawlerTaskRepository<'a> {
         sqlx::query("DELETE FROM crawler_task WHERE id = ?")
             .bind(id)
             .execute(self.pool)
-            .await?;
+            .await
+            .map_err(|e| {
+                crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string()))
+            })?;
         Ok(())
     }
 }

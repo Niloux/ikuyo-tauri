@@ -19,7 +19,12 @@ impl<'a> SubtitleGroupRepository<'a> {
             sqlx::query_as::<_, SubtitleGroup>("SELECT * FROM subtitle_group WHERE name = ?")
                 .bind(name)
                 .fetch_optional(self.pool)
-                .await?,
+                .await
+                .map_err(|e| {
+                    crate::error::AppError::Database(crate::error::DatabaseError::Other(
+                        e.to_string(),
+                    ))
+                })?,
         )
     }
 
@@ -55,7 +60,9 @@ impl<'a> SubtitleGroupRepository<'a> {
                 name = excluded.name,\
                 last_update = excluded.last_update",
         );
-        builder.build().execute(&mut **tx).await?;
+        builder.build().execute(&mut **tx).await.map_err(|e| {
+            crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string()))
+        })?;
         Ok(())
     }
 }
@@ -75,7 +82,10 @@ impl<'a> Repository<SubtitleGroup, i64> for SubtitleGroupRepository<'a> {
         .bind(group.last_update)
         .bind(group.created_at)
         .execute(self.pool)
-        .await?;
+        .await
+        .map_err(|e| {
+            crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string()))
+        })?;
         Ok(())
     }
 
@@ -84,7 +94,12 @@ impl<'a> Repository<SubtitleGroup, i64> for SubtitleGroupRepository<'a> {
             sqlx::query_as::<_, SubtitleGroup>("SELECT * FROM subtitle_group WHERE id = ?")
                 .bind(id)
                 .fetch_optional(self.pool)
-                .await?,
+                .await
+                .map_err(|e| {
+                    crate::error::AppError::Database(crate::error::DatabaseError::Other(
+                        e.to_string(),
+                    ))
+                })?,
         )
     }
 
@@ -98,7 +113,10 @@ impl<'a> Repository<SubtitleGroup, i64> for SubtitleGroupRepository<'a> {
             .bind(limit)
             .bind(offset)
             .fetch_all(self.pool)
-            .await?)
+            .await
+            .map_err(|e| {
+                crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string()))
+            })?)
     }
 
     async fn update(&self, group: &SubtitleGroup) -> Result<()> {
@@ -107,7 +125,10 @@ impl<'a> Repository<SubtitleGroup, i64> for SubtitleGroupRepository<'a> {
             .bind(group.last_update)
             .bind(group.id)
             .execute(self.pool)
-            .await?;
+            .await
+            .map_err(|e| {
+                crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string()))
+            })?;
         Ok(())
     }
 
@@ -115,7 +136,10 @@ impl<'a> Repository<SubtitleGroup, i64> for SubtitleGroupRepository<'a> {
         sqlx::query("DELETE FROM subtitle_group WHERE id = ?")
             .bind(id)
             .execute(self.pool)
-            .await?;
+            .await
+            .map_err(|e| {
+                crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string()))
+            })?;
         Ok(())
     }
 }

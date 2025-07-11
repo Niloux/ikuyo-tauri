@@ -51,7 +51,13 @@ impl<'a> ResourceRepository<'a> {
             builder.push(" LIMIT -1 OFFSET 0");
         }
 
-        Ok(builder.build_query_as().fetch_all(self.pool).await?)
+        Ok(builder
+            .build_query_as()
+            .fetch_all(self.pool)
+            .await
+            .map_err(|e| {
+                crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string()))
+            })?)
     }
 
     pub async fn count_by_episode(&self, mikan_id: i64) -> Result<Vec<EpisodeResourceCount>> {
@@ -60,7 +66,9 @@ impl<'a> ResourceRepository<'a> {
         )
         .bind(mikan_id)
         .fetch_all(self.pool)
-        .await?)
+        .await.map_err(|e| {
+            crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string()))
+        })?)
     }
 
     pub async fn insert_many_resources(
@@ -125,7 +133,9 @@ impl<'a> ResourceRepository<'a> {
                 release_date = excluded.release_date,\
                 updated_at = excluded.updated_at",
         );
-        builder.build().execute(&mut **tx).await?;
+        builder.build().execute(&mut **tx).await.map_err(|e| {
+            crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string()))
+        })?;
         Ok(())
     }
 }
@@ -164,7 +174,9 @@ impl<'a> Repository<Resource, i64> for ResourceRepository<'a> {
         .bind(resource.created_at)
         .bind(resource.updated_at)
         .execute(self.pool)
-        .await?;
+        .await.map_err(|e| {
+            crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string()))
+        })?;
         Ok(())
     }
 
@@ -173,7 +185,12 @@ impl<'a> Repository<Resource, i64> for ResourceRepository<'a> {
             sqlx::query_as::<_, Resource>("SELECT * FROM resource WHERE id = ?")
                 .bind(id)
                 .fetch_optional(self.pool)
-                .await?,
+                .await
+                .map_err(|e| {
+                    crate::error::AppError::Database(crate::error::DatabaseError::Other(
+                        e.to_string(),
+                    ))
+                })?,
         )
     }
 
@@ -187,7 +204,10 @@ impl<'a> Repository<Resource, i64> for ResourceRepository<'a> {
             .bind(limit)
             .bind(offset)
             .fetch_all(self.pool)
-            .await?)
+            .await
+            .map_err(|e| {
+                crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string()))
+            })?)
     }
 
     async fn update(&self, resource: &Resource) -> Result<()> {
@@ -209,7 +229,9 @@ impl<'a> Repository<Resource, i64> for ResourceRepository<'a> {
         .bind(resource.updated_at)
         .bind(resource.id)
         .execute(self.pool)
-        .await?;
+        .await.map_err(|e| {
+            crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string()))
+        })?;
         Ok(())
     }
 
@@ -217,7 +239,10 @@ impl<'a> Repository<Resource, i64> for ResourceRepository<'a> {
         sqlx::query("DELETE FROM resource WHERE id = ?")
             .bind(id)
             .execute(self.pool)
-            .await?;
+            .await
+            .map_err(|e| {
+                crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string()))
+            })?;
         Ok(())
     }
 }

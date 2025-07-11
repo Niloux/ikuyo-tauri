@@ -36,6 +36,11 @@
             <span class="task-meta-label">创建时间</span>
             <span class="task-meta-value">{{ formatDateTime(task.created_at) }}</span>
           </div>
+          <!-- 错误信息展示，聚合在meta信息下方 -->
+          <div v-if="task.error_message" class="task-meta-item task-error-message">
+            <span class="task-error-label">错误信息：</span>
+            <span class="task-error-value">{{ task.error_message }}</span>
+          </div>
         </div>
 
         <div class="progress-section" v-if="task.status === 'running'">
@@ -468,5 +473,40 @@ const getCancelButtonText = (status: string): string => {
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+.task-error-message {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: #fee2e2;
+  color: #dc2626;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  word-break: break-all;
+}
+.task-error-label {
+  font-weight: 600;
+  margin-right: 0.5em;
+}
+.task-error-value {
+  font-weight: 400;
+}
+.task-meta-item.task-error-message {
+  color: #dc2626;
+  font-weight: 600;
+  background: none;
+  border-radius: 0;
+  font-size: 0.95rem;
+  margin-top: 0.25rem;
+  padding: 0;
+  display: flex;
+  align-items: flex-start;
+}
+.task-error-label {
+  font-weight: 700;
+  margin-right: 0.5em;
+}
+.task-error-value {
+  font-weight: 600;
 }
 </style>

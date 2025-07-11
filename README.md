@@ -14,3 +14,22 @@ Since TypeScript cannot handle type information for `.vue` imports, they are shi
 2. Reload the VS Code window by running `Developer: Reload Window` from the command palette.
 
 You can learn more about Take Over mode [here](https://github.com/johnsoncodehk/volar/discussions/471).
+
+## 环境区分与初始化说明
+
+- 开发环境：
+  - 启动命令：`pnpm tauri dev`
+  - 数据库文件：`src-tauri/ikuyo.db`
+  - 日志文件：`src-tauri/logs/ikuyo.log`
+  - 数据库和日志文件均自动初始化，无需手动操作。
+
+- 生产环境：
+  - 启动命令：`pnpm tauri build`（或打包后运行）
+  - 数据库文件：应用数据目录下 `ikuyo.db`
+  - 日志文件：应用数据目录下 `logs/ikuyo.log`
+  - 数据库和日志文件均自动初始化，无需手动操作。
+
+- 表结构变更：
+  - 只需修改 `src-tauri/schema.sql`，所有新环境自动按最新表结构初始化。
+  - 生产环境如需重建数据库，删除数据库文件后重启应用即可。
+- schema.sql 已编译进二进制，生产环境无需关心文件路径或分发问题。

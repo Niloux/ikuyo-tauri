@@ -14,26 +14,73 @@ use crate::error::Result;
 use commands::{bangumi::*, crawler::*, subscription::*};
 use once_cell::sync::OnceCell;
 use sqlx::SqlitePool;
-use tauri::path::BaseDirectory;
 use tauri::Manager;
 use tracing_appender::rolling::{RollingFileAppender, Rotation};
 use tracing_subscriber::{filter::EnvFilter, fmt, prelude::*, registry};
+use std::fs;
+use std::path::Path;
+use std::time::{SystemTime, Duration};
+
+const SCHEMA_SQL: &str = include_str!("../schema.sql");
+// 日志保留策略：只保留最近30天且最多30个日志文件
+const LOG_KEEP_DAYS: u64 = 1;
+const LOG_KEEP_MAX: usize = 30;
+
+/// 清理日志目录中过期和超量的日志文件
+fn cleanup_old_logs(log_dir: &Path) {
+    if !log_dir.exists() {
+        return;
+    }
+    let now = SystemTime::now();
+    let mut log_files: Vec<_> = match fs::read_dir(log_dir) {
+        Ok(rd) => rd.filter_map(|e| e.ok())
+            .filter(|e| {
+                let name = e.file_name();
+                let name = name.to_string_lossy();
+                name.starts_with("ikuyo.log")
+            })
+            .collect(),
+        Err(_) => return,
+    };
+    // 按修改时间降序排序
+    log_files.sort_by_key(|e| std::cmp::Reverse(e.metadata().and_then(|m| m.modified()).unwrap_or(SystemTime::UNIX_EPOCH)));
+    // 1. 超过最大数量的全部删除
+    for entry in log_files.iter().skip(LOG_KEEP_MAX) {
+        tracing::info!("删除过期日志文件: {:?}", entry.path());
+        let _ = fs::remove_file(entry.path());
+    }
+    // 2. 超过保留天数的全部删除
+    for entry in &log_files {
+        if let Ok(meta) = entry.metadata() {
+            if let Ok(modified) = meta.modified() {
+                if let Ok(age) = now.duration_since(modified) {
+                    if age > Duration::from_secs(60*60*24*LOG_KEEP_DAYS) {
+                        tracing::info!("删除过期日志文件: {:?}", entry.path());
+                        let _ = fs::remove_file(entry.path());
+                    }
+                }
+            }
+        }
+    }
+}
 
 static LOG_GUARD: OnceCell<tracing_appender::non_blocking::WorkerGuard> = OnceCell::new();
 
 fn init_logging(log_path: &std::path::Path) {
     let log_dir = log_path.parent().unwrap();
+    // 日志清理：只保留最近30天且最多30个日志文件
+    cleanup_old_logs(log_dir);
     if !log_dir.exists() {
         if let Err(e) = std::fs::create_dir_all(log_dir) {
-            eprintln!("无法创建日志目录: {:?}", e);
+            tracing::error!("无法创建日志目录: {:?}", e);
             return;
         }
     }
     let file_appender =
         RollingFileAppender::new(Rotation::DAILY, log_dir, log_path.file_name().unwrap());
     let (non_blocking_file_appender, guard) = tracing_appender::non_blocking(file_appender);
-    let console_layer = fmt::layer().with_writer(std::io::stdout).pretty();
     let file_layer = fmt::layer().with_writer(non_blocking_file_appender).json();
+    let console_layer = fmt::layer().with_writer(std::io::stdout).pretty();
     let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
     registry()
         .with(env_filter)
@@ -46,83 +93,72 @@ fn init_logging(log_path: &std::path::Path) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() -> Result<()> {
-    // 在编译时嵌入迁移文件
-    let migrator = sqlx::migrate!("./migrations");
-
     tauri::Builder::default()
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_opener::init())
         .setup(move |app| {
-            // 1. 加载配置
-            let config = config::Config::load();
-            let app_handle = app.handle().clone(); // CLONE THE HANDLE HERE
-
-            // 日志初始化
+            // 环境识别
+            let is_dev = std::env::var("TAURI_DEV").unwrap_or_default() == "1"
+                || std::env::var("NODE_ENV").unwrap_or_default() == "development"
+                || std::env::var("IKUYO_ENV").unwrap_or_default() == "dev";
+            let app_handle = app.handle().clone();
             let path_resolver = app_handle.path();
-            let app_data_dir = path_resolver
-                .app_data_dir()
-                .expect("failed to resolve app data dir");
-            let log_dir = app_data_dir.join("logs");
-            let log_path = log_dir.join("ikuyo.log");
+            // 日志路径
+            let log_path = if is_dev {
+                std::path::PathBuf::from("logs/ikuyo.log")
+            } else {
+                let app_data_dir = path_resolver
+                    .app_data_dir()
+                    .expect("failed to resolve app data dir");
+                app_data_dir.join("logs/ikuyo.log")
+            };
             init_logging(&log_path);
 
-            // 2. 设置数据库（首次运行时复制策略）
-            let pool = tauri::async_runtime::block_on(async move {
-                // app_handle is moved into this block
-                let path_resolver = app_handle.path();
-                let is_dev = std::env::var("IKUYO_ENV").unwrap_or_default() == "dev";
-                let db_path = if is_dev {
-                    // 开发环境：数据库放在当前工作目录/ikuyo.db，要求在src-tauri目录下运行
-                    let db_path = std::path::PathBuf::from("ikuyo.db");
-                    tracing::info!("当前工作目录: {:?}", std::env::current_dir().unwrap());
-                    db_path
-                } else {
-                    // 生产环境：数据库放在 app_data_dir/ikuyo.db
-                    let app_data_dir = path_resolver
-                        .app_data_dir()
-                        .expect("failed to resolve app data dir");
-                    if !app_data_dir.exists() {
-                        std::fs::create_dir_all(&app_data_dir)
-                            .expect("failed to create app data dir");
-                    }
-                    app_data_dir.join("ikuyo.db")
-                };
-
-                if !db_path.exists() {
-                    if is_dev {
-                        tracing::info!("开发环境自动新建空库并迁移，路径: {:?}", db_path);
-                        // 空文件自动由sqlite创建，无需手动touch
-                    } else {
-                        // 生产环境：必须有模板db
-                        let resource_db_path = path_resolver
-                            .resolve("ikuyo.db", BaseDirectory::Resource)
-                            .expect("ikuyo.db resource not found in production!");
-                        std::fs::copy(resource_db_path, &db_path)
-                            .expect("failed to copy database file");
-                    }
+            // 数据库路径
+            let db_path = if is_dev {
+                std::path::PathBuf::from("ikuyo.db")
+            } else {
+                let app_data_dir = path_resolver
+                    .app_data_dir()
+                    .expect("failed to resolve app data dir");
+                if !app_data_dir.exists() {
+                    std::fs::create_dir_all(&app_data_dir)
+                        .expect("failed to create app data dir");
                 }
+                app_data_dir.join("ikuyo.db")
+            };
 
-                tracing::info!("数据库路径: {:?}", db_path.display());
-                let db_url = format!(
-                    "sqlite:{}?mode=rwc",
-                    db_path
-                        .to_str()
-                        .expect("failed to convert db path to string")
-                );
-                tracing::info!("数据库URL: {:?}", db_url);
+            // 数据库初始化
+            if !db_path.exists() {
+                tracing::info!("数据库不存在，自动初始化: {:?}", db_path);
+                // 直接用SCHEMA_SQL执行建表
+                let db_url = format!("sqlite:{}?mode=rwc", db_path.to_str().unwrap());
+                let rt = tokio::runtime::Runtime::new().unwrap();
+                rt.block_on(async {
+                    let pool = SqlitePool::connect(&db_url)
+                        .await
+                        .expect("failed to connect to database");
+                    for stmt in SCHEMA_SQL.split(';') {
+                        let sql = stmt.trim();
+                        if !sql.is_empty() {
+                            sqlx::query(sql).execute(&pool).await.expect("schema.sql执行失败");
+                        }
+                    }
+                });
+                tracing::info!("数据库初始化完成: {:?}", db_path);
+            }
 
-                let pool = SqlitePool::connect(&db_url)
+            // 连接数据库
+            let db_url = format!("sqlite:{}?mode=rwc", db_path.to_str().unwrap());
+            let pool = tauri::async_runtime::block_on(async move {
+                SqlitePool::connect(&db_url)
                     .await
-                    .expect("failed to connect to database");
-                migrator
-                    .run(&pool)
-                    .await
-                    .expect("failed to run database migrations");
-                Ok::<SqlitePool, anyhow::Error>(pool)
-            })?;
+                    .expect("failed to connect to database")
+            });
             let pool_arc = Arc::new(pool);
 
             // 3. 设置并启动后台工作者
+            let config = config::Config::load();
             let notify = Arc::new(Notify::new());
             let exit_flag = Arc::new(AtomicBool::new(false));
             let worker =

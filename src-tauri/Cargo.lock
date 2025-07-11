@@ -2088,6 +2088,7 @@ dependencies = [
  "tauri-plugin-opener",
  "thiserror 1.0.69",
  "tokio",
+ "tokio-util",
  "toml 0.5.11",
  "tracing",
  "tracing-appender",

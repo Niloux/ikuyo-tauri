@@ -134,15 +134,25 @@ pub async fn get_crawler_task(
 pub async fn cancel_crawler_task(
     task_id: i64,
     pool: State<'_, Arc<SqlitePool>>,
+    worker: State<'_, Arc<crate::worker::Worker>>,
 ) -> Result<TaskResponse, AppError> {
     tracing::info!("Cancelling crawler task ID: {}", task_id);
 
+    // 作用域内获取 token 并 clone，避免持有 MutexGuard 进入 await
+    let token_opt = {
+        let token_map = worker.get_token_map();
+        let map = token_map.lock().unwrap();
+        map.get(&task_id).cloned()
+    };
+    if let Some(token) = token_opt {
+        token.cancel();
+    }
+
+    // 仍然更新数据库状态用于 UI 展示
     let repo = CrawlerTaskRepository::new(&pool);
     let task = repo.get_by_id(task_id).await?;
-
     match task {
         Some(mut task) => {
-            // 只有Pending或Running状态的任务可以取消
             match task.status {
                 crate::models::CrawlerTaskStatus::Pending
                 | crate::models::CrawlerTaskStatus::Running => {

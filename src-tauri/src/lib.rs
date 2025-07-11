@@ -171,17 +171,19 @@ pub fn run() -> Result<()> {
             let config = config::Config::load();
             let notify = Arc::new(Notify::new());
             let exit_flag = Arc::new(AtomicBool::new(false));
-            let worker =
-                worker::Worker::new(pool_arc.clone(), notify.clone(), config.clone(), None, exit_flag.clone());
+            let worker = Arc::new(worker::Worker::new(pool_arc.clone(), notify.clone(), config.clone(), None, exit_flag.clone()));
+            let worker_handle = Arc::clone(&worker);
             tauri::async_runtime::spawn(async move {
-                worker.run().await;
+                worker_handle.run().await;
             });
 
             // 4. 将所有状态注入Tauri
             app.manage(pool_arc.clone());
-            app.manage(config);
-            app.manage(notify);
+            app.manage(config.clone());
+            app.manage(notify.clone());
             app.manage(exit_flag.clone());
+            // 新增：注入 Worker
+            app.manage(worker);
 
             // 注册退出钩子，预留退出流程入口
             let window = app.get_webview_window("main").expect("main window not found");

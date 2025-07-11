@@ -10,6 +10,7 @@ use sqlx::SqlitePool;
 use std::collections::HashSet;
 use std::sync::atomic::AtomicI64;
 use std::sync::Arc;
+use tokio_util::sync::CancellationToken;
 
 pub struct CrawlerService {
     pub pool: Arc<SqlitePool>,
@@ -23,6 +24,8 @@ pub struct CrawlerService {
     pub processed_items: i64,
     pub total_items: i64,
     pub finished_count: Arc<AtomicI64>,
+    // 新增：任务取消信号
+    cancellation_token: Option<CancellationToken>,
 }
 
 impl CrawlerService {
@@ -39,7 +42,12 @@ impl CrawlerService {
             processed_items: 0,
             total_items: 0,
             finished_count: Arc::new(AtomicI64::new(0)),
+            cancellation_token: None,
         }
+    }
+
+    pub fn set_cancellation_token(&mut self, token: CancellationToken) {
+        self.cancellation_token = Some(token);
     }
 
     pub async fn run(&mut self) {
@@ -191,21 +199,23 @@ impl CrawlerService {
             .buffer_unordered(max_concurrent);
 
         while let Some(result) = stream.next().await {
-            if self.is_task_cancelled().await {
-                let elapsed = chrono::Utc::now().timestamp_millis() - start_time;
-                let speed = if elapsed > 0 {
-                    self.processed_items as f64 / (elapsed as f64 / 1000.0)
-                } else {
-                    0.0
-                };
-                self.update_task_status(
-                    CrawlerTaskStatus::Cancelled,
-                    Some("Task was cancelled".to_string()),
-                    Some(speed),
-                    None,
-                )
-                .await;
-                return;
+            if let Some(token) = &self.cancellation_token {
+                if token.is_cancelled() {
+                    let elapsed = chrono::Utc::now().timestamp_millis() - start_time;
+                    let speed = if elapsed > 0 {
+                        self.processed_items as f64 / (elapsed as f64 / 1000.0)
+                    } else {
+                        0.0
+                    };
+                    self.update_task_status(
+                        CrawlerTaskStatus::Cancelled,
+                        Some("任务被取消".to_string()),
+                        Some(speed),
+                        None,
+                    )
+                    .await;
+                    return;
+                }
             }
             if let Some((_, anime_data)) = result {
                 // 合并到本地缓冲区
@@ -313,11 +323,11 @@ impl CrawlerService {
     }
 
     async fn is_task_cancelled(&self) -> bool {
-        let repo = CrawlerTaskRepository::new(&self.pool);
-        if let Ok(Some(task)) = repo.get_by_id(self.task_id).await {
-            return task.status == CrawlerTaskStatus::Cancelled;
+        if let Some(token) = &self.cancellation_token {
+            token.is_cancelled()
+        } else {
+            false
         }
-        true // If task not found, treat as cancelled
     }
 
     async fn update_task_status(

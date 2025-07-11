@@ -10,6 +10,9 @@ use tokio::sync::Notify;
 use tokio::sync::Semaphore;
 use tokio::time::{sleep, Duration};
 use tracing::info;
+use tokio_util::sync::CancellationToken;
+use std::collections::HashMap;
+use std::sync::Mutex;
 
 pub struct Worker {
     pool: Arc<SqlitePool>,
@@ -19,6 +22,8 @@ pub struct Worker {
     retry_delay_ms: u64,
     config: Config,
     exit_flag: Arc<std::sync::atomic::AtomicBool>,
+    // 新增：任务ID到CancellationToken的映射
+    cancel_tokens: Arc<Mutex<HashMap<i64, CancellationToken>>>,
 }
 
 impl Worker {
@@ -38,7 +43,12 @@ impl Worker {
             retry_delay_ms: 1000,
             config,
             exit_flag,
+            cancel_tokens: Arc::new(Mutex::new(HashMap::new())),
         }
+    }
+
+    pub fn get_token_map(&self) -> Arc<Mutex<HashMap<i64, CancellationToken>>> {
+        self.cancel_tokens.clone()
     }
 
     pub async fn run(&self) {
@@ -72,19 +82,28 @@ impl Worker {
                     let mut crawler_service =
                         CrawlerService::new(pool.clone(), task.id.unwrap_or_default());
                     let retry_count = self.retry_count;
+                    let cancel_tokens = self.cancel_tokens.clone();
+                    let task_id = task.id.unwrap_or_default();
+                    // 新增：为任务分配 CancellationToken
+                    let token = CancellationToken::new();
+                    {
+                        let mut map = cancel_tokens.lock().unwrap();
+                        map.insert(task_id, token.clone());
+                    }
                     tokio::spawn(async move {
                         let mut attempt = 0;
                         let mut success = false;
                         while attempt < retry_count && !success {
                             attempt += 1;
-                            // 调用爬虫抓取与批量入库
+                            // 注入 token 到 service
+                            crawler_service.set_cancellation_token(token.clone());
                             crawler_service.run().await;
-                            // 这里run内部已处理状态与错误，无需run_result占位
-                            // 可根据实际需求补充成功/失败判断
-                            success = true; // 假设run内部已处理所有异常
-                            // 所有进度和完成状态由CrawlerService::run负责
+                            success = true;
                             info!("Worker: 任务完成: {:?}", task.id);
                         }
+                        // 任务结束后清理 token
+                        let mut map = cancel_tokens.lock().unwrap();
+                        map.remove(&task_id);
                         drop(permit);
                     });
                 }

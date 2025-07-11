@@ -129,18 +129,21 @@ async fn main_refresh_loop(pool: Arc<SqlitePool>, config: Config) {
         // 检查当天是否已插入Schedule+homepage任务
         if last_homepage_task_date != Some(today) {
             let repo = CrawlerTaskRepository::new(&pool);
-            // 查询当天是否已有Schedule+homepage任务
+            // 查询当天所有Schedule+homepage任务
             let start_of_day = now.date_naive().and_hms_opt(0, 0, 0).unwrap().and_utc().timestamp_millis();
             let end_of_day = now.date_naive().and_hms_opt(23, 59, 59).unwrap().and_utc().timestamp_millis();
             let tasks = repo.list_by_type(CrawlerTaskType::Scheduled, -1, 0).await.unwrap_or_default();
-            let already_exists = tasks.iter().any(|t| {
+            // 只筛选当天mode为Homepage的任务
+            let homepage_tasks: Vec<_> = tasks.iter().filter(|t| {
                 if let Some(params) = &t.parameters {
                     if let Ok(parsed) = serde_json::from_str::<CrawlerTaskCreate>(params) {
                         t.created_at.unwrap_or(0) >= start_of_day && t.created_at.unwrap_or(0) <= end_of_day && parsed.mode == CrawlerMode::Homepage
                     } else { false }
                 } else { false }
-            });
-            if !already_exists {
+            }).collect();
+            // 检查是否有Completed状态的任务
+            let has_completed = homepage_tasks.iter().any(|t| t.status == CrawlerTaskStatus::Completed);
+            if !has_completed {
                 // 插入Schedule+homepage任务
                 let parameters = serde_json::to_string(&CrawlerTaskCreate {
                     mode: CrawlerMode::Homepage,
@@ -166,6 +169,8 @@ async fn main_refresh_loop(pool: Arc<SqlitePool>, config: Config) {
                 };
                 let _ = repo.create(&new_task).await;
                 info!("自动插入首页资源爬取任务（Schedule+homepage）");
+            } else {
+                info!("当天已存在Completed状态的Schedule+homepage任务，不再补发");
             }
             last_homepage_task_date = Some(today);
         }

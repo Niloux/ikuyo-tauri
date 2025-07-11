@@ -72,6 +72,21 @@ impl<'a> CrawlerTaskRepository<'a> {
             .fetch_all(self.pool)
             .await?)
     }
+
+    // 批量将Running状态的任务标记为Failed，并写入错误信息
+    pub async fn mark_all_running_as_failed(&self, error_message: &str) -> Result<u64> {
+        let now = chrono::Utc::now().timestamp_millis();
+        let result = sqlx::query(
+            "UPDATE crawler_task SET status = ?, completed_at = ?, error_message = ? WHERE status = ?"
+        )
+        .bind(CrawlerTaskStatus::Failed)
+        .bind(now)
+        .bind(error_message)
+        .bind(CrawlerTaskStatus::Running)
+        .execute(self.pool)
+        .await?;
+        Ok(result.rows_affected())
+    }
 }
 
 #[async_trait]

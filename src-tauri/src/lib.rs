@@ -23,7 +23,7 @@ use std::time::{SystemTime, Duration};
 
 const SCHEMA_SQL: &str = include_str!("../schema.sql");
 // 日志保留策略：只保留最近30天且最多30个日志文件
-const LOG_KEEP_DAYS: u64 = 1;
+const LOG_KEEP_DAYS: u64 = 30;
 const LOG_KEEP_MAX: usize = 30;
 
 /// 清理日志目录中过期和超量的日志文件
@@ -157,6 +157,16 @@ pub fn run() -> Result<()> {
             });
             let pool_arc = Arc::new(pool);
 
+            // 启动worker前，批量将所有Running状态的任务标记为Failed
+            {
+                use crate::repositories::crawler_task::CrawlerTaskRepository;
+                let repo = CrawlerTaskRepository::new(&pool_arc);
+                let msg = "应用重启，任务中断";
+                match tauri::async_runtime::block_on(async { repo.mark_all_running_as_failed(msg).await }) {
+                    Ok(n) => tracing::info!("已将{n}个Running任务标记为Failed"),
+                    Err(e) => tracing::error!("批量标记Running任务为Failed失败: {e}"),
+                }
+            }
             // 3. 设置并启动后台工作者
             let config = config::Config::load();
             let notify = Arc::new(Notify::new());

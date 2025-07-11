@@ -51,13 +51,7 @@ impl<'a> ResourceRepository<'a> {
             builder.push(" LIMIT -1 OFFSET 0");
         }
 
-        Ok(builder
-            .build_query_as()
-            .fetch_all(self.pool)
-            .await
-            .map_err(|e| {
-                crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string()))
-            })?)
+        Ok(builder.build_query_as().fetch_all(self.pool).await?)
     }
 
     pub async fn count_by_episode(&self, mikan_id: i64) -> Result<Vec<EpisodeResourceCount>> {
@@ -66,9 +60,7 @@ impl<'a> ResourceRepository<'a> {
         )
         .bind(mikan_id)
         .fetch_all(self.pool)
-        .await.map_err(|e| {
-            crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string()))
-        })?)
+        .await?)
     }
 
     pub async fn insert_many_resources(
@@ -120,22 +112,9 @@ impl<'a> ResourceRepository<'a> {
                 .push(")");
         }
         builder.push(
-            " ON CONFLICT(magnet_hash) DO UPDATE SET \
-                mikan_id = excluded.mikan_id,\
-                subtitle_group_id = excluded.subtitle_group_id,\
-                episode_number = excluded.episode_number,\
-                title = excluded.title,\
-                file_size = excluded.file_size,\
-                resolution = excluded.resolution,\
-                subtitle_type = excluded.subtitle_type,\
-                magnet_url = excluded.magnet_url,\
-                torrent_url = excluded.torrent_url,\
-                release_date = excluded.release_date,\
-                updated_at = excluded.updated_at",
+            " ON CONFLICT(magnet_hash) DO UPDATE SET             mikan_id = excluded.mikan_id,            subtitle_group_id = excluded.subtitle_group_id,            episode_number = excluded.episode_number,            title = excluded.title,            file_size = excluded.file_size,            resolution = excluded.resolution,            subtitle_type = excluded.subtitle_type,            magnet_url = excluded.magnet_url,            torrent_url = excluded.torrent_url,            release_date = excluded.release_date,            updated_at = excluded.updated_at",
         );
-        builder.build().execute(&mut **tx).await.map_err(|e| {
-            crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string()))
-        })?;
+        builder.build().execute(&mut **tx).await?;
         Ok(())
     }
 }
@@ -144,20 +123,7 @@ impl<'a> ResourceRepository<'a> {
 impl<'a> Repository<Resource, i64> for ResourceRepository<'a> {
     async fn create(&self, resource: &Resource) -> Result<()> {
         sqlx::query(
-            "INSERT INTO resource (mikan_id, subtitle_group_id, episode_number, title, file_size, resolution, subtitle_type, magnet_url, torrent_url, play_url, magnet_hash, release_date, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-             ON CONFLICT(magnet_hash) DO UPDATE SET
-                mikan_id = excluded.mikan_id,
-                subtitle_group_id = excluded.subtitle_group_id,
-                episode_number = excluded.episode_number,
-                title = excluded.title,
-                file_size = excluded.file_size,
-                resolution = excluded.resolution,
-                subtitle_type = excluded.subtitle_type,
-                magnet_url = excluded.magnet_url,
-                torrent_url = excluded.torrent_url,
-                release_date = excluded.release_date,
-                updated_at = excluded.updated_at;",
+            "INSERT INTO resource (mikan_id, subtitle_group_id, episode_number, title, file_size, resolution, subtitle_type, magnet_url, torrent_url, play_url, magnet_hash, release_date, created_at, updated_at)             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)             ON CONFLICT(magnet_hash) DO UPDATE SET                mikan_id = excluded.mikan_id,                subtitle_group_id = excluded.subtitle_group_id,                episode_number = excluded.episode_number,                title = excluded.title,                file_size = excluded.file_size,                resolution = excluded.resolution,                subtitle_type = excluded.subtitle_type,                magnet_url = excluded.magnet_url,                torrent_url = excluded.torrent_url,                release_date = excluded.release_date,                updated_at = excluded.updated_at;",
         )
         .bind(resource.mikan_id)
         .bind(resource.subtitle_group_id)
@@ -174,9 +140,7 @@ impl<'a> Repository<Resource, i64> for ResourceRepository<'a> {
         .bind(resource.created_at)
         .bind(resource.updated_at)
         .execute(self.pool)
-        .await.map_err(|e| {
-            crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string()))
-        })?;
+        .await?;
         Ok(())
     }
 
@@ -185,12 +149,7 @@ impl<'a> Repository<Resource, i64> for ResourceRepository<'a> {
             sqlx::query_as::<_, Resource>("SELECT * FROM resource WHERE id = ?")
                 .bind(id)
                 .fetch_optional(self.pool)
-                .await
-                .map_err(|e| {
-                    crate::error::AppError::Database(crate::error::DatabaseError::Other(
-                        e.to_string(),
-                    ))
-                })?,
+                .await?,
         )
     }
 
@@ -204,10 +163,7 @@ impl<'a> Repository<Resource, i64> for ResourceRepository<'a> {
             .bind(limit)
             .bind(offset)
             .fetch_all(self.pool)
-            .await
-            .map_err(|e| {
-                crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string()))
-            })?)
+            .await?)
     }
 
     async fn update(&self, resource: &Resource) -> Result<()> {
@@ -229,9 +185,7 @@ impl<'a> Repository<Resource, i64> for ResourceRepository<'a> {
         .bind(resource.updated_at)
         .bind(resource.id)
         .execute(self.pool)
-        .await.map_err(|e| {
-            crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string()))
-        })?;
+        .await?;
         Ok(())
     }
 
@@ -239,10 +193,7 @@ impl<'a> Repository<Resource, i64> for ResourceRepository<'a> {
         sqlx::query("DELETE FROM resource WHERE id = ?")
             .bind(id)
             .execute(self.pool)
-            .await
-            .map_err(|e| {
-                crate::error::AppError::Database(crate::error::DatabaseError::Other(e.to_string()))
-            })?;
+            .await?;
         Ok(())
     }
 }

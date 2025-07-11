@@ -1,5 +1,4 @@
 use crate::core::mikan_fetcher::MikanFetcher;
-use crate::error::AppError;
 use crate::models::{Anime, CrawlerTaskStatus, Resource, SubtitleGroup};
 use crate::repositories::{
     anime::AnimeRepository, base::Repository, crawler_task::CrawlerTaskRepository,
@@ -9,7 +8,7 @@ use crate::types::crawler::{CrawlerMode, CrawlerTaskCreate, SeasonName};
 use futures_util::stream::{self, StreamExt};
 use sqlx::SqlitePool;
 use std::collections::HashSet;
-use std::sync::atomic::{AtomicI64, Ordering};
+use std::sync::atomic::AtomicI64;
 use std::sync::Arc;
 
 pub struct CrawlerService {
@@ -286,8 +285,7 @@ impl CrawlerService {
         let mut tx = self
             .pool
             .begin()
-            .await
-            .map_err(|e| AppError::Database(e.into()))?;
+            .await?;
 
         let anime_repo = AnimeRepository::new(&self.pool);
         anime_repo
@@ -305,8 +303,7 @@ impl CrawlerService {
             .await?;
 
         tx.commit()
-            .await
-            .map_err(|e| AppError::Database(e.into()))?;
+            .await?;
 
         self.anime_buffer.clear();
         self.subtitle_group_buffer.clear();

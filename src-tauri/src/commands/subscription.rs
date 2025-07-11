@@ -84,12 +84,12 @@ pub async fn subscribe(
             .bind(sub_ttl)
             .bind(bangumi_id)
             .execute(&**pool)
-            .await.map_err(|e| AppError::Database(e.into()))?;
+            .await?;
         let _ = sqlx::query("UPDATE bangumi_episodes_cache SET ttl = ? WHERE id = ?")
             .bind(sub_ttl)
             .bind(bangumi_id)
             .execute(&**pool)
-            .await.map_err(|e| AppError::Database(e.into()))?;
+            .await?;
     }
 
     // 创建成功后，重新获取完整的订阅信息
@@ -118,12 +118,12 @@ pub async fn unsubscribe(
             .bind(nonsub_ttl)
             .bind(bangumi_id)
             .execute(&**pool)
-            .await.map_err(|e| AppError::Database(e.into()))?;
+            .await?;
         let _ = sqlx::query("UPDATE bangumi_episodes_cache SET ttl = ? WHERE id = ?")
             .bind(nonsub_ttl)
             .bind(bangumi_id)
             .execute(&**pool)
-            .await.map_err(|e| AppError::Database(e.into()))?;
+            .await?;
     }
     Ok(())
 }

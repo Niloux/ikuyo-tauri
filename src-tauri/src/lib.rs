@@ -6,7 +6,7 @@ mod models;
 mod repositories;
 mod services;
 mod types;
-use std::sync::Arc;
+use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
 use tokio::sync::Notify;
 mod worker;
 
@@ -126,16 +126,36 @@ pub fn run() -> Result<()> {
 
             // 3. 设置并启动后台工作者
             let notify = Arc::new(Notify::new());
+            let exit_flag = Arc::new(AtomicBool::new(false));
             let worker =
-                worker::Worker::new(pool_arc.clone(), notify.clone(), config.clone(), None);
+                worker::Worker::new(pool_arc.clone(), notify.clone(), config.clone(), None, exit_flag.clone());
             tauri::async_runtime::spawn(async move {
                 worker.run().await;
             });
 
+            let pool_arc_ptr = pool_arc.clone();
             // 4. 将所有状态注入Tauri
-            app.manage(pool_arc);
+            app.manage(pool_arc.clone());
             app.manage(config);
             app.manage(notify);
+            app.manage(exit_flag.clone());
+
+            // 注册退出钩子，预留退出流程入口
+            let window = app.get_webview_window("main").expect("main window not found");
+            window.on_window_event(move |event| {
+                if let tauri::WindowEvent::CloseRequested { .. } = event {
+                    exit_flag.store(true, Ordering::SeqCst);
+                    // 退出流程：异步执行checkpoint和关闭连接
+                    let pool = pool_arc_ptr.clone();
+                    tauri::async_runtime::spawn(async move {
+                        tracing::info!("应用退出：执行PRAGMA wal_checkpoint(FULL)");
+                        let _ = sqlx::query("PRAGMA wal_checkpoint(FULL);").execute(pool.as_ref()).await;
+                        tracing::info!("应用退出：关闭数据库连接池");
+                        pool.close().await;
+                        tracing::info!("应用退出：数据库连接已关闭");
+                    });
+                }
+            });
 
             Ok(())
         })

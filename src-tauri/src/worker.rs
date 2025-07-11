@@ -18,6 +18,7 @@ pub struct Worker {
     retry_count: usize,
     retry_delay_ms: u64,
     config: Config,
+    exit_flag: Arc<std::sync::atomic::AtomicBool>,
 }
 
 impl Worker {
@@ -26,6 +27,7 @@ impl Worker {
         notify: Arc<Notify>,
         config: Config,
         permits: Option<usize>,
+        exit_flag: Arc<std::sync::atomic::AtomicBool>,
     ) -> Self {
         let permits = permits.unwrap_or(1);
         Self {
@@ -35,6 +37,7 @@ impl Worker {
             retry_count: 3,
             retry_delay_ms: 1000,
             config,
+            exit_flag,
         }
     }
 
@@ -47,11 +50,20 @@ impl Worker {
         });
 
         loop {
+            if self.exit_flag.load(std::sync::atomic::Ordering::SeqCst) {
+                info!("Worker: 检测到退出标志，停止新任务调度");
+                break;
+            }
             let permit = self.semaphore.clone().acquire_owned().await.unwrap();
             let repo = CrawlerTaskRepository::new(&self.pool);
             let pending_tasks = repo.list_by_status(CrawlerTaskStatus::Pending, -1, 0).await;
             match pending_tasks {
                 Ok(mut tasks) if !tasks.is_empty() => {
+                    if self.exit_flag.load(std::sync::atomic::Ordering::SeqCst) {
+                        info!("Worker: 退出中，放弃调度新任务");
+                        drop(permit);
+                        break;
+                    }
                     let mut task = tasks.remove(0);
                     task.status = CrawlerTaskStatus::Running;
                     task.started_at = Some(chrono::Utc::now().timestamp_millis());

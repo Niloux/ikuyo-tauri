@@ -155,7 +155,7 @@ impl CrawlerService {
         }
 
         // 分批调度爬取详情，边爬边flush
-        let max_concurrent = 16;
+        let max_concurrent = 8;
         let mut processed = 0;
         let mut anime_data_buffer = Vec::new();
         let mut subtitle_group_buffer = Vec::new();
@@ -165,10 +165,15 @@ impl CrawlerService {
             .map(|(i, url)| {
                 let fetcher = &fetcher;
                 async move {
-                    match fetcher.fetch_and_parse_detail(&url).await {
-                        Ok(anime_data) => Some((i, anime_data)),
-                        Err(e) => {
-                            tracing::warn!("Failed to parse detail page {}: {}", url, e);
+                    use tokio::time::{timeout, Duration};
+                    match timeout(Duration::from_secs(30), fetcher.fetch_and_parse_detail(&url)).await {
+                        Ok(Ok(anime_data)) => Some((i, anime_data)),
+                        Ok(Err(e)) => {
+                            tracing::warn!("爬取详情页{}失败: {}", url, e);
+                            None
+                        }
+                        Err(_) => {
+                            tracing::warn!("爬取详情页{}超时", url);
                             None
                         }
                     }

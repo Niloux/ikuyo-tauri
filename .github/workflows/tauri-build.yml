@@ -1,0 +1,55 @@
+name: Tauri Build
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        platform: [macos-latest, ubuntu-latest, windows-latest]
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enable Corepack (for pnpm)
+        run: corepack enable
+
+      - name: Prepare pnpm (version 10.12.4)
+        run: corepack prepare pnpm@10.12.4 --activate
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        run: pnpm install
+
+      - name: Show pnpm version
+        run: pnpm --version
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        with:
+          args: --release
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tauri-build-${{ matrix.platform }}
+          path: src-tauri/target/release/bundle
+
+      - name: Create GitHub Release and Upload Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: src-tauri/target/release/bundle/**/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 

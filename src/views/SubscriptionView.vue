@@ -507,11 +507,12 @@ onActivated(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  min-height: 320px;
+  justify-content: flex-start;
+  min-height: 70vh;
   color: var(--color-text-muted);
   text-align: center;
   padding: 60px 20px 40px 20px;
+  padding-top: 5vh;
 }
 .empty-center-block h3 {
   font-size: 1.5rem;

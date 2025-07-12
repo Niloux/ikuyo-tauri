@@ -5,12 +5,12 @@ use crate::repositories::base::Repository;
 use crate::repositories::crawler_task::CrawlerTaskRepository;
 use crate::services::bangumi_service::BangumiService;
 use crate::services::crawler_service::CrawlerService;
-use futures_util::stream::{self, StreamExt};
+use futures_util::stream::{StreamExt};
 use sqlx::SqlitePool;
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
-use tokio::sync::{Notify, Semaphore, RwLock};
+use tokio::sync::{Notify, RwLock, Semaphore};
 use tokio::time::{sleep, Duration};
 use tokio_util::sync::CancellationToken;
 use tracing::{error, info, warn};
@@ -62,7 +62,12 @@ impl Worker {
                 info!("Worker: 检测到退出标志，停止新任务调度");
                 break;
             }
-            let permit = self.semaphore.clone().acquire_owned().await.expect("Semaphore closed unexpectedly");
+            let permit = self
+                .semaphore
+                .clone()
+                .acquire_owned()
+                .await
+                .expect("Semaphore closed unexpectedly");
             let repo = CrawlerTaskRepository::new(&self.pool);
 
             let pending_tasks_result = repo.list_by_status(CrawlerTaskStatus::Pending, -1, 0).await;
@@ -84,11 +89,19 @@ impl Worker {
                     }
 
                     let pool = self.pool.clone();
-                    let task_id = task.id.unwrap_or_default();
+
+                    // 如果任务没有ID，则跳过任务
+                    let task_id = if let Some(id) = task.id {
+                        id
+                    } else {
+                        error!("Worker: 任务没有ID, 跳过任务: {:?}", task);
+                        continue;
+                    };
+
                     let mut crawler_service = CrawlerService::new(pool.clone(), task_id);
                     let retry_count = self.retry_count;
                     let cancel_tokens = self.cancel_tokens.clone();
-                    
+
                     let token = CancellationToken::new();
                     if let Ok(mut map) = cancel_tokens.lock() {
                         map.insert(task_id, token.clone());
@@ -101,7 +114,7 @@ impl Worker {
                         while attempt < retry_count && !success {
                             attempt += 1;
                             crawler_service.set_cancellation_token(token.clone());
-                            
+
                             match crawler_service.run().await {
                                 Ok(_) => {
                                     success = true;
@@ -117,10 +130,14 @@ impl Worker {
                                         let repo = CrawlerTaskRepository::new(&pool);
                                         let mut final_task = task_for_fail.write().await;
                                         final_task.status = CrawlerTaskStatus::Failed;
-                                        final_task.completed_at = Some(chrono::Utc::now().timestamp_millis());
+                                        final_task.completed_at =
+                                            Some(chrono::Utc::now().timestamp_millis());
                                         final_task.error_message = Some(e.to_string());
                                         if let Err(db_err) = repo.update(&*final_task).await {
-                                            error!("Worker: 更新任务为失败状态时出错: {:?}", db_err);
+                                            error!(
+                                                "Worker: 更新任务为失败状态时出错: {:?}",
+                                                db_err
+                                            );
                                         }
                                     }
                                 }
@@ -156,7 +173,7 @@ async fn main_refresh_loop(pool: Arc<SqlitePool>, config: Config) {
     use chrono::{Datelike, Utc};
 
     info!("内容缓存与资源刷新主循环启动");
-    
+
     if let Err(e) = refresh_all_subscribed_bangumi(&pool, &config).await {
         error!("启动时刷新订阅缓存失败: {:?}", e);
     }
@@ -171,32 +188,58 @@ async fn main_refresh_loop(pool: Arc<SqlitePool>, config: Config) {
         let today = (now.year(), now.month(), now.day());
 
         if last_homepage_task_date != Some(today) {
-            let repo = CrawlerTaskRepository::new(&pool);
-            let start_of_day = now.date_naive().and_hms_opt(0, 0, 0).unwrap().and_utc().timestamp_millis();
-            let end_of_day = now.date_naive().and_hms_opt(23, 59, 59).unwrap().and_utc().timestamp_millis();
-            
-            let tasks = match repo.list_by_type(CrawlerTaskType::Scheduled, -1, 0).await {
-                Ok(t) => t,
-                Err(e) => {
-                    error!("获取定时任务列表失败: {:?}, 将在下一分钟重试", e);
-                    sleep(Duration::from_secs(60)).await;
-                    continue;
+            let start_of_day = now
+                .date_naive()
+                .and_hms_opt(0, 0, 0)
+                .unwrap()
+                .and_utc()
+                .timestamp_millis();
+            let end_of_day = now
+                .date_naive()
+                .and_hms_opt(23, 59, 59)
+                .unwrap()
+                .and_utc()
+                .timestamp_millis();
+
+            let tasks = {
+                let repo = CrawlerTaskRepository::new(&pool);
+                match repo.list_by_type(CrawlerTaskType::Scheduled, -1, 0).await {
+                    Ok(t) => t,
+                    Err(e) => {
+                        error!("获取定时任务列表失败: {:?}, 将在下一分钟重试", e);
+                        sleep(Duration::from_secs(60)).await;
+                        continue;
+                    }
                 }
             };
 
-            let homepage_tasks: Vec<_> = tasks.iter().filter(|t| {
-                if let Some(params) = &t.parameters {
-                    if let Ok(parsed) = serde_json::from_str::<CrawlerTaskCreate>(params) {
-                        t.created_at.unwrap_or(0) >= start_of_day && t.created_at.unwrap_or(0) <= end_of_day && parsed.mode == CrawlerMode::Homepage
-                    } else { false }
-                } else { false }
-            }).collect();
+            let homepage_tasks: Vec<_> = tasks
+                .iter()
+                .filter(|t| {
+                    if let Some(params) = &t.parameters {
+                        if let Ok(parsed) = serde_json::from_str::<CrawlerTaskCreate>(params) {
+                            t.created_at.unwrap_or(0) >= start_of_day
+                                && t.created_at.unwrap_or(0) <= end_of_day
+                                && parsed.mode == CrawlerMode::Homepage
+                        } else {
+                            false
+                        }
+                    } else {
+                        false
+                    }
+                })
+                .collect();
 
-            let has_completed = homepage_tasks.iter().any(|t| t.status == CrawlerTaskStatus::Completed);
+            let has_completed = homepage_tasks
+                .iter()
+                .any(|t| t.status == CrawlerTaskStatus::Completed);
 
             if !has_completed {
                 let parameters = match serde_json::to_string(&CrawlerTaskCreate {
-                    mode: CrawlerMode::Homepage, year: None, season: None, limit: None,
+                    mode: CrawlerMode::Homepage,
+                    year: None,
+                    season: None,
+                    limit: None,
                 }) {
                     Ok(p) => p,
                     Err(e) => {
@@ -207,12 +250,27 @@ async fn main_refresh_loop(pool: Arc<SqlitePool>, config: Config) {
                 };
                 let new_task = CrawlerTask {
                     parameters: Some(parameters),
-                    id: None, task_type: CrawlerTaskType::Scheduled, status: CrawlerTaskStatus::Pending, result_summary: None, created_at: Some(now.timestamp_millis()), started_at: None, completed_at: None, error_message: None, percentage: Some(0.0), processed_items: Some(0), total_items: Some(0), processing_speed: None, estimated_remaining: None,
+                    id: None,
+                    task_type: CrawlerTaskType::Scheduled,
+                    status: CrawlerTaskStatus::Pending,
+                    result_summary: None,
+                    created_at: Some(now.timestamp_millis()),
+                    started_at: None,
+                    completed_at: None,
+                    error_message: None,
+                    percentage: Some(0.0),
+                    processed_items: Some(0),
+                    total_items: Some(0),
+                    processing_speed: None,
+                    estimated_remaining: None,
                 };
-                if let Err(e) = repo.create(&new_task).await {
-                    error!("自动插入首页资源爬取任务失败: {:?}", e);
-                } else {
-                    info!("自动插入首页资源爬取任务（Schedule+homepage）");
+                {
+                    let repo = CrawlerTaskRepository::new(&pool);
+                    if let Err(e) = repo.create(&new_task).await {
+                        error!("自动插入首页资源爬取任务失败: {:?}", e);
+                    } else {
+                        info!("自动插入首页资源爬取任务（Schedule+homepage）");
+                    }
                 }
             } else {
                 info!("当天已存在Completed状态的Schedule+homepage任务，不再补发");
@@ -255,71 +313,75 @@ async fn refresh_bangumi_batch(
     pool: &Arc<SqlitePool>,
     config: &Config,
 ) -> Result<()> {
-    use sqlx::Row;
     use chrono::Utc;
+    use sqlx::Row;
 
     if ids.is_empty() {
         return Ok(());
     }
 
-    let service = Arc::new(BangumiService::new(pool.clone(), config.clone()));
     let now = Utc::now().timestamp();
-
-    let refresh_stream = |id: i64, item_type: &'static str| {
-        let service = service.clone();
-        let pool = pool.clone();
-        let log_prefix = log_prefix.to_string();
+    let mut to_refresh = Vec::new();
+    // 1. 先串行查询所有subject
+    for &id in ids.iter() {
+        let row: Option<i64> = sqlx::query("SELECT updated_at FROM bangumi_subject_cache WHERE id = ?")
+            .bind(id)
+            .fetch_optional(&**pool)
+            .await?
+            .map(|r| r.get(0));
+        let needs_refresh = row.map_or(true, |updated_at| now - updated_at >= interval);
+        if needs_refresh {
+            to_refresh.push((id, "subject".to_string()));
+        }
+    }
+    // 2. 再串行查询所有episodes
+    for &id in ids.iter() {
+        let row: Option<i64> = sqlx::query("SELECT updated_at FROM bangumi_episodes_cache WHERE id = ? AND params_hash = '0'")
+            .bind(id)
+            .fetch_optional(&**pool)
+            .await?
+            .map(|r| r.get(0));
+        let needs_refresh = row.map_or(true, |updated_at| now - updated_at >= interval);
+        if needs_refresh {
+            to_refresh.push((id, "episodes".to_string()));
+        }
+    }
+    // 3. 并发网络请求
+    let service = BangumiService::new(pool.clone(), config.clone());
+    let service_ref = &service;
+    let results = futures_util::stream::iter(to_refresh.into_iter().map(move |(id, item_type)| {
         async move {
-            let query_str = if item_type == "subject" {
-                "SELECT updated_at FROM bangumi_subject_cache WHERE id = ?"
+            // 这里每个future都用同一个service的引用，避免clone
+            let service = service_ref;
+            info!("[worker] 刷新{}/{}缓存: {}", log_prefix, item_type, id);
+            let refresh_result = if item_type == "subject" {
+                service.get_subject(id).await.map(|_| ())
             } else {
-                "SELECT updated_at FROM bangumi_episodes_cache WHERE id = ? AND params_hash = '0'"
+                service.get_episodes(id, Some(0), Some(1000), Some(0)).await.map(|_| ())
             };
-            
-            let row: Option<i64> = sqlx::query(query_str)
-                .bind(id)
-                .fetch_optional(&*pool)
-                .await?
-                .map(|r| r.get(0));
-
-            let needs_refresh = row.map_or(true, |updated_at| now - updated_at >= interval);
-
-            if needs_refresh {
-                info!("[worker] 刷新{}/{}缓存: {}", log_prefix, item_type, id);
-                let refresh_result = if item_type == "subject" {
-                    service.get_subject(id).await.map(|_| ())
-                } else {
-                    service.get_episodes(id, Some(0), Some(1000), Some(0)).await.map(|_| ())
-                };
-
-                if let Err(e) = refresh_result {
-                    warn!("[worker] 刷新{}/{}缓存失败: {}: {:?}", log_prefix, item_type, id, e);
-                }
+            if let Err(e) = refresh_result {
+                warn!("[worker] 刷新{}/{}缓存失败: {}: {:?}", log_prefix, item_type, id, e);
             }
             Ok::<(), AppError>(())
         }
-    };
-
-    // 分别并发处理subject和episodes
-    let subject_futures = stream::iter(ids.iter().copied()).map(|id| refresh_stream(id, "subject"));
-    let episode_futures = stream::iter(ids.iter().copied()).map(|id| refresh_stream(id, "episodes"));
-
-    let subject_results = subject_futures.buffer_unordered(8).collect::<Vec<_>>().await;
-    let episode_results = episode_futures.buffer_unordered(8).collect::<Vec<_>>().await;
-
-    // 合并所有结果，统一处理错误
-    for result in subject_results.into_iter().chain(episode_results.into_iter()) {
+    }))
+    .buffer_unordered(8)
+    .collect::<Vec<_>>()
+    .await;
+    // 4. 统一处理错误
+    for result in results {
         if let Err(e) = result {
             error!("[worker] 批量刷新时发生内部错误: {:?}", e);
         }
     }
-
     Ok(())
 }
 
 async fn refresh_all_subscribed_bangumi(pool: &Arc<SqlitePool>, config: &Config) -> Result<()> {
     use sqlx::Row;
-    let rows = sqlx::query("SELECT DISTINCT bangumi_id FROM user_subscriptions").fetch_all(&**pool).await?;
+    let rows = sqlx::query("SELECT DISTINCT bangumi_id FROM user_subscriptions")
+        .fetch_all(&**pool)
+        .await?;
     let ids: HashSet<i64> = rows.iter().map(|r| r.get::<i64, _>(0)).collect();
     let sub_interval = config.bangumi_sub_refresh_interval.unwrap_or(3600);
     refresh_bangumi_batch(&ids, sub_interval, "订阅", pool, config).await
@@ -330,7 +392,7 @@ async fn refresh_all_non_subscribed_bangumi(pool: &Arc<SqlitePool>, config: &Con
     let rows = sqlx::query(
         "SELECT id FROM bangumi_subject_cache WHERE id NOT IN (SELECT DISTINCT bangumi_id FROM user_subscriptions)"
     ).fetch_all(&**pool).await?;
-    
+
     let non_sub_ids: HashSet<i64> = rows.iter().map(|r| r.get::<i64, _>(0)).collect();
     let nonsub_interval = config.bangumi_nonsub_refresh_interval.unwrap_or(43200);
     refresh_bangumi_batch(&non_sub_ids, nonsub_interval, "非订阅", pool, config).await

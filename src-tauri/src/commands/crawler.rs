@@ -61,12 +61,6 @@ pub async fn list_crawler_tasks(
     page_size: Option<i64>,
     pool: State<'_, Arc<SqlitePool>>,
 ) -> Result<Vec<TaskResponse>, AppError> {
-    tracing::info!(
-        "Listing crawler tasks with page: {:?}, page_size: {:?}",
-        page,
-        page_size
-    );
-
     let repo = CrawlerTaskRepository::new(&pool);
     let current_page = page.unwrap_or(1);
     let current_page_size = page_size.unwrap_or(10);

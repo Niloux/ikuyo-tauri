@@ -13,6 +13,7 @@ use tracing::info;
 use tokio_util::sync::CancellationToken;
 use std::collections::HashMap;
 use std::sync::Mutex;
+use futures_util::stream::{self, StreamExt};
 
 pub struct Worker {
     pool: Arc<SqlitePool>,
@@ -209,9 +210,92 @@ async fn main_refresh_loop(pool: Arc<SqlitePool>, config: Config) {
     }
 }
 
+// 通用批量刷新subject/episodes缓存
+async fn refresh_bangumi_batch(
+    ids: &std::collections::HashSet<i64>,
+    interval: i64,
+    log_prefix: &str,
+    pool: &Arc<SqlitePool>,
+    config: &Config,
+) {
+    use crate::services::bangumi_service::BangumiService;
+    use sqlx::Row;
+    use chrono::Utc;
+    use tracing::{info, warn};
+    use std::sync::Arc;
+    let service = Arc::new(BangumiService::new(pool.clone(), config.clone()));
+    let now = Utc::now().timestamp();
+    // subject缓存并发刷新
+    stream::iter(ids.iter().copied())
+        .map(|id| {
+            let service = service.clone();
+            let pool = pool.clone();
+            let log_prefix = log_prefix.to_string();
+            async move {
+                let row = sqlx::query("SELECT updated_at FROM bangumi_subject_cache WHERE id = ?")
+                    .bind(id)
+                    .fetch_optional(&*pool)
+                    .await
+                    .ok()
+                    .flatten();
+                let need_refresh_subject = match row {
+                    Some(row) => {
+                        let updated_at: i64 = row.get(0);
+                        now - updated_at >= interval
+                    },
+                    None => true,
+                };
+                if need_refresh_subject {
+                    info!("[worker] 刷新{}/subject缓存: {}", log_prefix, id);
+                    if let Err(e) = service.get_subject(id).await {
+                        warn!("[worker] 刷新{}/subject缓存失败: {}: {:?}", log_prefix, id, e);
+                    }
+                } else {
+                    info!("[worker] 跳过未过期{}/subject: {}", log_prefix, id);
+                }
+            }
+        })
+        .buffer_unordered(8)
+        .collect::<Vec<_>>()
+        .await;
+    // episodes缓存并发刷新
+    stream::iter(ids.iter().copied())
+        .map(|id| {
+            let service = service.clone();
+            let pool = pool.clone();
+            let log_prefix = log_prefix.to_string();
+            async move {
+                let row = sqlx::query("SELECT updated_at FROM bangumi_episodes_cache WHERE id = ? AND params_hash = ?")
+                    .bind(id)
+                    .bind("0")
+                    .fetch_optional(&*pool)
+                    .await
+                    .ok()
+                    .flatten();
+                let need_refresh_episodes = match row {
+                    Some(row) => {
+                        let updated_at: i64 = row.get(0);
+                        now - updated_at >= interval
+                    },
+                    None => true,
+                };
+                if need_refresh_episodes {
+                    info!("[worker] 刷新{}/episodes缓存: {}", log_prefix, id);
+                    if let Err(e) = service.get_episodes(id, Some(0), Some(1000), Some(0)).await {
+                        warn!("[worker] 刷新{}/episodes缓存失败: {}: {:?}", log_prefix, id, e);
+                    }
+                } else {
+                    info!("[worker] 跳过未过期{}/episodes: {}", log_prefix, id);
+                }
+            }
+        })
+        .buffer_unordered(8)
+        .collect::<Vec<_>>()
+        .await;
+}
+
 // 刷新所有订阅subject/episodes缓存
 async fn refresh_all_subscribed_bangumi(pool: &Arc<SqlitePool>, config: &Config) {
-    use crate::services::bangumi_service::BangumiService;
     use sqlx::Row;
     use std::collections::HashSet;
     // 获取所有订阅subject_id（去重）
@@ -220,16 +304,12 @@ async fn refresh_all_subscribed_bangumi(pool: &Arc<SqlitePool>, config: &Config)
         .await
         .unwrap_or_default();
     let ids: HashSet<i64> = rows.iter().map(|r| r.get::<i64, _>(0)).collect();
-    let service = BangumiService::new(pool.clone(), config.clone());
-    for id in ids {
-        let _ = service.get_subject(id).await;
-        let _ = service.get_episodes(id, None, None, None).await;
-    }
+    let sub_interval = config.bangumi_sub_refresh_interval.unwrap_or(3600);
+    refresh_bangumi_batch(&ids, sub_interval, "订阅", pool, config).await;
 }
 
 // 刷新所有非订阅subject/episodes缓存
 async fn refresh_all_non_subscribed_bangumi(pool: &Arc<SqlitePool>, config: &Config) {
-    use crate::services::bangumi_service::BangumiService;
     use sqlx::Row;
     use std::collections::HashSet;
     // 获取所有subject_id
@@ -245,10 +325,7 @@ async fn refresh_all_non_subscribed_bangumi(pool: &Arc<SqlitePool>, config: &Con
         .unwrap_or_default();
     let sub_ids: HashSet<i64> = sub_rows.iter().map(|r| r.get::<i64, _>(0)).collect();
     // 非订阅id = all_ids - sub_ids
-    let non_sub_ids: Vec<i64> = all_ids.difference(&sub_ids).cloned().collect();
-    let service = BangumiService::new(pool.clone(), config.clone());
-    for id in non_sub_ids {
-        let _ = service.get_subject(id).await;
-        let _ = service.get_episodes(id, None, None, None).await;
-    }
+    let non_sub_ids: HashSet<i64> = all_ids.difference(&sub_ids).cloned().collect();
+    let nonsub_interval = config.bangumi_nonsub_refresh_interval.unwrap_or(43200);
+    refresh_bangumi_batch(&non_sub_ids, nonsub_interval, "非订阅", pool, config).await;
 }

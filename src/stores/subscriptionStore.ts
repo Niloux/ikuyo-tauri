@@ -42,6 +42,12 @@ export const useSubscriptionStore = defineStore('subscription', () => {
     // 全量订阅ID集合（用于全局判断）
     const allSubscribedBangumiIds = ref<Set<number> | null>(null)
 
+    // 新增：全局搜索内容状态
+    const searchQuery = ref('')
+    const setSearchQuery = (val: string) => {
+        searchQuery.value = val
+    }
+
     /**
      * 计算属性：订阅的番剧ID集合，用于快速查询订阅状态
      */
@@ -279,6 +285,9 @@ export const useSubscriptionStore = defineStore('subscription', () => {
         pagination,
         currentParams,
         allSubscribedBangumiIds,
+        // 新增：导出 searchQuery 和 setSearchQuery
+        searchQuery,
+        setSearchQuery,
         // 计算属性
         subscribedBangumiIds,
         // 方法

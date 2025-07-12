@@ -155,17 +155,16 @@ const goToPage = async (page: number, options?: { debounce?: boolean; throttle?:
 
 // keep-alive组件恢复时的处理
 onActivated(() => {
+  // 只处理滚动位置恢复，不再清空状态
   const fromDetail = sessionStorage.getItem('fromDetail')
   if (fromDetail === 'true') {
-    // 从详情页返回，恢复滚动位置
     sessionStorage.removeItem('fromDetail')
     const savedScroll = Number(sessionStorage.getItem(SCROLL_KEY) || 0)
     nextTick(() => {
       restoreScrollPosition(savedScroll)
     })
   } else {
-    // 其他情况清空状态并滚动到顶部
-    searchStore.clearSearchState()
+    // 其他情况滚动到顶部，但不清空搜索状态
     nextTick(() => {
       ensureScrollToTop()
     })
@@ -175,17 +174,8 @@ onActivated(() => {
 // 组件挂载时清空搜索状态，确保每次都是干净的初始状态
 onMounted(() => {
   mountCounter.value++
-
-  // 检查是否从详情页返回（第一次缓存时也需要检查）
-  const fromDetail = sessionStorage.getItem('fromDetail')
-
-  if (fromDetail === 'true') {
-    // 从详情页返回，保持搜索状态，不清空
-    sessionStorage.removeItem('fromDetail') // 清除标记
-  } else {
-    // 首次进入或刷新，清空搜索状态
-    searchStore.clearSearchState()
-  }
+  // 首次进入或刷新页面时清空搜索状态
+  searchStore.clearSearchState()
 })
 
 onBeforeRouteLeave((to: any, from: any) => {

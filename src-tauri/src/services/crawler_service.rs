@@ -12,6 +12,7 @@ use sqlx::SqlitePool;
 use std::collections::HashSet;
 use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
+use crate::error::{AppError, TaskError, Result};
 
 pub struct CrawlerService {
     pub pool: Arc<SqlitePool>,
@@ -49,13 +50,17 @@ impl CrawlerService {
         self.cancellation_token = Some(token);
     }
 
-    pub async fn run(&mut self) {
+    pub async fn run(&mut self) -> Result<()> {
         let repo = CrawlerTaskRepository::new(&self.pool);
         let task = match repo.get_by_id(self.task_id).await {
             Ok(Some(task)) => task,
-            _ => {
+            Ok(None) => {
                 tracing::error!("任务{}不存在，停止运行。", self.task_id);
-                return;
+                return Err(AppError::Task(TaskError::Failed("任务不存在".to_string())));
+            },
+            Err(e) => {
+                tracing::error!("查询任务{}失败: {}", self.task_id, e);
+                return Err(AppError::Task(TaskError::Failed(format!("查询任务失败: {}", e))));
             }
         };
 
@@ -185,7 +190,7 @@ impl CrawlerService {
         )
         .await;
         if failed {
-            return;
+            return Err(AppError::Task(TaskError::Failed(error_message.unwrap_or_else(|| "未知错误".to_string()))));
         }
 
         // 分批调度爬取详情，边爬边flush
@@ -246,7 +251,7 @@ impl CrawlerService {
                         None,
                     )
                     .await;
-                    return;
+                    return Err(AppError::Task(TaskError::Cancel("任务被取消".to_string())));
                 }
             }
             if let Some((_, anime_data)) = result {
@@ -303,12 +308,12 @@ impl CrawlerService {
                     let error_msg = format!("保存数据到数据库失败: {}", e);
                     self.update_task_status(
                         CrawlerTaskStatus::Failed,
-                        Some(error_msg),
+                        Some(error_msg.clone()),
                         Some(0.0),
                         None,
                     )
                     .await;
-                    return;
+                    return Err(AppError::Task(TaskError::Failed(error_msg)));
                 }
             }
         }
@@ -321,6 +326,7 @@ impl CrawlerService {
         };
         self.update_task_status(CrawlerTaskStatus::Completed, None, Some(speed), Some(0.0))
             .await;
+        Ok(())
     }
 
     async fn flush_buffers(&mut self) -> crate::error::Result<()> {
@@ -395,7 +401,7 @@ impl CrawlerService {
         pool: Arc<SqlitePool>,
         notify: Arc<tokio::sync::Notify>,
         task: crate::types::crawler::CrawlerTaskCreate,
-    ) -> Result<crate::types::crawler::TaskResponse, crate::error::AppError> {
+    ) -> Result<crate::types::crawler::TaskResponse> {
         use crate::models::{CrawlerTask, CrawlerTaskType, CrawlerTaskStatus};
         use crate::repositories::crawler_task::CrawlerTaskRepository;
         use crate::types::crawler::TaskResponse;
@@ -454,7 +460,7 @@ impl CrawlerService {
         pool: Arc<SqlitePool>,
         worker: Arc<crate::worker::Worker>,
         task_id: i64,
-    ) -> Result<crate::types::crawler::TaskResponse, crate::error::AppError> {
+    ) -> Result<crate::types::crawler::TaskResponse> {
         use crate::repositories::crawler_task::CrawlerTaskRepository;
         use crate::models::{CrawlerTaskStatus};
         use crate::types::crawler::TaskResponse;

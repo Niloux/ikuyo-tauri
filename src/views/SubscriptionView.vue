@@ -6,12 +6,12 @@
       <div class="toolbar toolbar-unified">
         <div class="search-box">
           <input
-            v-model="searchQuery"
+            v-model="subscriptionStore.searchQuery"
             type="text"
             placeholder="搜索订阅番剧"
             class="search-input unified-input"
           />
-          <span v-if="loading && searchQuery" class="search-loading-spinner" style="margin-left:8px;"></span>
+          <span v-if="loading && subscriptionStore.searchQuery" class="search-loading-spinner" style="margin-left:8px;"></span>
         </div>
         <div class="sort-controls">
           <select
@@ -76,7 +76,7 @@
       </div>
 
       <!-- 中央提示区块：无订阅且无搜索条件时显示 -->
-      <div v-if="!loading && subscriptions.length === 0 && !searchQuery" class="empty-center-block">
+      <div v-if="!loading && subscriptions.length === 0 && !subscriptionStore.searchQuery" class="empty-center-block">
         <h3>暂无订阅</h3>
         <p>去<router-link to="/">首页</router-link>发现你喜欢的番剧吧！</p>
       </div>
@@ -104,7 +104,8 @@ const router = useRouter()
 const subscriptionStore = useSubscriptionStore()
 
 // 响应式引用
-const searchQuery = ref('')
+// searchQuery 状态提升到 store
+// const searchQuery = ref('')
 const sortOption = ref('subscribed_at-desc')
 
 // 新增：缓存上一次有内容的订阅和分页
@@ -114,12 +115,12 @@ const lastNonEmptyPagination = ref<any>({ page: 1, pages: 1 })
 // 新增：数据初始化标志
 const isInitialized = ref(false)
 
-// 防抖搜索
+// 防抖搜索，监听 store 中的 searchQuery
 const handleSearch = debounce((val: string) => {
   subscriptionStore.searchSubscriptions(val)
 }, 300)
 
-watch(searchQuery, (val) => {
+watch(() => subscriptionStore.searchQuery, (val) => {
   handleSearch(val)
 })
 
@@ -150,12 +151,12 @@ const pagination = computed(() => subscriptionStore.pagination)
 
 // 优化：计算属性，只有在初次加载且无订阅数据时才显示骨架屏
 const shouldShowSkeleton = computed(() => {
-  return loading.value && subscriptions.value.length === 0 && !searchQuery.value
+  return loading.value && subscriptions.value.length === 0 && !subscriptionStore.searchQuery
 })
 
 // 新增：判断是否处于“搜索无结果但有缓存”状态
 const showSearchNoResult = computed(() => {
-  return searchQuery.value && subscriptions.value.length === 0 && lastNonEmptySubscriptions.value.length > 0
+  return subscriptionStore.searchQuery && subscriptions.value.length === 0 && lastNonEmptySubscriptions.value.length > 0
 })
 
 // 翻页

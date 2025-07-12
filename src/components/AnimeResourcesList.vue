@@ -104,15 +104,14 @@
                   >
                     磁力
                   </button>
-                  <a
+                  <button
                     v-if="resource.torrent_url"
-                    :href="resource.torrent_url"
+                    @click="downloadTorrent(resource.torrent_url)"
                     class="action-btn torrent-btn"
                     title="种子下载"
-                    download
                   >
                     种子
-                  </a>
+                  </button>
                 </div>
               </div>
             </div>
@@ -292,6 +291,22 @@ const downloadMagnet = async (url: string) => {
     } else {
       feedbackStore.showError('磁力链接复制失败，请手动复制')
     }
+  }
+}
+
+// 种子文件下载逻辑
+const downloadTorrent = async (url: string) => {
+  if (!url) return
+  try {
+    const link = document.createElement('a')
+    link.href = url
+    link.download = '' // 让浏览器/tauri决定文件名
+    link.target = '_blank'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  } catch (err) {
+    feedbackStore.showError('下载失败，请检查链接或重试')
   }
 }
 </script>

@@ -36,13 +36,13 @@
             <span class="task-meta-label">创建时间</span>
             <span class="task-meta-value">{{ formatDateTime(task.created_at) }}</span>
           </div>
+          <div class="task-meta-item">
+            <span class="task-meta-label">进度</span>
+            <span class="task-meta-value">{{ task.processed_items || 0 }} / {{ task.total_items || 0 }}</span>
+          </div>
           <div v-if="task.error_message" class="task-meta-item task-error-message">
             <span class="task-error-label">错误信息：</span>
             <span class="task-error-value">{{ task.error_message }}</span>
-          </div>
-          <div v-if="task.status !== 'failed'" class="task-meta-item task-progress-meta">
-            <span class="task-meta-label">进度</span>
-            <span class="task-meta-value">{{ task.processed_items || 0 }} / {{ task.total_items || 0 }}</span>
           </div>
         </div>
 
@@ -512,10 +512,5 @@ const getCancelButtonText = (status: string): string => {
 .task-error-value {
   font-weight: 600;
 }
-.task-progress-meta .task-meta-label {
-  color: var(--color-primary);
-}
-.task-progress-meta .task-meta-value {
-  font-weight: 600;
-}
+
 </style>

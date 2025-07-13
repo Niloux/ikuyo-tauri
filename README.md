@@ -33,3 +33,7 @@ You can learn more about Take Over mode [here](https://github.com/johnsoncodehk/
   - 只需修改 `src-tauri/schema.sql`，所有新环境自动按最新表结构初始化。
   - 生产环境如需重建数据库，删除数据库文件后重启应用即可。
 - schema.sql 已编译进二进制，生产环境无需关心文件路径或分发问题。
+
+## 未来的开发计划
+- 下载器的集成，预计用aria2c。
+- 播放器的集成，方案还未确定。

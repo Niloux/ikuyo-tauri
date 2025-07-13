@@ -120,7 +120,7 @@
       </div>
 
       <!-- 分页控制（如果需要） -->
-      <div v-if="needsPagination" class="pagination-controls">
+      <!-- <div v-if="needsPagination" class="pagination-controls">
         <button
           @click="loadPreviousPage"
           :disabled="!hasPreviousPage || loading"
@@ -141,7 +141,7 @@
         >
           下一页
         </button>
-      </div>
+      </div> -->
     </div>
 
     <!-- 空状态 -->
@@ -170,9 +170,7 @@ const feedbackStore = useFeedbackStore()
 // 分页和筛选状态
 const selectedResolution = ref('')
 const selectedSubtitleType = ref('')
-const currentLimit = ref(100)
-const currentOffset = ref(0)
-const fullResources = ref(9999)
+const fullResources = ref(0)  // 0代表不限制，全量查询
 
 // 组装查询参数
 const getQuery = () => ({
@@ -188,8 +186,8 @@ watch([
   () => props.bangumiId,
   selectedResolution,
   selectedSubtitleType,
-  currentLimit,
-  currentOffset
+  // currentLimit,
+  // currentOffset
 ], () => {
   if (props.bangumiId) {
     resourceStore.fetchResources(getQuery())
@@ -200,13 +198,6 @@ watch([
 const resourcesData = computed(() => resourceStore.resourcesData)
 const loading = computed(() => resourceStore.loading)
 const error = computed(() => resourceStore.error)
-
-const totalResources = computed(() => resourcesData.value?.total_resources || 0)
-const needsPagination = computed(() => totalResources.value > currentLimit.value)
-const hasPreviousPage = computed(() => currentOffset.value > 0)
-const hasNextPage = computed(() =>
-  currentOffset.value + currentLimit.value < totalResources.value
-)
 
 // 优化：缓存日期格式化选项，避免重复创建
 const dateFormatOptions: Intl.DateTimeFormatOptions = {
@@ -229,25 +220,13 @@ const formatReleaseDate = (dateStr: string): string => {
 
 // 处理筛选变化
 const handleFilterChange = () => {
-  currentOffset.value = 0 // 重置到第一页
+  // currentOffset.value = 0 // 重置到第一页
   resourceStore.fetchResources(getQuery())
 }
 
 // 刷新资源
 const refreshResources = () => {
   resourceStore.fetchResources(getQuery())
-}
-
-// 分页控制
-const loadPreviousPage = () => {
-  if (hasPreviousPage.value) {
-    currentOffset.value = Math.max(0, currentOffset.value - currentLimit.value)
-  }
-}
-const loadNextPage = () => {
-  if (hasNextPage.value) {
-    currentOffset.value += currentLimit.value
-  }
 }
 
 // 折叠状态管理
@@ -684,7 +663,7 @@ const downloadTorrent = async (url: string) => {
 }
 
 /* 分页控制 */
-.pagination-controls {
+/* .pagination-controls {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -716,7 +695,7 @@ const downloadTorrent = async (url: string) => {
 .pagination-info {
   font-size: 0.9rem;
   color: #7f8c8d;
-}
+} */
 
 /* 响应式设计 */
 @media (max-width: 768px) {
@@ -745,10 +724,10 @@ const downloadTorrent = async (url: string) => {
     align-self: flex-start;
   }
 
-  .pagination-controls {
+  /* .pagination-controls {
     flex-direction: column;
     gap: 1rem;
-  }
+  } */
 }
 
 @media (max-width: 480px) {

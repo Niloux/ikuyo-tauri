@@ -19,7 +19,7 @@ export class CrawlerApiService {
      * @param page 页码，从1开始
      * @param pageSize 每页数量
      */
-    static async listTasks(page: number = 1, pageSize: number = 10):
+    static async listTasks(page: number = 1, pageSize: number = 6):
         Promise<TaskResponse[]> {
         return await invoke('list_crawler_tasks', {
             page,

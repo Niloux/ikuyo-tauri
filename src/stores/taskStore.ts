@@ -13,7 +13,7 @@ import type { CrawlerTaskCreate, TaskResponse } from '../services/crawler/crawle
 export const useTaskStore = defineStore('task', () => {
   const tasks = ref<TaskResponse[]>([])
   const currentPage = ref(1)
-  const pageSize = ref(10)
+  const pageSize = ref(6)
   // 轮询定时器map
   const pollingTimers = new Map<number, number>()
 

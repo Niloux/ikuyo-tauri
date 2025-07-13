@@ -14,6 +14,8 @@ use tokio::sync::{Notify, RwLock, Semaphore};
 use tokio::time::{sleep, Duration};
 use tokio_util::sync::CancellationToken;
 use tracing::{error, info, warn};
+// 新增：引入上海时区
+use chrono_tz::Asia::Shanghai;
 
 pub struct Worker {
     pool: Arc<SqlitePool>,
@@ -184,21 +186,23 @@ async fn main_refresh_loop(pool: Arc<SqlitePool>, config: Config) {
     let mut last_homepage_task_date = None;
 
     loop {
-        let now = Utc::now();
-        let today = (now.year(), now.month(), now.day());
+        let now_shanghai = Utc::now().with_timezone(&Shanghai);
+        let today = (now_shanghai.year(), now_shanghai.month(), now_shanghai.day());
 
         if last_homepage_task_date != Some(today) {
-            let start_of_day = now
+            let start_of_day = now_shanghai
                 .date_naive()
                 .and_hms_opt(0, 0, 0)
                 .unwrap()
-                .and_utc()
+                .and_local_timezone(Shanghai)
+                .unwrap()
                 .timestamp_millis();
-            let end_of_day = now
+            let end_of_day = now_shanghai
                 .date_naive()
                 .and_hms_opt(23, 59, 59)
                 .unwrap()
-                .and_utc()
+                .and_local_timezone(Shanghai)
+                .unwrap()
                 .timestamp_millis();
 
             let tasks = {
@@ -254,7 +258,7 @@ async fn main_refresh_loop(pool: Arc<SqlitePool>, config: Config) {
                     task_type: CrawlerTaskType::Scheduled,
                     status: CrawlerTaskStatus::Pending,
                     result_summary: None,
-                    created_at: Some(now.timestamp_millis()),
+                    created_at: Some(now_shanghai.timestamp_millis()),
                     started_at: None,
                     completed_at: None,
                     error_message: None,
@@ -278,7 +282,7 @@ async fn main_refresh_loop(pool: Arc<SqlitePool>, config: Config) {
             last_homepage_task_date = Some(today);
         }
 
-        let now_ts = now.timestamp();
+        let now_ts = now_shanghai.timestamp();
         let sub_interval = config.bangumi_sub_refresh_interval.unwrap_or(3600);
         let nonsub_interval = config.bangumi_nonsub_refresh_interval.unwrap_or(43200);
         let calendar_interval = config.bangumi_calendar_refresh_interval.unwrap_or(86400);

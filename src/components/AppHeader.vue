@@ -20,7 +20,8 @@
           <span class="nav-text">首页</span>
         </RouterLink>
         <RouterLink to="/library" class="nav-item" active-class="active">
-          <span class="nav-text">资源库</span>
+          <!-- 从资源库改名到搜索 -->
+          <span class="nav-text">搜索</span>
         </RouterLink>
         <RouterLink to="/subscription" class="nav-item" active-class="active">
           <span class="nav-text">订阅</span>

@@ -103,7 +103,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useAnimeDetailStore } from '../stores/animeDetailStore'
 import { useResourceStore } from '../stores/resourceStore'
-import { useEpisodeAvailabilityStore } from '../stores/episodeAvailabilityStore'
 import { useFeedbackStore } from '../stores/feedbackStore'
 import { ensureScrollToTop } from '../utils/scrollUtils'
 import Skeleton from '../components/common/Skeleton.vue'
@@ -114,7 +113,6 @@ const route = useRoute()
 const router = useRouter()
 const animeDetailStore = useAnimeDetailStore()
 const resourceStore = useResourceStore()
-const episodeAvailabilityStore = useEpisodeAvailabilityStore()
 const feedbackStore = useFeedbackStore()
 const { subject, episodes, availability } = storeToRefs(animeDetailStore)
 const loading = computed(() =>
@@ -139,7 +137,6 @@ onMounted(() => {
     } else {
       animeDetailStore.fetchAll(animeId.value)
     }
-    // 资源拉取已由AnimeResourcesList.vue负责，这里无需再调用resourceStore.fetchResources
   }
 })
 
@@ -151,7 +148,6 @@ watch(animeId, (newId, oldId) => {
     } else {
       animeDetailStore.fetchAll(newId)
     }
-    // 资源拉取已由AnimeResourcesList.vue负责，这里无需再调用resourceStore.fetchResources
   }
 })
 
@@ -160,8 +156,6 @@ onBeforeUnmount(() => {
   animeDetailStore.clear()
   if (isResourceMode) {
     resourceStore.clear()
-  } else {
-    episodeAvailabilityStore.clear()
   }
 })
 
@@ -211,8 +205,8 @@ const onImageError = (event: Event) => {
   img.style.display = 'none'
 }
 
-const AnimeResourcesList = defineAsyncComponent(() => import('../components/AnimeResourcesList.vue'))
-const EpisodeDisplay = defineAsyncComponent(() => import('../components/EpisodeDisplay.vue'))
+const AnimeResourcesList = defineAsyncComponent(() => import('../components/ResourceLibrary.vue'))
+const EpisodeDisplay = defineAsyncComponent(() => import('../components/EpisodeSection.vue'))
 const calendarItem = computed(() => subject.value ? convertSubjectToCalendarItem(subject.value) : null)
 </script>
 

@@ -46,103 +46,7 @@
     </div>
 
     <!-- 资源列表 -->
-    <div v-else-if="resourcesData && resourcesData.subtitle_groups.length > 0" class="resources-content">
-      <!-- 按字幕组分类的资源列表 -->
-      <div class="subtitle-groups">
-        <div
-          v-for="group in resourcesData.subtitle_groups"
-          :key="group.id"
-          class="subtitle-group"
-        >
-          <div
-            class="group-header"
-            :class="{ 'expanded': isGroupExpanded(group.id) }"
-            @click="toggleGroup(group.id)"
-          >
-            <div class="group-info">
-              <h4 class="group-name">{{ group.name }}</h4>
-              <span class="group-count">{{ group.resource_count }} 个资源</span>
-            </div>
-            <div class="expand-icon" :class="{ 'expanded': isGroupExpanded(group.id) }">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="m9 18 6-6-6-6"/>
-              </svg>
-            </div>
-          </div>
-
-          <transition name="expand-collapse">
-            <div v-show="isGroupExpanded(group.id)" class="group-resources">
-              <div
-                v-for="resource in group.resources"
-                :key="resource.id"
-                class="resource-item"
-              >
-                <div class="resource-info">
-                  <div class="resource-title">{{ resource.title }}</div>
-                  <div class="resource-meta">
-                    <span v-if="resource.resolution" class="meta-tag resolution">
-                      {{ resource.resolution }}
-                    </span>
-                    <span v-if="resource.subtitle_type" class="meta-tag subtitle">
-                      {{ resource.subtitle_type }}
-                    </span>
-                    <span v-if="resource.size" class="meta-tag size">
-                      {{ resource.size }}
-                    </span>
-                    <span v-if="resource.release_date" class="meta-tag date">
-                      {{ formatReleaseDate(resource.release_date) }}
-                    </span>
-                  </div>
-                </div>
-
-                <div class="resource-actions">
-                  <button
-                    v-if="resource.magnet_url"
-                    @click="downloadMagnet(resource.magnet_url)"
-                    class="action-btn magnet-btn"
-                    title="磁力链接"
-                  >
-                    磁力
-                  </button>
-                  <button
-                    v-if="resource.torrent_url"
-                    @click="downloadTorrent(resource.torrent_url)"
-                    class="action-btn torrent-btn"
-                    title="种子下载"
-                  >
-                    种子
-                  </button>
-                </div>
-              </div>
-            </div>
-          </transition>
-        </div>
-      </div>
-
-      <!-- 分页控制（如果需要） -->
-      <!-- <div v-if="needsPagination" class="pagination-controls">
-        <button
-          @click="loadPreviousPage"
-          :disabled="!hasPreviousPage || loading"
-          class="pagination-btn"
-        >
-          上一页
-        </button>
-
-        <span class="pagination-info">
-          显示 {{ currentOffset + 1 }}-{{ Math.min(currentOffset + currentLimit, totalResources) }}
-          / 共 {{ totalResources }} 个
-        </span>
-
-        <button
-          @click="loadNextPage"
-          :disabled="!hasNextPage || loading"
-          class="pagination-btn"
-        >
-          下一页
-        </button>
-      </div> -->
-    </div>
+    <ResourceList v-else-if="resourcesData" :resources-data="resourcesData" />
 
     <!-- 空状态 -->
     <div v-else class="empty-state">
@@ -154,9 +58,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useResourceStore } from '../stores/resourceStore'
-import { useFeedbackStore } from '../stores/feedbackStore'
+import ResourceList from './common/ResourceList.vue';
 
 // Props定义
 interface Props {
@@ -165,7 +69,6 @@ interface Props {
 const props = defineProps<Props>()
 
 const resourceStore = useResourceStore()
-const feedbackStore = useFeedbackStore()
 
 // 分页和筛选状态
 const selectedResolution = ref('')
@@ -199,28 +102,8 @@ const resourcesData = computed(() => resourceStore.resourcesData)
 const loading = computed(() => resourceStore.loading)
 const error = computed(() => resourceStore.error)
 
-// 优化：缓存日期格式化选项，避免重复创建
-const dateFormatOptions: Intl.DateTimeFormatOptions = {
-  month: 'short',
-  day: 'numeric',
-  hour: 'numeric',
-  minute: '2-digit'
-}
-
-// 优化：格式化发布日期
-const formatReleaseDate = (dateStr: string): string => {
-  if (!dateStr) return ''
-  try {
-    const date = new Date(Number(dateStr))
-    return date.toLocaleDateString('zh-CN', dateFormatOptions)
-  } catch {
-    return dateStr
-  }
-}
-
 // 处理筛选变化
 const handleFilterChange = () => {
-  // currentOffset.value = 0 // 重置到第一页
   resourceStore.fetchResources(getQuery())
 }
 
@@ -229,65 +112,7 @@ const refreshResources = () => {
   resourceStore.fetchResources(getQuery())
 }
 
-// 折叠状态管理
-const expandedGroups = ref<Set<number>>(new Set())
-const toggleGroup = (groupId: number) => {
-  const newExpandedGroups = new Set(expandedGroups.value)
-  if (newExpandedGroups.has(groupId)) {
-    newExpandedGroups.delete(groupId)
-  } else {
-    newExpandedGroups.add(groupId)
-  }
-  expandedGroups.value = newExpandedGroups
-}
-const isGroupExpanded = (groupId: number): boolean => {
-  return expandedGroups.value.has(groupId)
-}
 
-// 磁力链接下载逻辑
-const downloadMagnet = async (url: string) => {
-  if (!url) return
-  try {
-    const { openUrl } = await import('@tauri-apps/plugin-opener')
-    await openUrl(url)
-  } catch (err) {
-    // openUrl 失败，自动复制磁力链接到剪贴板
-    let copied = false
-    try {
-      const { writeText } = await import('@tauri-apps/plugin-clipboard-manager')
-      await writeText(url)
-      copied = true
-    } catch (e1) {
-      try {
-        await navigator.clipboard.writeText(url)
-        copied = true
-      } catch (e2) {
-        copied = false
-      }
-    }
-    if (copied) {
-      feedbackStore.showError('未检测到下载工具，磁力链接已复制，请手动粘贴到下载器')
-    } else {
-      feedbackStore.showError('磁力链接复制失败，请手动复制')
-    }
-  }
-}
-
-// 种子文件下载逻辑
-const downloadTorrent = async (url: string) => {
-  if (!url) return
-  try {
-    const link = document.createElement('a')
-    link.href = url
-    link.download = '' // 让浏览器/tauri决定文件名
-    link.target = '_blank'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  } catch (err) {
-    feedbackStore.showError('下载失败，请检查链接或重试')
-  }
-}
 </script>
 
 <style scoped>

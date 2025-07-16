@@ -6,8 +6,8 @@ import CrawlerApiService from '../services/crawler/crawlerApiService'
 import type { CrawlerTaskCreate, TaskResponse } from '../services/crawler/crawlerTypes'
 
 /**
- * Pinia 即时任务管理 Store
- * 专注管理即时任务相关状态、异步操作和WebSocket进度
+ * Pinia 采集任务管理 Store
+ * 专注管理采集任务相关状态、异步操作和轮询进度
  * 定时任务请使用 schedulerStore
  */
 export const useTaskStore = defineStore('task', () => {
@@ -17,9 +17,9 @@ export const useTaskStore = defineStore('task', () => {
   // 轮询定时器map
   const pollingTimers = new Map<number, number>()
 
-  // --- 即时任务相关操作 ---
+  // --- 采集任务相关操作 ---
   /**
-   * 获取所有即时任务列表
+   * 获取所有采集任务列表
    * @returns Promise<TaskResponse[]>
    */
   const fetchTasksAsync = useAsyncAction(() => CrawlerApiService.listTasks(currentPage.value, pageSize.value))
@@ -30,7 +30,7 @@ export const useTaskStore = defineStore('task', () => {
   }
 
   /**
-   * 创建新的即时任务
+   * 创建新的采集任务
    * @param taskCreateData 任务创建数据
    * @returns Promise<TaskResponse>
    */
@@ -43,7 +43,7 @@ export const useTaskStore = defineStore('task', () => {
   }
 
   /**
-   * 取消即时任务
+   * 取消采集任务
    * @param taskId 任务ID
    * @returns Promise<TaskResponse>
    */
@@ -95,7 +95,7 @@ export const useTaskStore = defineStore('task', () => {
     currentPage,
     pageSize,
 
-    // 即时任务操作
+    // 采集任务操作
     fetchTasks,
     createTask,
     cancelTask,

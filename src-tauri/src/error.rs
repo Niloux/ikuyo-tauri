@@ -97,5 +97,11 @@ impl From<serde_json::Error> for AppError {
     }
 }
 
+impl From<tauri::Error> for AppError {
+    fn from(e: tauri::Error) -> Self {
+        AppError::Unknown(e.to_string())
+    }
+}
+
 // Application-wide Result type
 pub type Result<T> = std::result::Result<T, AppError>;

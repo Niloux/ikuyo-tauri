@@ -65,8 +65,8 @@ router.beforeEach(async (to, from, next) => {
     // 预加载详情页视图
     import('../views/AnimeDetailView.vue')
     // 预加载详情页主要异步组件
-    import('../components/EpisodeDisplay.vue')
-    import('../components/AnimeResourcesList.vue')
+    import('../components/EpisodeList.vue')
+    import('../components/EpisodeDetailModal.vue')
   }
   // 预取任务管理页chunk
   if (to.name === 'task-management') {

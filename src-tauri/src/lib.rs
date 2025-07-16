@@ -1,3 +1,17 @@
+// =====================================
+// ikuyo-app Tauri 后端主入口
+// 职责：负责应用启动流程、全局依赖初始化、Tauri插件与命令注册、主流程调度
+// 主流程结构：
+// 1. 环境识别
+// 2. 日志系统初始化
+// 3. 数据库连接与迁移
+// 4. 配置加载
+// 5. Worker 启动
+// 6. 全局依赖注入
+// 7. 主窗口事件注册
+// 8. 命令注册与 Tauri 启动
+// =====================================
+
 mod commands;
 mod config;
 mod core;
@@ -6,29 +20,29 @@ mod models;
 mod repositories;
 mod services;
 mod types;
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc,
-};
-use tokio::sync::Notify;
 mod worker;
 
-use crate::error::Result;
-use commands::{bangumi::*, crawler::*, subscription::*};
 use once_cell::sync::OnceCell;
 use sqlx::sqlite::SqlitePoolOptions;
 use std::fs;
 use std::path::Path;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 use std::time::{Duration, SystemTime};
 use tauri::Manager;
+use tokio::sync::Notify;
 use tracing_appender::rolling::{RollingFileAppender, Rotation};
 use tracing_subscriber::{filter::EnvFilter, fmt, prelude::*, registry};
+// 补充命令注册相关 use 导入
+use commands::{bangumi::*, crawler::*, subscription::*};
 
 // 日志保留策略：只保留最近30天且最多30个日志文件
 const LOG_KEEP_DAYS: u64 = 30;
 const LOG_KEEP_MAX: usize = 30;
 
-/// 清理日志目录中过期和超量的日志文件
+// ========== 日志系统初始化 ==========
 fn cleanup_old_logs(log_dir: &Path) {
     if !log_dir.exists() {
         return;
@@ -77,7 +91,6 @@ static LOG_GUARD: OnceCell<tracing_appender::non_blocking::WorkerGuard> = OnceCe
 
 fn init_logging(log_path: &std::path::Path) {
     let log_dir = log_path.parent().unwrap();
-    // 日志清理：只保留最近30天且最多30个日志文件
     cleanup_old_logs(log_dir);
     if !log_dir.exists() {
         if let Err(e) = std::fs::create_dir_all(log_dir) {
@@ -100,17 +113,66 @@ fn init_logging(log_path: &std::path::Path) {
     tracing::info!("日志系统已初始化，日志文件: {:?}", log_path);
 }
 
+// ========== 数据库连接与迁移 ==========
+fn init_db(db_path: &std::path::Path) -> Arc<sqlx::SqlitePool> {
+    let db_url = format!("sqlite:{}?mode=rwc", db_path.to_str().unwrap());
+    let pool = tauri::async_runtime::block_on(async move {
+        let pool = SqlitePoolOptions::new()
+            .max_connections(8)
+            .connect(&db_url)
+            .await
+            .expect("failed to connect to database");
+        // 执行数据库迁移
+        if let Err(e) = sqlx::migrate!("./migrations").run(&pool).await {
+            tracing::error!("数据库迁移失败: {e}");
+            panic!("数据库迁移失败: {e}");
+        }
+        pool
+    });
+    let pool_arc = Arc::new(pool);
+    tracing::info!("数据库连接成功: {:?}", db_path);
+    pool_arc
+}
+
+// ========== 配置加载 ==========
+fn load_config() -> config::Config {
+    config::Config::load()
+}
+
+// ========== Worker 启动 ==========
+fn start_worker(
+    pool_arc: Arc<sqlx::SqlitePool>,
+    notify: Arc<Notify>,
+    config: config::Config,
+    exit_flag: Arc<AtomicBool>,
+) -> Arc<worker::Worker> {
+    let worker = Arc::new(worker::Worker::new(
+        pool_arc.clone(),
+        notify.clone(),
+        config.clone(),
+        Some(2),
+        exit_flag.clone(),
+    ));
+    let worker_handle = Arc::clone(&worker);
+    tauri::async_runtime::spawn(async move {
+        worker_handle.run().await;
+    });
+    worker
+}
+
+// ========== 主入口 ==========
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() -> Result<()> {
+pub fn run() -> crate::error::Result<()> {
     tauri::Builder::default()
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_opener::init())
         .setup(move |app| {
-            // 环境识别
+            // 1. 环境识别
             let is_dev = cfg!(debug_assertions);
             let app_handle = app.handle().clone();
             let path_resolver = app_handle.path();
-            // 日志路径
+
+            // 2. 日志系统初始化
             let log_path = if is_dev {
                 std::path::PathBuf::from("logs/ikuyo.log")
             } else {
@@ -122,7 +184,7 @@ pub fn run() -> Result<()> {
             init_logging(&log_path);
             tracing::info!("is_dev: {}", is_dev);
 
-            // 数据库路径
+            // 3. 数据库连接与迁移
             let db_path = if is_dev {
                 std::path::PathBuf::from("ikuyo.db")
             } else {
@@ -134,26 +196,12 @@ pub fn run() -> Result<()> {
                 }
                 app_data_dir.join("ikuyo.db")
             };
+            let pool_arc = init_db(&db_path);
 
-            // 连接数据库
-            let db_url = format!("sqlite:{}?mode=rwc", db_path.to_str().unwrap());
-            let pool = tauri::async_runtime::block_on(async move {
-                let pool = SqlitePoolOptions::new()
-                    .max_connections(8)
-                    .connect(&db_url)
-                    .await
-                    .expect("failed to connect to database");
-                // 执行数据库迁移
-                if let Err(e) = sqlx::migrate!("./migrations").run(&pool).await {
-                    tracing::error!("数据库迁移失败: {e}");
-                    panic!("数据库迁移失败: {e}");
-                }
-                pool
-            });
-            let pool_arc = Arc::new(pool);
-            tracing::info!("数据库连接成功: {:?}", db_path);
+            // 4. 配置加载
+            let config = load_config();
 
-            // 启动worker前，批量将所有Running状态的任务标记为Failed
+            // 5. Worker 启动前，批量将所有Running状态的任务标记为Failed
             {
                 use crate::repositories::crawler_task::CrawlerTaskRepository;
                 let repo = CrawlerTaskRepository::new(&pool_arc);
@@ -165,31 +213,25 @@ pub fn run() -> Result<()> {
                     Err(e) => tracing::error!("批量标记Running任务为Failed失败: {e}"),
                 }
             }
-            // 3. 设置并启动后台工作者
-            let config = config::Config::load();
+
+            // 6. Worker 启动
             let notify = Arc::new(Notify::new());
             let exit_flag = Arc::new(AtomicBool::new(false));
-            let worker = Arc::new(worker::Worker::new(
+            let worker = start_worker(
                 pool_arc.clone(),
                 notify.clone(),
                 config.clone(),
-                Some(2),
                 exit_flag.clone(),
-            ));
-            let worker_handle = Arc::clone(&worker);
-            tauri::async_runtime::spawn(async move {
-                worker_handle.run().await;
-            });
+            );
 
-            // 4. 将所有状态注入Tauri
+            // 7. 全局依赖注入
             app.manage(pool_arc.clone());
             app.manage(config.clone());
             app.manage(notify.clone());
             app.manage(exit_flag.clone());
-            // 新增：注入 Worker
             app.manage(worker);
 
-            // 注册退出钩子，预留退出流程入口
+            // 8. 主窗口事件注册
             let window = app
                 .get_webview_window("main")
                 .expect("main window not found");

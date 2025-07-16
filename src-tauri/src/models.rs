@@ -184,30 +184,31 @@ impl From<UserSubscription> for types_subscription::UserSubscription {
 #[serde(rename_all = "lowercase")]
 pub enum DownloadStatus {
     Pending,      // 待下载
+    MetaData,     // 获取元数据
     Downloading,  // 下载中
     Paused,       // 已暂停
     Completed,    // 已完成
     Failed,       // 失败
-    Canceled,     // 已取消
     Deleted,      // 已删除
 }
 
 // 下载任务表
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, FromRow)]
 pub struct DownloadTask {
-    pub id: Option<i64>,
-    pub bangumi_id: Option<i64>,
-    pub episode_id: Option<i64>,
-    pub resource_id: Option<i64>,
-    pub resource_url: String,
-    pub title: String,
-    pub file_path: String,
-    pub file_size: Option<i64>,
-    pub hash: Option<String>,
-    pub status: DownloadStatus,
-    pub progress: f64,
-    pub speed: f64,
-    pub error_msg: Option<String>,
-    pub created_at: Option<i64>,
-    pub updated_at: Option<i64>,
+    // 核心字段
+    id: Option<i64>,
+    magnet_url: String,
+    save_path: String,
+    status: DownloadStatus,
+    // 元数据
+    bangumi_id: i64,
+    resource_id: i64,
+    episode_number: i64,
+    name: String,
+    name_cn: String,
+    cover: String,
+    total_size: i64,
+    created_at: i64,
+    updated_at: i64,
+    error_msg: Option<String>,
 }

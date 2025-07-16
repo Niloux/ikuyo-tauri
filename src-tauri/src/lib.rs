@@ -6,23 +6,24 @@ mod models;
 mod repositories;
 mod services;
 mod types;
-use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 use tokio::sync::Notify;
 mod worker;
 
 use crate::error::Result;
 use commands::{bangumi::*, crawler::*, subscription::*};
 use once_cell::sync::OnceCell;
-use sqlx::SqlitePool;
 use sqlx::sqlite::SqlitePoolOptions;
+use std::fs;
+use std::path::Path;
+use std::time::{Duration, SystemTime};
 use tauri::Manager;
 use tracing_appender::rolling::{RollingFileAppender, Rotation};
 use tracing_subscriber::{filter::EnvFilter, fmt, prelude::*, registry};
-use std::fs;
-use std::path::Path;
-use std::time::{SystemTime, Duration};
 
-const SCHEMA_SQL: &str = include_str!("../schema.sql");
 // 日志保留策略：只保留最近30天且最多30个日志文件
 const LOG_KEEP_DAYS: u64 = 30;
 const LOG_KEEP_MAX: usize = 30;
@@ -34,7 +35,8 @@ fn cleanup_old_logs(log_dir: &Path) {
     }
     let now = SystemTime::now();
     let mut log_files: Vec<_> = match fs::read_dir(log_dir) {
-        Ok(rd) => rd.filter_map(|e| e.ok())
+        Ok(rd) => rd
+            .filter_map(|e| e.ok())
             .filter(|e| {
                 let name = e.file_name();
                 let name = name.to_string_lossy();
@@ -44,7 +46,13 @@ fn cleanup_old_logs(log_dir: &Path) {
         Err(_) => return,
     };
     // 按修改时间降序排序
-    log_files.sort_by_key(|e| std::cmp::Reverse(e.metadata().and_then(|m| m.modified()).unwrap_or(SystemTime::UNIX_EPOCH)));
+    log_files.sort_by_key(|e| {
+        std::cmp::Reverse(
+            e.metadata()
+                .and_then(|m| m.modified())
+                .unwrap_or(SystemTime::UNIX_EPOCH),
+        )
+    });
     // 1. 超过最大数量的全部删除
     for entry in log_files.iter().skip(LOG_KEEP_MAX) {
         tracing::info!("删除过期日志文件: {:?}", entry.path());
@@ -55,7 +63,7 @@ fn cleanup_old_logs(log_dir: &Path) {
         if let Ok(meta) = entry.metadata() {
             if let Ok(modified) = meta.modified() {
                 if let Ok(age) = now.duration_since(modified) {
-                    if age > Duration::from_secs(60*60*24*LOG_KEEP_DAYS) {
+                    if age > Duration::from_secs(60 * 60 * 24 * LOG_KEEP_DAYS) {
                         tracing::info!("删除过期日志文件: {:?}", entry.path());
                         let _ = fs::remove_file(entry.path());
                     }
@@ -122,40 +130,25 @@ pub fn run() -> Result<()> {
                     .app_data_dir()
                     .expect("failed to resolve app data dir");
                 if !app_data_dir.exists() {
-                    std::fs::create_dir_all(&app_data_dir)
-                        .expect("failed to create app data dir");
+                    std::fs::create_dir_all(&app_data_dir).expect("failed to create app data dir");
                 }
                 app_data_dir.join("ikuyo.db")
             };
 
-            // 数据库初始化
-            if !db_path.exists() {
-                tracing::info!("数据库不存在，自动初始化: {:?}", db_path);
-                // 直接用SCHEMA_SQL执行建表
-                let db_url = format!("sqlite:{}?mode=rwc", db_path.to_str().unwrap());
-                let rt = tokio::runtime::Runtime::new().unwrap();
-                rt.block_on(async {
-                    let pool = SqlitePool::connect(&db_url)
-                        .await
-                        .expect("failed to connect to database");
-                    for stmt in SCHEMA_SQL.split(';') {
-                        let sql = stmt.trim();
-                        if !sql.is_empty() {
-                            sqlx::query(sql).execute(&pool).await.expect("schema.sql执行失败");
-                        }
-                    }
-                });
-                tracing::info!("数据库初始化完成: {:?}", db_path);
-            }
-
             // 连接数据库
             let db_url = format!("sqlite:{}?mode=rwc", db_path.to_str().unwrap());
             let pool = tauri::async_runtime::block_on(async move {
-                SqlitePoolOptions::new()
+                let pool = SqlitePoolOptions::new()
                     .max_connections(8)
                     .connect(&db_url)
                     .await
-                    .expect("failed to connect to database")
+                    .expect("failed to connect to database");
+                // 执行数据库迁移
+                if let Err(e) = sqlx::migrate!("./migrations").run(&pool).await {
+                    tracing::error!("数据库迁移失败: {e}");
+                    panic!("数据库迁移失败: {e}");
+                }
+                pool
             });
             let pool_arc = Arc::new(pool);
             tracing::info!("数据库连接成功: {:?}", db_path);
@@ -165,7 +158,9 @@ pub fn run() -> Result<()> {
                 use crate::repositories::crawler_task::CrawlerTaskRepository;
                 let repo = CrawlerTaskRepository::new(&pool_arc);
                 let msg = "应用重启，任务中断";
-                match tauri::async_runtime::block_on(async { repo.mark_all_running_as_failed(msg).await }) {
+                match tauri::async_runtime::block_on(async {
+                    repo.mark_all_running_as_failed(msg).await
+                }) {
                     Ok(n) => tracing::info!("已将{n}个Running任务标记为Failed"),
                     Err(e) => tracing::error!("批量标记Running任务为Failed失败: {e}"),
                 }
@@ -174,7 +169,13 @@ pub fn run() -> Result<()> {
             let config = config::Config::load();
             let notify = Arc::new(Notify::new());
             let exit_flag = Arc::new(AtomicBool::new(false));
-            let worker = Arc::new(worker::Worker::new(pool_arc.clone(), notify.clone(), config.clone(), None, exit_flag.clone()));
+            let worker = Arc::new(worker::Worker::new(
+                pool_arc.clone(),
+                notify.clone(),
+                config.clone(),
+                Some(2),
+                exit_flag.clone(),
+            ));
             let worker_handle = Arc::clone(&worker);
             tauri::async_runtime::spawn(async move {
                 worker_handle.run().await;
@@ -189,7 +190,9 @@ pub fn run() -> Result<()> {
             app.manage(worker);
 
             // 注册退出钩子，预留退出流程入口
-            let window = app.get_webview_window("main").expect("main window not found");
+            let window = app
+                .get_webview_window("main")
+                .expect("main window not found");
             window.on_window_event(move |event| {
                 if let tauri::WindowEvent::CloseRequested { .. } = event {
                     exit_flag.store(true, Ordering::SeqCst);
@@ -197,7 +200,10 @@ pub fn run() -> Result<()> {
                     let pool = pool_arc.clone();
                     tauri::async_runtime::spawn(async move {
                         tracing::info!("应用退出：执行PRAGMA wal_checkpoint(FULL)");
-                        match sqlx::query("PRAGMA wal_checkpoint(FULL);").execute(pool.as_ref()).await {
+                        match sqlx::query("PRAGMA wal_checkpoint(FULL);")
+                            .execute(pool.as_ref())
+                            .await
+                        {
                             Ok(res) => tracing::info!("wal_checkpoint执行成功: {:?}", res),
                             Err(e) => tracing::error!("wal_checkpoint执行失败: {}", e),
                         }

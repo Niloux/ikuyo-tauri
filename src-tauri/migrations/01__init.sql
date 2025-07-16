@@ -1,5 +1,3 @@
--- 数据库表结构快照，不参与迁移或初始化，仅用于记录当前表结构
-
 -- Anime表
 CREATE TABLE IF NOT EXISTS anime (
     mikan_id INTEGER PRIMARY KEY,
@@ -11,20 +9,19 @@ CREATE TABLE IF NOT EXISTS anime (
     official_website TEXT,
     bangumi_url TEXT,
     description TEXT,
-    status TEXT DEFAULT 'unknown', -- Rust端为AnimeStatus枚举，需与TEXT序列化一致
+    status TEXT DEFAULT 'unknown',
     created_at INTEGER,
     updated_at INTEGER
 );
 
--- Add indexes as defined in SQLModel
 CREATE INDEX IF NOT EXISTS idx_anime_bangumi_id ON anime (bangumi_id);
 CREATE INDEX IF NOT EXISTS idx_anime_title ON anime (title);
 
 -- CrawlerTask表
 CREATE TABLE IF NOT EXISTS crawler_task (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    task_type TEXT NOT NULL, -- Rust端为CrawlerTaskType枚举
-    status TEXT NOT NULL,    -- Rust端为CrawlerTaskStatus枚举
+    task_type TEXT NOT NULL,
+    status TEXT NOT NULL,
     parameters TEXT,
     result_summary TEXT,
     created_at INTEGER,
@@ -40,7 +37,6 @@ CREATE TABLE IF NOT EXISTS crawler_task (
 
 CREATE INDEX IF NOT EXISTS idx_crawler_task_created_at ON crawler_task (created_at);
 
-
 -- SubtitleGroup表
 CREATE TABLE IF NOT EXISTS subtitle_group (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -53,7 +49,7 @@ CREATE TABLE IF NOT EXISTS subtitle_group (
 CREATE TABLE IF NOT EXISTS user_subscriptions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id TEXT NOT NULL,
-    bangumi_id INTEGER NOT NULL, -- Rust端为i64，SQL NOT NULL
+    bangumi_id INTEGER NOT NULL,
     subscribed_at INTEGER NOT NULL,
     notes TEXT,
     anime_name TEXT,
@@ -61,7 +57,6 @@ CREATE TABLE IF NOT EXISTS user_subscriptions (
     anime_rating REAL,
     anime_air_date TEXT,
     anime_air_weekday INTEGER,
-    -- 新增字段
     url TEXT,
     item_type INTEGER,
     summary TEXT,
@@ -125,5 +120,4 @@ CREATE TABLE IF NOT EXISTS bangumi_calendar_cache (
     content TEXT NOT NULL,
     updated_at INTEGER NOT NULL,
     ttl INTEGER NOT NULL
-);
--- 以上为缓存相关表结构 
+); 

@@ -11,20 +11,15 @@
       </div>
 
       <!-- 根据集数智能选择展示方式 -->
-      <EpisodeCarousel
-        v-else-if="displayMode === 'carousel' && episodeStats"
+      <EpisodeList
+        v-else-if="episodeStats"
+        :display-mode="displayMode"
         :bangumi-id="props.bangumiId"
         :total-episodes="episodeStats.main_episodes"
         :bangumi-episodes="episodes"
         :preloaded-availability="availability"
-      />
-
-      <EpisodeGrid
-        v-else-if="displayMode === 'grid' && episodeStats"
-        :bangumi-id="props.bangumiId"
-        :total-episodes="episodeStats.main_episodes"
-        :bangumi-episodes="episodes"
-        :preloaded-availability="availability"
+        :loading="loading"
+        :error="error"
       />
 
 
@@ -32,11 +27,10 @@
   </template>
 
   <script setup lang="ts">
-  import { computed, onMounted, ref } from 'vue'
+  import { computed } from 'vue'
   import { storeToRefs } from 'pinia'
   import { useAnimeDetailStore } from '../stores/animeDetailStore'
-  import EpisodeCarousel from './EpisodeCarousel.vue'
-  import EpisodeGrid from './EpisodeGrid.vue'
+  import EpisodeList from './EpisodeList.vue'
 
   // Props定义
   interface Props {
@@ -61,9 +55,7 @@
     other_episodes: number
   }
 
-  // 批量获取进度状态
-  const loadingProgress = ref<string>('')
-  const batchProgress = ref<{ current: number; total: number } | null>(null)
+  
 
   // 统计信息
   const episodeStats = computed<EpisodeStats | null>(() => {
@@ -88,9 +80,7 @@
   })
 
   // 组件挂载时获取数据
-  onMounted(() => {
-    // 这里不需要手动获取数据，因为数据已经通过pinia存储
-  })
+  // 这里不需要手动获取数据，因为数据已经通过pinia存储
   </script>
 
   <style scoped>

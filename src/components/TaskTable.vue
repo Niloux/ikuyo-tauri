@@ -7,8 +7,8 @@
     </div>
 
     <div v-else-if="!Array.isArray(tasks) || tasks.length === 0" class="no-data-message">
-      <p>🎯 暂无即时任务</p>
-      <p style="margin-top: 0.5rem; font-size: 0.875rem; opacity: 0.7;">任务将在这里显示</p>
+      <p>暂无采集任务</p>
+      <p style="margin-top: 0.5rem; font-size: 0.875rem; opacity: 0.7;">采集任务将在这里显示</p>
     </div>
 
     <div v-else class="task-grid">

@@ -1,9 +1,9 @@
 <template>
   <div class="task-management-view">
-    <!-- 即时任务区域 -->
+    <!-- 采集任务区域 -->
     <div class="task-section">
       <div class="section-header">
-        <span class="section-title">即时任务</span>
+        <span class="section-title">采集任务</span>
         <button @click="openCreateTaskModal" class="create-button">新建任务</button>
       </div>
       <div class="section-content">

@@ -97,9 +97,6 @@ const {
   pagination
 } = storeToRefs(searchStore)
 
-// 测试keep-alive是否工作的计数器
-const mountCounter = ref(0)
-
 // 防抖处理
 let searchTimeout: number | null = null
 
@@ -173,7 +170,6 @@ onActivated(() => {
 
 // 组件挂载时清空搜索状态，确保每次都是干净的初始状态
 onMounted(() => {
-  mountCounter.value++
   // 首次进入或刷新页面时清空搜索状态
   searchStore.clearSearchState()
 })

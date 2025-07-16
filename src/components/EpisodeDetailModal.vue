@@ -20,7 +20,7 @@
             <strong>时长:</strong> {{ episodeData.duration }}
           </span>
           <span v-if="episodeData?.airdate" class="meta-item">
-                            <strong>首播:</strong> {{ formattedAirdate }}
+            <strong>首播:</strong> {{ episodeData.airdate }}
           </span>
           <span v-if="episodeData?.comment" class="meta-item">
             <strong>评论:</strong> {{ episodeData.comment }}条
@@ -51,7 +51,9 @@
         <h3 class="section-title">资源下载</h3>
 
         <!-- 加载状态 -->
-        <Skeleton v-if="loading" type="list" :rows="4" customClass="modal-skeleton" />
+        <div v-if="loading" class="loading-state">
+          <p>正在加载章节信息...</p>
+        </div>
 
         <!-- 加载错误 -->
         <div v-else-if="error" class="resources-error">
@@ -66,60 +68,11 @@
         </div>
 
         <!-- 有资源数据 -->
-        <div v-else-if="resourcesData && resourcesData.subtitle_groups.length > 0" class="resources-available">
+        <div v-else-if="resourcesData" class="resources-available">
           <div class="resource-stats">
             找到 {{ resourcesData.total_resources }} 个可用资源，来自 {{ resourcesData.subtitle_groups.length }} 个字幕组
           </div>
-
-          <!-- 按字幕组分类的资源列表 -->
-          <div class="subtitle-groups">
-            <div
-              v-for="group in resourcesData.subtitle_groups"
-              :key="group.id"
-              class="subtitle-group"
-            >
-              <div class="group-header">
-                <h4 class="group-name">{{ group.name }}</h4>
-                <span class="group-count">{{ group.resource_count }} 个资源</span>
-              </div>
-
-              <div class="group-resources">
-                <div
-                  v-for="resource in group.resources"
-                  :key="resource.id"
-                  class="resource-item"
-                >
-                  <div class="resource-info">
-                    <div class="resource-title">{{ resource.title }}</div>
-                    <div class="resource-meta">
-                      <span v-if="resource.resolution" class="meta-tag resolution">{{ resource.resolution }}</span>
-                      <span v-if="resource.subtitle_type" class="meta-tag subtitle">{{ resource.subtitle_type }}</span>
-                      <span v-if="resource.size" class="meta-tag size">{{ resource.size }}</span>
-                    </div>
-                  </div>
-
-                  <div class="resource-actions">
-                    <button
-                      v-if="resource.magnet_url"
-                      @click="downloadResource(resource.magnet_url, 'magnet')"
-                      class="download-btn magnet-btn"
-                      title="磁力链接下载"
-                    >
-                      磁力
-                    </button>
-                    <button
-                      v-if="resource.torrent_url"
-                      @click="downloadResource(resource.torrent_url, 'torrent')"
-                      class="download-btn torrent-btn"
-                      title="种子文件下载"
-                    >
-                      种子
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <ResourceList :resources-data="resourcesData"/>
         </div>
 
         <!-- 无资源状态 -->
@@ -142,8 +95,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import { useResourceStore } from '../stores/resourceStore'
-import { useFeedbackStore } from '../stores/feedbackStore'
-import Skeleton from './common/Skeleton.vue'
+import ResourceList from './common/ResourceList.vue';
 
 // 集数详细信息类型
 interface EpisodeDetail {
@@ -168,7 +120,6 @@ interface Props {
 const props = defineProps<Props>()
 
 const resourceStore = useResourceStore()
-const feedbackStore = useFeedbackStore()
 
 // 资源数据相关
 const currentEpisodeNumber = computed(() => props.episodeData?.number)
@@ -239,70 +190,6 @@ const refreshResources = () => {
     resourceStore.fetchResources(resourceQuery.value)
   }
 }
-
-// 下载资源
-const downloadResource = async (url: string, type: 'magnet' | 'torrent') => {
-  if (!url) return
-
-  try {
-    if (type === 'magnet') {
-      try {
-        const { openUrl } = await import('@tauri-apps/plugin-opener')
-        await openUrl(url)
-      } catch (err) {
-        // openUrl 失败，自动复制磁力链接到剪贴板
-        let copied = false
-        try {
-          const { writeText } = await import('@tauri-apps/plugin-clipboard-manager')
-          await writeText(url)
-          copied = true
-        } catch (e1) {
-          try {
-            await navigator.clipboard.writeText(url)
-            copied = true
-          } catch (e2) {
-            copied = false
-          }
-        }
-        if (copied) {
-          feedbackStore.showError('未检测到下载工具，磁力链接已复制，请手动粘贴到下载器')
-        } else {
-          feedbackStore.showError('磁力链接复制失败，请手动复制')
-        }
-      }
-    } else if (type === 'torrent') {
-      // 种子文件需要下载
-      const link = document.createElement('a')
-      link.href = url
-      link.download = '' // 让浏览器决定文件名
-      link.target = '_blank'
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-    }
-  } catch (err) {
-    feedbackStore.showError('下载失败，请检查链接或重试')
-  }
-}
-
-// 优化：缓存日期格式化选项
-const dateFormatOptions: Intl.DateTimeFormatOptions = {
-  year: 'numeric',
-  month: 'short',
-  day: 'numeric'
-}
-
-// 优化：使用computed缓存格式化的播出日期
-const formattedAirdate = computed(() => {
-  const dateStr = props.episodeData?.airdate
-  if (!dateStr) return ''
-  try {
-    const date = new Date(dateStr)
-    return date.toLocaleDateString('zh-CN', dateFormatOptions)
-  } catch {
-    return dateStr
-  }
-})
 
 // 监听ESC键关闭
 const handleKeyDown = (event: KeyboardEvent) => {
@@ -528,6 +415,7 @@ watch(() => props.visible, (newVisible) => {
 .description-collapsed {
   display: -webkit-box;
   -webkit-line-clamp: 3;
+  line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
   position: relative;
@@ -628,7 +516,9 @@ watch(() => props.visible, (newVisible) => {
 
 /* 字幕组列表 */
 .subtitle-groups {
-  space-y: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
 }
 
 .subtitle-group {

@@ -49,31 +49,16 @@
                 </div>
 
                 <div class="resource-actions">
-                  <!--
-                  <button
-                    v-if="resource.magnet_url"
-                    @click="downloadMagnet(resource.magnet_url)"
-                    class="action-btn magnet-btn"
-                    title="磁力链接"
-                  >
-                    磁力
-                  </button>
-                  <button
-                    v-if="resource.torrent_url"
-                    @click="downloadTorrent(resource.torrent_url)"
-                    class="action-btn torrent-btn"
-                    title="种子下载"
-                  >
-                    种子
-                  </button>
-                  -->
-                  <button
-                    class="action-btn download-btn"
-                    @click="handleDownload(resource)"
-                    :disabled="isResourceDownloading(resource.id)"
-                  >
-                    下载
-                  </button>
+                  <DownloadButton
+                    :status="getTaskByResourceId(resource.id)?.status || null"
+                    :progress="getTaskByResourceId(resource.id)?.progress || 0"
+                    :disabled="!!getTaskByResourceId(resource.id)"
+                    :error-msg="getTaskByResourceId(resource.id)?.error_msg"
+                    :speed="getTaskByResourceId(resource.id)?.speed"
+                    :time-remaining="getTaskByResourceId(resource.id)?.time_remaining"
+                    :button-text="'下载'"
+                    :on-click="() => handleDownload(resource)"
+                  />
                 </div>
               </div>
             </div>
@@ -85,12 +70,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { useFeedbackStore } from '@/stores/feedbackStore'
 import { useDownloadStore } from '@/stores/downloadStore'
 import { storeToRefs } from 'pinia'
-import { computed } from 'vue'
 import type { EpisodeResourcesData } from '@/services/bangumi/bangumiTypes'
+import DownloadButton from './DownloadButton.vue'
 
 const props = defineProps<{
   resourcesData: EpisodeResourcesData | null
@@ -163,6 +148,8 @@ const isResourceDownloading = (resourceId: number) => {
   return !!tasks.value[resourceId]
 }
 
+const getTaskByResourceId = downloadStore.getTaskByResourceId
+
 // Download logic
 const downloadMagnet = async (url: string) => {
   if (!url) return
@@ -217,7 +204,6 @@ const handleDownload = async (resource: any) => {
     return
   }
   // 组装 StartDownloadTask
-  console.log(props.subject)
   const task = {
     magnet_url: resource.magnet_url,
     // save_path: '', // 可后续扩展为用户选择
@@ -236,6 +222,10 @@ const handleDownload = async (resource: any) => {
     feedbackStore.showError(e?.message || '添加下载任务失败')
   }
 }
+
+onMounted(() => {
+  downloadStore.fetchAllDownloads()
+})
 
 </script>
 

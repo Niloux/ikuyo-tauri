@@ -14,6 +14,8 @@ interface DownloadStoreState {
 }
 
 let hasInit = false // 防止重复注册
+let lastMissingProgress: import('@/services/download/downloadTypes').ProgressUpdate | null = null
+let fetchDebounceTimer: ReturnType<typeof setTimeout> | null = null
 
 export const useDownloadStore = defineStore('download', {
     state: (): DownloadStoreState => ({
@@ -24,6 +26,7 @@ export const useDownloadStore = defineStore('download', {
             if (hasInit) return
             hasInit = true
             await listen<import('@/services/download/downloadTypes').ProgressUpdate>('download_progress', (event) => {
+                console.log('收到进度更新', event.payload)
                 this.updateProgress(event.payload)
             })
         },
@@ -40,10 +43,25 @@ export const useDownloadStore = defineStore('download', {
                 }
             }
             this.tasks = tasks
+            // fetch 后尝试补合并丢失的 progress
+            if (lastMissingProgress && tasks[lastMissingProgress.id]) {
+                this.updateProgress(lastMissingProgress)
+                lastMissingProgress = null
+            }
         },
         updateProgress(progress: import('@/services/download/downloadTypes').ProgressUpdate) {
             const id = progress.id
-            if (!this.tasks[id]) return
+            if (!this.tasks[id]) {
+                // 防抖触发 fetchAllDownloads
+                lastMissingProgress = progress
+                if (!fetchDebounceTimer) {
+                    fetchDebounceTimer = setTimeout(() => {
+                        this.fetchAllDownloads()
+                        fetchDebounceTimer = null
+                    }, 500)
+                }
+                return
+            }
             // 合并进度信息，error_msg 直接覆盖
             this.tasks[id] = {
                 ...this.tasks[id],
@@ -76,6 +94,9 @@ export const useDownloadStore = defineStore('download', {
         // 获取所有出错任务
         getErrorTasks(state): DownloadTaskState[] {
             return Object.values(state.tasks).filter(t => t.error_msg)
+        },
+        getTaskByResourceId: (state) => (resourceId: number) => {
+            return Object.values(state.tasks).find(task => task.resource_id === resourceId)
         },
     },
 })

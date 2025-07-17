@@ -106,6 +106,7 @@ import { storeToRefs } from 'pinia'
 import { useAnimeDetailStore } from '../stores/animeDetailStore'
 import { useResourceStore } from '../stores/resourceStore'
 import { useFeedbackStore } from '../stores/feedbackStore'
+import { useSubscriptionStore } from '../stores/subscriptionStore'
 import { ensureScrollToTop } from '../utils/scrollUtils'
 import Skeleton from '../components/common/Skeleton.vue'
 import SubscriptionButton from '../components/common/SubscriptionButton.vue'
@@ -133,6 +134,7 @@ const isResourceMode = route.meta.showResources === true
 // 页面加载时拉取数据
 onMounted(() => {
   ensureScrollToTop()
+  useSubscriptionStore().fetchAllSubscriptionIds()
   if (animeId.value) {
     if (isResourceMode) {
       animeDetailStore.fetchSubject(animeId.value)

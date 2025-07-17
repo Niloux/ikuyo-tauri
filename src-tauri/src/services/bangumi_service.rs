@@ -308,9 +308,12 @@ impl BangumiService {
                 });
             }
 
+            let mut subtitle_groups: Vec<SubtitleGroupResource> = subtitle_groups_map.into_values().collect();
+            subtitle_groups.sort_by_key(|g| g.id);
+
             Ok(Some(EpisodeResourcesData {
                 total_resources,
-                subtitle_groups: subtitle_groups_map.into_values().collect(),
+                subtitle_groups,
             }))
         } else {
             Ok(None)

@@ -132,7 +132,7 @@ impl DownloadService {
     pub fn get_progress(&self, id: i64) -> Option<ProgressUpdate> {
         self.session.get(TorrentIdOrHash::Id(id as usize)).map(|h| {
             let stats = h.stats();
-            tracing::info!("stats: {:?}", stats);
+            // tracing::info!("stats: {:?}", stats);
             let total_bytes = stats.total_bytes;
             let speed = stats
                 .live

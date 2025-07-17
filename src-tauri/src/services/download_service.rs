@@ -132,7 +132,7 @@ impl DownloadService {
     pub fn get_progress(&self, id: i64) -> Option<ProgressUpdate> {
         self.session.get(TorrentIdOrHash::Id(id as usize)).map(|h| {
             let stats = h.stats();
-            // tracing::info!("stats: {:?}", stats);
+            tracing::info!("stats: {:?}", stats);
             let total_bytes = stats.total_bytes;
             let speed = stats
                 .live
@@ -144,17 +144,15 @@ impl DownloadService {
                 .as_ref()
                 .and_then(|l| l.time_remaining.as_ref())
                 .map(|d| d.to_string());
-            let status = match stats.state.to_string().as_str() {
-                "error" => DownloadStatus::Failed,
-                "paused" => DownloadStatus::Paused,
-                "initializing" => DownloadStatus::Pending,
-                "live" => DownloadStatus::Downloading,
-                _ => {
-                    if stats.finished {
-                        DownloadStatus::Completed
-                    } else {
-                        DownloadStatus::Downloading
-                    }
+            let status = if stats.finished {
+                DownloadStatus::Completed
+            } else {
+                match stats.state.to_string().as_str() {
+                    "error" => DownloadStatus::Failed,
+                    "paused" => DownloadStatus::Paused,
+                    "initializing" => DownloadStatus::Pending,
+                    "live" => DownloadStatus::Downloading,
+                    _ => DownloadStatus::Downloading,
                 }
             };
             let error_msg = if stats.state.to_string() == "error" {

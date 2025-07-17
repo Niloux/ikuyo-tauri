@@ -18,6 +18,8 @@ pub enum AppError {
     Input(#[from] InputError),
     #[error("未知错误: {0}")]
     Unknown(String),
+    #[error("下载任务错误: {0}")]
+    DownloadTask(#[from] DownloadTaskError),
 }
 
 // Specific error types
@@ -73,6 +75,12 @@ pub enum TaskError {
 }
 
 #[derive(Debug, Error, Serialize)]
+pub enum DownloadTaskError {
+    #[error("下载任务执行失败: {0}")]
+    Failed(String),
+}
+
+#[derive(Debug, Error, Serialize)]
 pub enum InputError {
     #[error("无效输入: {0}")]
     Invalid(String),
@@ -100,6 +108,12 @@ impl From<serde_json::Error> for AppError {
 impl From<tauri::Error> for AppError {
     fn from(e: tauri::Error) -> Self {
         AppError::Unknown(e.to_string())
+    }
+}
+
+impl From<librqbit::ApiError> for AppError {
+    fn from(e: librqbit::ApiError) -> Self {
+        AppError::DownloadTask(DownloadTaskError::Failed(e.to_string()))
     }
 }
 

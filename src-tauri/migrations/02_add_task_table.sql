@@ -2,7 +2,7 @@
 CREATE TABLE IF NOT EXISTS download_task (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     magnet_url TEXT NOT NULL,
-    save_path TEXT NOT NULL,
+    save_path TEXT,
     status TEXT NOT NULL CHECK (status IN ('pending','metadata','downloading','paused','completed','failed','deleted')),
     bangumi_id INTEGER NOT NULL,
     resource_id INTEGER NOT NULL,

@@ -13,7 +13,7 @@ use std::sync::{Arc, Mutex};
 use tokio::sync::{Notify, RwLock, Semaphore};
 use tokio::time::{sleep, Duration};
 use tokio_util::sync::CancellationToken;
-use tracing::{error, info, warn};
+use tracing::{error, info, warn, debug};
 // 新增：引入上海时区
 use chrono_tz::Asia::Shanghai;
 
@@ -55,7 +55,7 @@ impl Worker {
         // 启动内容缓存与资源刷新主循环
         let pool_clone = self.pool.clone();
         let config_clone = self.config.clone();
-        tokio::spawn(async move {
+        tauri::async_runtime::spawn(async move {
             main_refresh_loop(pool_clone, config_clone).await;
         });
 
@@ -110,7 +110,7 @@ impl Worker {
                     }
 
                     let task_for_fail = Arc::new(RwLock::new(task.clone()));
-                    tokio::spawn(async move {
+                    tauri::async_runtime::spawn(async move {
                         let mut attempt = 0;
                         let mut success = false;
                         while attempt < retry_count && !success {
@@ -357,7 +357,7 @@ async fn refresh_bangumi_batch(
         async move {
             // 这里每个future都用同一个service的引用，避免clone
             let service = service_ref;
-            info!("[worker] 刷新{}/{}缓存: {}", log_prefix, item_type, id);
+            debug!("[worker] 刷新{}/{}缓存: {}", log_prefix, item_type, id);
             let refresh_result = if item_type == "subject" {
                 service.get_subject(id).await.map(|_| ())
             } else {

@@ -196,19 +196,19 @@ pub enum DownloadStatus {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, FromRow)]
 pub struct DownloadTask {
     // 核心字段
-    id: Option<i64>,
-    magnet_url: String,
-    save_path: String,
-    status: DownloadStatus,
+    pub id: Option<i64>,
+    pub magnet_url: String,
+    pub save_path: Option<String>,
+    pub status: DownloadStatus,
     // 元数据
-    bangumi_id: i64,
-    resource_id: i64,
-    episode_number: i64,
-    name: String,
-    name_cn: String,
-    cover: String,
-    total_size: i64,
-    created_at: i64,
-    updated_at: i64,
-    error_msg: Option<String>,
+    pub bangumi_id: i64,
+    pub resource_id: i64,
+    pub episode_number: i64,
+    pub name: String,
+    pub name_cn: String,
+    pub cover: String,
+    pub total_size: i64,
+    pub created_at: i64,
+    pub updated_at: i64,
+    pub error_msg: Option<String>,
 }

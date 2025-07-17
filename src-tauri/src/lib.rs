@@ -22,6 +22,8 @@ mod services;
 mod types;
 mod worker;
 
+use dirs;
+use librqbit::Session;
 use once_cell::sync::OnceCell;
 use sqlx::sqlite::SqlitePoolOptions;
 use std::fs;
@@ -36,7 +38,7 @@ use tokio::sync::Notify;
 use tracing_appender::rolling::{RollingFileAppender, Rotation};
 use tracing_subscriber::{filter::EnvFilter, fmt, prelude::*, registry};
 // 补充命令注册相关 use 导入
-use commands::{bangumi::*, crawler::*, subscription::*};
+use commands::{bangumi::*, crawler::*, download::*, subscription::*};
 
 // 日志保留策略：只保留最近30天且最多30个日志文件
 const LOG_KEEP_DAYS: u64 = 30;
@@ -160,6 +162,16 @@ fn start_worker(
     worker
 }
 
+// ========== 下载目录初始化 ==========
+fn init_download_dir() -> std::path::PathBuf {
+    let home_dir = dirs::home_dir().expect("无法获取用户主目录");
+    let download_dir = home_dir.join("download");
+    if !download_dir.exists() {
+        std::fs::create_dir_all(&download_dir).expect("无法创建 download 目录");
+    }
+    download_dir
+}
+
 // ========== 主入口 ==========
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() -> crate::error::Result<()> {
@@ -198,6 +210,21 @@ pub fn run() -> crate::error::Result<()> {
             };
             let pool_arc = init_db(&db_path);
 
+            // ===== 下载服务初始化与自动恢复 =====
+            let download_dir = init_download_dir();
+            let session = tauri::async_runtime::block_on(Session::new(download_dir))
+                .expect("session初始化失败");
+            let download_service = Arc::new(services::download_service::DownloadService::new(
+                pool_arc.clone(),
+                session.clone(),
+            ));
+            // 自动恢复未完成任务和推送下载进度信息
+            let ds_clone = download_service.clone();
+            tauri::async_runtime::spawn(async move {
+                let _ = ds_clone.restore_all_tasks_on_start().await;
+                ds_clone.spawn_progress_notifier(app_handle.clone()).await;
+            });
+
             // 4. 配置加载
             let config = load_config();
 
@@ -230,6 +257,7 @@ pub fn run() -> crate::error::Result<()> {
             app.manage(notify.clone());
             app.manage(exit_flag.clone());
             app.manage(worker);
+            app.manage(download_service);
 
             // 8. 主窗口事件注册
             let window = app
@@ -279,6 +307,12 @@ pub fn run() -> crate::error::Result<()> {
             get_subscriptions,
             check_subscription,
             get_all_subscription_ids,
+            // Download commands
+            start_download,
+            pause_download,
+            resume_download,
+            remove_download,
+            fetch_all_downloads,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

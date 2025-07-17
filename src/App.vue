@@ -1,8 +1,15 @@
 <script setup lang="ts">
 import { RouterView, useRouter } from 'vue-router'
 import AppLayout from './components/AppLayout.vue'
+import { onMounted } from 'vue'
+import { useDownloadStore } from '@/stores/downloadStore'
 
 const router = useRouter()
+const downloadStore = useDownloadStore()
+
+onMounted(() => {
+  downloadStore.init()
+})
 </script>
 
 <template>

@@ -15,7 +15,7 @@ impl<'a> DownloadTaskRepository<'a> {
 
     // 查询所有未完成的任务,用于初始化时恢复下载
     pub async fn get_all_resumable_tasks(&self) -> Result<Vec<DownloadTask>> {
-        let query = "SELECT * FROM download_task WHERE status != 'completed' AND status != 'failed' AND status != 'deleted'";
+        let query = "SELECT * FROM download_task WHERE status != 'Completed' AND status != 'Failed' AND status != 'Deleted'";
         Ok(sqlx::query_as::<_, DownloadTask>(query)
             .fetch_all(self.pool)
             .await?)
@@ -23,7 +23,7 @@ impl<'a> DownloadTaskRepository<'a> {
 
     // 查询所有未删除的任务,用于前端fetch_all_downloads
     pub async fn fetch_all_downloads(&self) -> Result<Vec<DownloadTask>> {
-        let query = "SELECT * FROM download_task WHERE status != 'deleted'";
+        let query = "SELECT * FROM download_task WHERE status != 'Deleted'";
         Ok(sqlx::query_as::<_, DownloadTask>(query)
             .fetch_all(self.pool)
             .await?)

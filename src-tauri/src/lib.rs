@@ -169,6 +169,7 @@ fn init_download_dir() -> std::path::PathBuf {
     if !download_dir.exists() {
         std::fs::create_dir_all(&download_dir).expect("无法创建 download 目录");
     }
+    tracing::info!("下载目录: {:?}", download_dir);
     download_dir
 }
 

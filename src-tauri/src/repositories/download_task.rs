@@ -40,7 +40,7 @@ impl<'a> Repository<DownloadTask, i64> for DownloadTaskRepository<'a> {
         )
         .bind(&task.magnet_url)
         .bind(&task.save_path)
-        .bind("metadata")
+        .bind(&task.status)
         .bind(task.bangumi_id)
         .bind(task.resource_id)
         .bind(task.episode_number)
@@ -81,7 +81,7 @@ impl<'a> Repository<DownloadTask, i64> for DownloadTaskRepository<'a> {
     // 更新任务状态和错误信息
     async fn update(&self, task: &DownloadTask) -> Result<()> {
         sqlx::query(
-            "UPDATE download_task SET status = ?, error_msg = ?, updated_at = ? total_size = ? WHERE id = ?",
+            "UPDATE download_task SET status = ?, error_msg = ?, updated_at = ?, total_size = ? WHERE id = ?",
         )
         .bind(&task.status)
         .bind(&task.error_msg)

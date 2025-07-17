@@ -49,6 +49,7 @@
                 </div>
 
                 <div class="resource-actions">
+                  <!--
                   <button
                     v-if="resource.magnet_url"
                     @click="downloadMagnet(resource.magnet_url)"
@@ -65,6 +66,14 @@
                   >
                     种子
                   </button>
+                  -->
+                  <button
+                    class="action-btn download-btn"
+                    @click="handleDownload(resource)"
+                    :disabled="isResourceDownloading(resource.id)"
+                  >
+                    下载
+                  </button>
                 </div>
               </div>
             </div>
@@ -78,13 +87,26 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useFeedbackStore } from '@/stores/feedbackStore'
+import { useDownloadStore } from '@/stores/downloadStore'
+import { storeToRefs } from 'pinia'
+import { computed } from 'vue'
 import type { EpisodeResourcesData } from '@/services/bangumi/bangumiTypes'
 
 const props = defineProps<{
   resourcesData: EpisodeResourcesData | null
+  bangumiId: number
+  subject: {
+    name: string
+    name_cn: string
+    images: {
+      large: string
+    }
+  }
 }>()
 
 const feedbackStore = useFeedbackStore()
+const downloadStore = useDownloadStore()
+const { tasks } = storeToRefs(downloadStore)
 
 // Format release date
 const dateFormatOptions: Intl.DateTimeFormatOptions = {
@@ -137,6 +159,10 @@ const isGroupExpanded = (groupId: number): boolean => {
   return expandedGroups.value.has(groupId)
 }
 
+const isResourceDownloading = (resourceId: number) => {
+  return !!tasks.value[resourceId]
+}
+
 // Download logic
 const downloadMagnet = async (url: string) => {
   if (!url) return
@@ -177,6 +203,37 @@ const downloadTorrent = async (url: string) => {
     document.body.removeChild(link)
   } catch (err) {
     feedbackStore.showError('下载失败，请检查链接或重试')
+  }
+}
+
+const handleDownload = async (resource: any) => {
+  // 检查必要参数
+  if (!resource.magnet_url) {
+    feedbackStore.showError('缺少磁力链接，无法下载')
+    return
+  }
+  if (!props.bangumiId || !props.subject) {
+    feedbackStore.showError('番剧信息缺失，无法下载')
+    return
+  }
+  // 组装 StartDownloadTask
+  console.log(props.subject)
+  const task = {
+    magnet_url: resource.magnet_url,
+    // save_path: '', // 可后续扩展为用户选择
+    bangumi_id: props.bangumiId,
+    resource_id: resource.id,
+    episode_number: resource.episode_number,
+    name: props.subject.name,
+    name_cn: props.subject.name_cn,
+    cover: props.subject.images?.large,
+    total_size: typeof resource.size === 'number' ? resource.size : 0,
+  }
+  try {
+    await downloadStore.startDownload(task)
+    feedbackStore.showToast('已添加到下载任务', 'success')
+  } catch (e: any) {
+    feedbackStore.showError(e?.message || '添加下载任务失败')
   }
 }
 

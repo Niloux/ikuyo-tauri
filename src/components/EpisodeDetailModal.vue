@@ -72,7 +72,7 @@
           <div class="resource-stats">
             找到 {{ resourcesData.total_resources }} 个可用资源，来自 {{ resourcesData.subtitle_groups.length }} 个字幕组
           </div>
-          <ResourceList :resources-data="resourcesData"/>
+          <ResourceList :resources-data="resourcesData" :bangumi-id="props.bangumiId ?? 0" :subject="props.subject" />
         </div>
 
         <!-- 无资源状态 -->
@@ -116,6 +116,7 @@ interface Props {
   visible: boolean
   episodeData: EpisodeDetail | null
   bangumiId?: number
+  subject?: any // 可细化类型
 }
 const props = defineProps<Props>()
 

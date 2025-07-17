@@ -46,7 +46,12 @@
     </div>
 
     <!-- 资源列表 -->
-    <ResourceList v-else-if="resourcesData" :resources-data="resourcesData" />
+    <ResourceList 
+      v-else-if="resourcesData" 
+      :resources-data="resourcesData" 
+      :bangumi-id="props.bangumiId"
+      :subject="props.subject"
+    />
 
     <!-- 空状态 -->
     <div v-else class="empty-state">
@@ -65,6 +70,7 @@ import ResourceList from './common/ResourceList.vue';
 // Props定义
 interface Props {
   bangumiId: number
+  subject: any // 可进一步细化类型
 }
 const props = defineProps<Props>()
 
@@ -101,6 +107,17 @@ watch([
 const resourcesData = computed(() => resourceStore.resourcesData)
 const loading = computed(() => resourceStore.loading)
 const error = computed(() => resourceStore.error)
+
+const subjectComputed = computed(() => {
+  if (props.subject) {
+    return {
+      name: props.subject.name,
+      name_cn: props.subject.name_cn,
+      cover: props.subject.images?.large || props.subject.cover || ''
+    }
+  }
+  return { name: '', name_cn: '', cover: '' }
+})
 
 // 处理筛选变化
 const handleFilterChange = () => {

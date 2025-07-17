@@ -33,6 +33,7 @@ export const useDownloadStore = defineStore('download', {
             for (const task of list) {
                 tasks[task.id] = {
                     ...task,
+                    total_bytes: 0,
                     progress: 0,
                     speed: 0,
                     time_remaining: '',

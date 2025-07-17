@@ -82,12 +82,14 @@
       <EpisodeDisplay
         v-if="!isResourceMode && (subject.total_episodes > 0 || subject.eps > 0)"
         :bangumi-id="animeId"
+        :subject="subject"
       />
 
       <!-- 资源库模式：资源列表 -->
       <AnimeResourcesList
         v-if="isResourceMode"
         :bangumi-id="animeId"
+        :subject="subject"
       />
     </div>
     <div v-if="!loading && error" class="error-message">

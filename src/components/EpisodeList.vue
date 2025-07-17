@@ -115,6 +115,7 @@
       :visible="modalVisible"
       :episode-data="selectedEpisode"
       :bangumi-id="bangumiId"
+      :subject="props.subject"
       @close="closeModal"
     />
   </div>
@@ -134,6 +135,7 @@ interface Props {
   preloadedAvailability?: any
   loading: boolean
   error: string | null
+  subject: any // 可细化类型
 }
 
 const props = defineProps<Props>()

@@ -184,7 +184,6 @@ impl From<UserSubscription> for types_subscription::UserSubscription {
 #[serde(rename_all = "lowercase")]
 pub enum DownloadStatus {
     Pending,      // 待下载
-    MetaData,     // 获取元数据
     Downloading,  // 下载中
     Paused,       // 已暂停
     Completed,    // 已完成

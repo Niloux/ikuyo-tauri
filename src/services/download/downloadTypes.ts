@@ -18,10 +18,11 @@ export interface StartDownloadTask {
 // 下载事件结构体
 export interface ProgressUpdate {
     id: number
+    total_bytes: number
     progress: number
     speed: number
     time_remaining: string
-    status: 'pending' | 'metadata' | 'downloading' | 'paused' | 'completed' | 'failed' | 'deleted'
+    status: 'pending' | 'downloading' | 'paused' | 'completed' | 'failed' | 'deleted'
     error_msg: string | null
 }
 
@@ -30,7 +31,7 @@ export interface DownloadTask {
     id: number
     magnet_url: string
     save_path: string
-    status: 'pending' | 'metadata' | 'downloading' | 'paused' | 'completed' | 'failed' | 'deleted'
+    status: 'pending' | 'downloading' | 'paused' | 'completed' | 'failed' | 'deleted'
     bangumi_id: number
     resource_id: number
     episode_number: number

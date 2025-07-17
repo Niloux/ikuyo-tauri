@@ -20,6 +20,7 @@
         :preloaded-availability="availability"
         :loading="loading"
         :error="error"
+        :subject="props.subject"
       />
 
 
@@ -35,6 +36,7 @@
   // Props定义
   interface Props {
     bangumiId: number
+    subject: any // 可细化类型
   }
 
   const props = defineProps<Props>()

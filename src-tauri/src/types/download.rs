@@ -5,8 +5,9 @@ use crate::models::DownloadStatus;
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ProgressUpdate {
     pub id: i64,
-    pub progress: f64,      // 0.0~1.0
-    pub speed: f64,         // 下载速度，单位B/s
+    pub total_bytes: u64,
+    pub progress: f64,
+    pub speed: f64,
     pub time_remaining: Option<String>,
     pub status: DownloadStatus,
     pub error_msg: Option<String>,

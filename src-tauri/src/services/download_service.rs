@@ -303,7 +303,8 @@ impl DownloadService {
                 // 过滤掉已完成任务
                 !matches!(
                     task.status,
-                    DownloadStatus::Completed | DownloadStatus::Paused
+                    // DownloadStatus::Completed | DownloadStatus::Paused
+                    DownloadStatus::Completed
                 )
             })
             .collect())

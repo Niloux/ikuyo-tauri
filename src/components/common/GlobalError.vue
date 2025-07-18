@@ -4,15 +4,17 @@
   只需在主布局(AppLayout.vue)中挂载一次，全局可用
 -->
 <template>
-  <transition name="fade">
-    <div v-if="visible" class="global-error-overlay">
-      <div class="global-error-box scale-in">
-        <div class="global-error-title">发生错误</div>
-        <div class="global-error-message">{{ errorMessage }}</div>
-        <button class="global-error-close" @click="close">关闭</button>
+  <teleport to="body">
+    <transition name="fade">
+      <div v-if="visible" class="global-error-overlay">
+        <div class="global-error-box scale-in">
+          <div class="global-error-title">发生错误</div>
+          <div class="global-error-message">{{ errorMessage }}</div>
+          <button class="global-error-close" @click="close">关闭</button>
+        </div>
       </div>
-    </div>
-  </transition>
+    </transition>
+  </teleport>
 </template>
 
 <script setup lang="ts">
@@ -33,7 +35,7 @@ const close = () => feedbackStore.clearError();
   width: 100vw;
   height: 100vh;
   background: rgba(255,0,0,0.08);
-  z-index: 2200;
+  z-index: 2300;
   display: flex;
   align-items: center;
   justify-content: center;

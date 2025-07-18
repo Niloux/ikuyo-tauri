@@ -4,11 +4,13 @@
   只需在主布局(AppLayout.vue)中挂载一次，全局可用
 -->
 <template>
-  <transition name="fade">
-    <div v-if="visible" class="global-loading-overlay">
-      <div class="spinner"></div>
-    </div>
-  </transition>
+  <teleport to="body">
+    <transition name="fade">
+      <div v-if="visible" class="global-loading-overlay">
+        <div class="spinner"></div>
+      </div>
+    </transition>
+  </teleport>
 </template>
 
 <script setup lang="ts">
@@ -27,7 +29,7 @@ const visible = computed(() => feedbackStore.loading);
   width: 100vw;
   height: 100vh;
   background: rgba(255,255,255,0.6);
-  z-index: 2000;
+  z-index: 2100;
   display: flex;
   align-items: center;
   justify-content: center;

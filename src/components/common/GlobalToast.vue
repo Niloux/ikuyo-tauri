@@ -4,11 +4,13 @@
   只需在主布局(AppLayout.vue)中挂载一次，全局可用
 -->
 <template>
-  <transition name="toast-fade">
-    <div v-if="toast" :key="toast.id" :class="['global-toast', toast.type]">
-      <span class="toast-message">{{ toast.message }}</span>
-    </div>
-  </transition>
+  <teleport to="body">
+    <transition name="toast-fade">
+      <div v-if="toast" :key="toast.id" :class="['global-toast', toast.type]">
+        <span class="toast-message">{{ toast.message }}</span>
+      </div>
+    </transition>
+  </teleport>
 </template>
 
 <script setup lang="ts">
@@ -23,7 +25,7 @@ const toast = computed(() => feedbackStore.toast);
 .global-toast-container {
   left: 50%;
   transform: translateX(-50%);
-  z-index: 2100;
+  z-index: 2200;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -48,6 +50,7 @@ const toast = computed(() => feedbackStore.toast);
   font-weight: 500;
   letter-spacing: 0.01em;
   box-sizing: border-box;
+  z-index: 2200;
 }
 .global-toast.success { background: #e6ffed; color: #2ecc40; }
 .global-toast.error { background: #ffeaea; color: #e74c3c; }

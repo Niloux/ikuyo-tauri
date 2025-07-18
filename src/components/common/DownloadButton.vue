@@ -96,9 +96,10 @@ const handleClick = (e: Event) => {
   top: 0;
   bottom: 0;
   width: var(--progress-width, 0%);
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.4);
   transition: width 0.3s ease;
   z-index: 1;
+  border-radius: 12px 0 0 12px;
 }
 
 .download-btn > * {
@@ -106,11 +107,21 @@ const handleClick = (e: Event) => {
   z-index: 2;
 }
 
+/* 确保文字在进度条上方 */
+.download-btn {
+  z-index: 0;
+}
+
 /* 状态样式 */
 .download-btn.downloading {
   background-color: #e3f2fd;
   color: #1976d2;
   cursor: not-allowed;
+}
+
+/* 下载中状态的进度条更明显 */
+.download-btn.downloading::before {
+  background: rgba(25, 118, 210, 0.3);
 }
 
 .download-btn.completed {

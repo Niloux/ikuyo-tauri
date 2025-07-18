@@ -200,7 +200,7 @@ const handleDownloadAction = async (action: 'download' | 'pause' | 'resume' | 'd
       await handleDownload(resource)
       break
     case 'pause':
-      if (task?.id) {
+      if (task?.id != undefined) {
         try {
           await downloadStore.pauseDownload(task.id)
           feedbackStore.showToast('已暂停下载', 'success')
@@ -210,7 +210,7 @@ const handleDownloadAction = async (action: 'download' | 'pause' | 'resume' | 'd
       }
       break
     case 'resume':
-      if (task?.id) {
+      if (task?.id != undefined) {
         try {
           await downloadStore.resumeDownload(task.id)
           feedbackStore.showToast('已恢复下载', 'success')
@@ -220,7 +220,7 @@ const handleDownloadAction = async (action: 'download' | 'pause' | 'resume' | 'd
       }
       break
     case 'delete':
-      if (task?.id) {
+      if (task?.id != undefined) {
         try {
           await downloadStore.removeDownload(task.id, true) // TODO: delete_files参数需要开发
           feedbackStore.showToast('已删除下载任务', 'success')
@@ -230,7 +230,7 @@ const handleDownloadAction = async (action: 'download' | 'pause' | 'resume' | 'd
       }
       break
     case 'retry':
-      if (task?.id) {
+      if (task?.id != undefined) {
         try {
           await downloadStore.removeDownload(task.id, true) // 先删除旧任务
           await handleDownload(resource) // 重新开始下载

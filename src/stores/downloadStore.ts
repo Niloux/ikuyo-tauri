@@ -7,10 +7,12 @@ import { downloadApiService } from '@/services/download/downloadApiService'
 
 type ProgressUpdateWithoutError = Omit<ProgressUpdate, 'error_msg'>
 
+// DownloadTaskState 必须包含 resource_id 字段，确保 resource 与任务一一对应
 interface DownloadTaskState extends DownloadTask, ProgressUpdateWithoutError { }
 
 interface DownloadStoreState {
-    tasks: Record<number, DownloadTaskState>
+    tasks: Record<number, DownloadTaskState>,
+    resourceIdToTaskId: Record<number, number>,
 }
 
 let hasInit = false // 防止重复注册
@@ -20,6 +22,7 @@ let fetchDebounceTimer: ReturnType<typeof setTimeout> | null = null
 export const useDownloadStore = defineStore('download', {
     state: (): DownloadStoreState => ({
         tasks: {},
+        resourceIdToTaskId: {},
     }),
     actions: {
         async init() {
@@ -33,6 +36,7 @@ export const useDownloadStore = defineStore('download', {
         async fetchAllDownloads() {
             const list = await downloadApiService.fetchAllDownloads()
             const tasks: Record<number, DownloadTaskState> = {}
+            const resourceIdToTaskId: Record<number, number> = {}
             for (const task of list) {
                 tasks[task.id] = {
                     ...task,
@@ -41,8 +45,12 @@ export const useDownloadStore = defineStore('download', {
                     speed: 0,
                     time_remaining: '',
                 }
+                if (typeof task.resource_id === 'number') {
+                    resourceIdToTaskId[task.resource_id] = task.id
+                }
             }
             this.tasks = tasks
+            this.resourceIdToTaskId = resourceIdToTaskId
             // fetch 后尝试补合并丢失的 progress
             if (lastMissingProgress && tasks[lastMissingProgress.id]) {
                 this.updateProgress(lastMissingProgress)
@@ -68,22 +76,51 @@ export const useDownloadStore = defineStore('download', {
                 ...progress,
                 error_msg: progress.error_msg,
             }
+            // 同步 resourceIdToTaskId
+            if (typeof this.tasks[id].resource_id === 'number') {
+                this.resourceIdToTaskId[this.tasks[id].resource_id] = id
+            }
         },
         async startDownload(task: import('@/services/download/downloadTypes').StartDownloadTask) {
-            await downloadApiService.startDownload(task)
-            await this.fetchAllDownloads()
+            const newTaskId = await downloadApiService.startDownload(task)
+            // 先插入一个初始任务对象，等待进度事件推送后再补全
+            this.tasks[newTaskId] = {
+                ...task,
+                id: newTaskId,
+                status: 'pending',
+                total_bytes: task.total_size,
+                progress: 0,
+                speed: 0,
+                time_remaining: '',
+                error_msg: null,
+                created_at: Date.now(),
+                updated_at: Date.now(),
+                save_path: task.save_path || '',
+            }
+            this.resourceIdToTaskId[task.resource_id] = newTaskId
         },
         async pauseDownload(id: number) {
             await downloadApiService.pauseDownload(id)
-            await this.fetchAllDownloads()
+            if (this.tasks[id]) {
+                this.tasks[id].status = 'paused'
+                this.tasks[id].updated_at = Date.now()
+            }
         },
         async resumeDownload(id: number) {
             await downloadApiService.resumeDownload(id)
-            await this.fetchAllDownloads()
+            if (this.tasks[id]) {
+                this.tasks[id].status = 'downloading'
+                this.tasks[id].updated_at = Date.now()
+            }
         },
         async removeDownload(id: number, delete_files: boolean) {
             await downloadApiService.removeDownload(id, delete_files)
-            await this.fetchAllDownloads()
+            // 移除本地任务
+            const task = this.tasks[id]
+            if (task) {
+                delete this.resourceIdToTaskId[task.resource_id]
+                delete this.tasks[id]
+            }
         },
     },
     getters: {
@@ -96,7 +133,46 @@ export const useDownloadStore = defineStore('download', {
             return Object.values(state.tasks).filter(t => t.error_msg)
         },
         getTaskByResourceId: (state) => (resourceId: number) => {
-            return Object.values(state.tasks).find(task => task.resource_id === resourceId)
+            const taskId = state.resourceIdToTaskId[resourceId]
+            if (typeof taskId === 'number') {
+                return state.tasks[taskId]
+            }
+            return undefined
+        },
+        // 新增：返回 DownloadButton 所需全部 UI 状态
+        getTaskUIState: (state) => (resourceId: number) => {
+            const task = (state as any).getTaskByResourceId(resourceId)
+            if (!task) {
+                return {
+                    status: null,
+                    progress: 0,
+                    errorMsg: null,
+                    buttonText: '下载',
+                    disabled: false,
+                    speed: undefined,
+                    timeRemaining: undefined,
+                    taskId: undefined,
+                }
+            }
+            let buttonText = '下载'
+            switch (task.status) {
+                case 'downloading': buttonText = '下载中'; break
+                case 'completed': buttonText = '已下载'; break
+                case 'failed': buttonText = '重试'; break
+                case 'paused': buttonText = '已暂停'; break
+                case 'pending': buttonText = '等待中'; break
+                default: buttonText = '下载'; break
+            }
+            return {
+                status: task.status,
+                progress: task.progress || 0,
+                errorMsg: task.error_msg,
+                buttonText,
+                disabled: false,
+                speed: task.speed,
+                timeRemaining: task.time_remaining,
+                taskId: task.id,
+            }
         },
     },
 })

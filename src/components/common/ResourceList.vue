@@ -50,12 +50,7 @@
 
                 <div class="resource-actions">
                   <DownloadButton
-                    :status="getTaskByResourceId(resource.id)?.status || null"
-                    :progress="getTaskByResourceId(resource.id)?.progress || 0"
-                    :error-msg="getTaskByResourceId(resource.id)?.error_msg"
-                    :speed="getTaskByResourceId(resource.id)?.speed"
-                    :time-remaining="getTaskByResourceId(resource.id)?.time_remaining"
-                    :task-id="getTaskByResourceId(resource.id)?.id"
+                    :resource-id="resource.id"
                     :on-action="(action) => handleDownloadAction(action, resource)"
                   />
                 </div>

@@ -11,7 +11,7 @@
     >
       {{ buttonText }}
       <svg 
-        v-if="status === 'downloading'" 
+        v-if="uiState.status === 'downloading'" 
         class="dropdown-arrow" 
         viewBox="0 0 24 24"
       >
@@ -21,7 +21,7 @@
     
     <!-- 下拉菜单 -->
     <div 
-      v-if="showMenu && status === 'downloading'" 
+      v-if="showMenu && uiState.status === 'downloading'" 
       class="download-menu"
       @click.stop
     >
@@ -37,25 +37,22 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { useDownloadStore } from '@/stores/downloadStore'
 
 const props = defineProps<{
-  status: string | null
-  progress: number
-  disabled?: boolean
-  errorMsg?: string | null
-  taskId?: number
+  resourceId: number
   onAction?: (action: 'download' | 'pause' | 'resume' | 'delete' | 'retry') => void
-  speed?: number
-  timeRemaining?: string
-  buttonText?: string
 }>()
+
+const downloadStore = useDownloadStore()
+const uiState = computed(() => downloadStore.getTaskUIState(props.resourceId))
 
 const showMenu = ref(false)
 const containerRef = ref<HTMLElement>()
 
-const progressPercent = computed(() => Math.max(0, Math.min(100, Math.round((props.progress || 0) * 100))))
+const progressPercent = computed(() => Math.max(0, Math.min(100, Math.round((uiState.value.progress || 0) * 100))))
 const statusClass = computed(() => {
-  switch (props.status) {
+  switch (uiState.value.status) {
     case 'downloading': return 'downloading'
     case 'completed': return 'completed'
     case 'failed': return 'failed'
@@ -64,45 +61,32 @@ const statusClass = computed(() => {
     default: return ''
   }
 })
-const buttonText = computed(() => {
-  switch (props.status) {
-    case 'downloading': return '下载中'
-    case 'completed': return '已下载'
-    case 'failed': return '重试'
-    case 'paused': return '已暂停'
-    case 'pending': return '等待中'
-    default: return '下载'
-  }
-})
-
+const buttonText = computed(() => uiState.value.buttonText)
+const disabled = computed(() => uiState.value.disabled)
 const tooltipText = computed(() => {
-  if (props.errorMsg) return props.errorMsg
-  if (props.status === 'downloading') {
+  if (uiState.value.errorMsg) return uiState.value.errorMsg
+  if (uiState.value.status === 'downloading') {
     let tip = `进度: ${progressPercent.value}%`
-    if (props.speed) tip += `\n速度: ${props.speed.toFixed(2)} MB/s`
-    if (props.timeRemaining) tip += `\n剩余: ${props.timeRemaining}`
+    if (uiState.value.speed) tip += `\n速度: ${uiState.value.speed.toFixed(2)} MB/s`
+    if (uiState.value.timeRemaining) tip += `\n剩余: ${uiState.value.timeRemaining}`
     return tip
   }
   return ''
 })
 
 const handleClick = (e: Event) => {
-  if (props.disabled) return
-  
-  // 下载中状态点击按钮直接显示菜单
-  if (props.status === 'downloading') {
+  if (disabled.value) return
+  if (uiState.value.status === 'downloading') {
     toggleMenu()
     return
   }
-  
   let action: 'download' | 'pause' | 'resume' | 'delete' | 'retry'
-  switch (props.status) {
+  switch (uiState.value.status) {
     case 'completed': action = 'delete'; break
     case 'failed': action = 'retry'; break
     case 'paused': action = 'resume'; break
     default: action = 'download'; break
   }
-  
   props.onAction && props.onAction(action)
 }
 
@@ -115,7 +99,6 @@ const handleAction = (action: 'download' | 'pause' | 'resume' | 'delete' | 'retr
   props.onAction && props.onAction(action)
 }
 
-// 点击外部关闭菜单
 const handleClickOutside = (event: Event) => {
   if (containerRef.value && !containerRef.value.contains(event.target as Node)) {
     showMenu.value = false

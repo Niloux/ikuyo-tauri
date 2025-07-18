@@ -3,8 +3,6 @@ import type { DownloadTask, ProgressUpdate } from '@/services/download/downloadT
 import { listen } from '@tauri-apps/api/event'
 import { downloadApiService } from '@/services/download/downloadApiService'
 
-// 解决 error_msg 冲突：去除 ProgressUpdate 的 error_msg
-
 type ProgressUpdateWithoutError = Omit<ProgressUpdate, 'error_msg'>
 
 // DownloadTaskState 必须包含 resource_id 字段，确保 resource 与任务一一对应

@@ -4,36 +4,11 @@
     :class="[statusClass, { disabled }]"
     :disabled="disabled || status === 'downloading'"
     @click="handleClick"
+    :style="{ '--progress-width': progressPercent + '%' }"
     :aria-label="buttonText"
     :title="tooltipText"
   >
-    <div class="progress-bar-bg">
-      <div
-        class="progress-bar-fill"
-        :style="{ width: progressPercent + '%', background: progressColor }"
-      ></div>
-    </div>
-    <span class="btn-content">
-      <template v-if="status === 'downloading'">
-        <svg class="loading" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="60" stroke-dashoffset="20"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="1s" repeatCount="indefinite"/></circle></svg>
-        下载中 {{ Math.round(progress * 100) }}%
-      </template>
-      <template v-else-if="status === 'completed'">
-        已完成
-      </template>
-      <template v-else-if="status === 'failed'">
-        重试
-      </template>
-      <template v-else-if="status === 'paused'">
-        已暂停
-      </template>
-      <template v-else-if="status === 'pending'">
-        等待中
-      </template>
-      <template v-else>
-        {{ buttonText || '下载' }}
-      </template>
-    </span>
+    {{ buttonText }}
   </button>
 </template>
 
@@ -62,15 +37,17 @@ const statusClass = computed(() => {
     default: return ''
   }
 })
-const progressColor = computed(() => {
+const buttonText = computed(() => {
   switch (props.status) {
-    case 'downloading': return '#3498db'
-    case 'completed': return '#2ecc71'
-    case 'failed': return '#e74c3c'
-    case 'paused': return '#f1c40f'
-    default: return '#3498db'
+    case 'downloading': return '下载中'
+    case 'completed': return '已下载'
+    case 'failed': return '重试'
+    case 'paused': return '已暂停'
+    case 'pending': return '等待中'
+    default: return '下载'
   }
 })
+
 const tooltipText = computed(() => {
   if (props.errorMsg) return props.errorMsg
   if (props.status === 'downloading') {
@@ -89,70 +66,81 @@ const handleClick = (e: Event) => {
 
 <style scoped>
 .download-btn {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 90px;
-  height: 38px;
-  border: none;
-  border-radius: 8px;
-  font-size: 1rem;
+  /* meta-tag 基础样式 */
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
   font-weight: 500;
+  
+  /* 固定宽度 */
+  width: 80px;
+  min-width: 80px;
+  
+  /* 基础样式 */
+  border: none;
   cursor: pointer;
-  background: #f0f0f0;
-  color: #2c3e50;
-  overflow: hidden;
-  transition: background 0.2s, color 0.2s;
-}
-.download-btn .progress-bar-bg {
-  position: absolute;
-  left: 0; top: 0; bottom: 0; right: 0;
-  background: #e0e0e0;
-  z-index: 0;
-}
-.download-btn .progress-bar-fill {
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  z-index: 1;
-  transition: width 0.3s cubic-bezier(.4,0,.2,1);
-  border-radius: 8px 0 0 8px;
-}
-.download-btn .btn-content {
   position: relative;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  gap: 0.5em;
-}
-.download-btn.downloading {
-  background: #e3f2fd;
+  overflow: hidden;
+  transition: all 0.2s ease;
+  
+  /* 默认状态 - 类似 meta-tag.resolution */
+  background-color: #e3f2fd;
   color: #1976d2;
 }
+
+/* 内嵌进度条 */
+.download-btn::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--progress-width, 0%);
+  background: rgba(255, 255, 255, 0.3);
+  transition: width 0.3s ease;
+  z-index: 1;
+}
+
+.download-btn > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* 状态样式 */
+.download-btn.downloading {
+  background-color: #e3f2fd;
+  color: #1976d2;
+  cursor: not-allowed;
+}
+
 .download-btn.completed {
-  background: #e8f5e9;
+  background-color: #e8f5e8;
   color: #388e3c;
 }
+
 .download-btn.failed {
-  background: #ffebee;
+  background-color: #ffebee;
   color: #e74c3c;
 }
+
 .download-btn.paused {
-  background: #fffde7;
+  background-color: #fffde7;
   color: #f1c40f;
 }
+
 .download-btn.pending {
-  background: #f0f0f0;
+  background-color: #f0f0f0;
   color: #888;
 }
+
 .download-btn.disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
-.loading {
-  width: 1.1em;
-  height: 1.1em;
-  margin-right: 0.3em;
-  vertical-align: middle;
+
+/* 悬停效果 */
+.download-btn:not(.disabled):not(.downloading):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 </style> 

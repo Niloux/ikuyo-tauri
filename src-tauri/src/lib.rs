@@ -291,17 +291,19 @@ pub fn run() -> crate::error::Result<()> {
             let is_active = Arc::new(std::sync::atomic::AtomicBool::new(true));
             let is_active_focus = is_active.clone();
             let is_active_blur = is_active.clone();
-            let window = app.get_webview_window("main").expect("main window not found");
+            let window = app
+                .get_webview_window("main")
+                .expect("main window not found");
             window.on_window_event(move |event| {
                 match event {
                     tauri::WindowEvent::Focused(true) => {
-                        is_active_focus.store(true, std::sync::atomic::Ordering::SeqCst);
+                        is_active_focus.store(true, Ordering::SeqCst);
                     }
                     tauri::WindowEvent::Focused(false) => {
-                        is_active_blur.store(false, std::sync::atomic::Ordering::SeqCst);
+                        is_active_blur.store(false, Ordering::SeqCst);
                     }
                     tauri::WindowEvent::CloseRequested { .. } => {
-                        exit_flag.store(true, std::sync::atomic::Ordering::SeqCst);
+                        exit_flag.store(true, Ordering::SeqCst);
                         // 数据库退出流程：异步执行，确保所有操作完成
                         let pool = pool_arc.clone();
                         tauri::async_runtime::spawn(async move {
@@ -325,7 +327,9 @@ pub fn run() -> crate::error::Result<()> {
             let ds_clone = download_service.clone();
             let is_active_clone = is_active.clone();
             tauri::async_runtime::spawn(async move {
-                ds_clone.sync_rtbit(app_handle.clone(), is_active_clone).await;
+                ds_clone
+                    .sync_rtbit(app_handle.clone(), is_active_clone)
+                    .await;
             });
 
             Ok(())

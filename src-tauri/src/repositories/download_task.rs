@@ -12,30 +12,14 @@ impl<'a> DownloadTaskRepository<'a> {
     pub fn new(pool: &'a SqlitePool) -> Self {
         Self { pool }
     }
-
-    // 查询所有未完成的任务,用于初始化时恢复下载
-    pub async fn get_all_resumable_tasks(&self) -> Result<Vec<DownloadTask>> {
-        let query = "SELECT * FROM download_task WHERE status != 'Completed' AND status != 'Failed' AND status != 'Deleted'";
-        Ok(sqlx::query_as::<_, DownloadTask>(query)
-            .fetch_all(self.pool)
-            .await?)
-    }
-
-    // 查询所有未删除的任务,用于前端fetch_all_downloads
-    pub async fn fetch_all_downloads(&self) -> Result<Vec<DownloadTask>> {
-        let query = "SELECT * FROM download_task WHERE status != 'Deleted'";
-        Ok(sqlx::query_as::<_, DownloadTask>(query)
-            .fetch_all(self.pool)
-            .await?)
-    }
 }
 
 #[async_trait]
 impl<'a> Repository<DownloadTask, i64> for DownloadTaskRepository<'a> {
     async fn create(&self, task: &DownloadTask) -> Result<()> {
         sqlx::query(
-            "INSERT INTO download_task (id, magnet_url, save_path, status, bangumi_id, resource_id, episode_number, name, name_cn, cover, total_size, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO download_task (id, magnet_url, save_path, status, bangumi_id, resource_id, episode_number, name, name_cn, cover, total_size, created_at, updated_at, error_msg)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         )
         .bind(task.id)
         .bind(&task.magnet_url)

@@ -28,8 +28,8 @@ impl DownloadService {
         let opts = AddTorrentOptions {
             output_folder: task.save_path.clone(),
             // 性能优化配置
-            paused: false,                    // 立即开始下载
-            overwrite: false,                 // 不覆盖已存在的文件
+            paused: false,    // 立即开始下载
+            overwrite: false, // 不覆盖已存在的文件
             ..Default::default()
         };
         let resp = self
@@ -42,7 +42,7 @@ impl DownloadService {
             None => return Err(AppError::Unknown("添加下载任务失败".to_string())),
         };
         // 数据库插入 download_task，保存 handle.id() 作为任务id
-        let now = chrono::Utc::now().timestamp();
+        let now = Self::get_current_timestamp();
         let task = DownloadTask {
             id: Some(handle.id() as i64),
             magnet_url: task.magnet_url,
@@ -80,10 +80,14 @@ impl DownloadService {
         let repo = DownloadTaskRepository::new(&self.pool);
         if let Some(mut task) = repo.get_by_id(id).await? {
             task.status = DownloadStatus::Paused;
-            task.updated_at = chrono::Utc::now().timestamp();
+            task.updated_at = Self::get_current_timestamp();
             match repo.update(&task).await {
-                Ok(_) => tracing::info!("更新数据库成功: id={}, status={:?}", id, task.status),
-                Err(e) => tracing::error!("更新数据库失败: id={}, err={}", id, e),
+                Ok(_) => tracing::debug!(
+                    "数据库状态更新成功: task_id={}, status={:?}",
+                    id,
+                    task.status
+                ),
+                Err(e) => tracing::error!("数据库状态更新失败: task_id={}, error={}", id, e),
             }
         }
         Ok(())
@@ -105,10 +109,14 @@ impl DownloadService {
         let repo = DownloadTaskRepository::new(&self.pool);
         if let Some(mut task) = repo.get_by_id(id).await? {
             task.status = DownloadStatus::Downloading;
-            task.updated_at = chrono::Utc::now().timestamp();
+            task.updated_at = Self::get_current_timestamp();
             match repo.update(&task).await {
-                Ok(_) => tracing::info!("更新数据库成功: id={}, status={:?}", id, task.status),
-                Err(e) => tracing::error!("更新数据库失败: id={}, err={}", id, e),
+                Ok(_) => tracing::debug!(
+                    "数据库状态更新成功: task_id={}, status={:?}",
+                    id,
+                    task.status
+                ),
+                Err(e) => tracing::error!("数据库状态更新失败: task_id={}, error={}", id, e),
             }
         }
         Ok(())
@@ -125,10 +133,10 @@ impl DownloadService {
         Ok(())
     }
 
-    pub fn get_progress(&self, id: i64) -> Option<ProgressUpdate> {
-        self.session.get(TorrentIdOrHash::Id(id as usize)).map(|h| {
+    /// 从session同步任务状态
+    fn sync_task_status_from_session(session: &Arc<Session>, id: i64) -> Option<ProgressUpdate> {
+        session.get(TorrentIdOrHash::Id(id as usize)).map(|h| {
             let stats = h.stats();
-            // tracing::info!("stats: {:?}", stats);
             let total_bytes = stats.total_bytes;
             let speed = stats
                 .live
@@ -140,10 +148,12 @@ impl DownloadService {
                 .as_ref()
                 .and_then(|l| l.time_remaining.as_ref())
                 .map(|d| d.to_string());
+
+            let state_str = stats.state.to_string();
             let status = if stats.finished {
                 DownloadStatus::Completed
             } else {
-                match stats.state.to_string().as_str() {
+                match state_str.as_str() {
                     "error" => DownloadStatus::Failed,
                     "paused" => DownloadStatus::Paused,
                     "initializing" => DownloadStatus::Pending,
@@ -151,7 +161,7 @@ impl DownloadService {
                     _ => DownloadStatus::Downloading,
                 }
             };
-            let error_msg = if stats.state.to_string() == "error" {
+            let error_msg = if state_str == "error" {
                 Some(stats.error.unwrap_or_default())
             } else {
                 None
@@ -172,29 +182,40 @@ impl DownloadService {
         })
     }
 
-    /// 启动进度推送定时器，每秒推送所有任务进度到前端
-    pub async fn spawn_progress_notifier(self: Arc<Self>, app_handle: tauri::AppHandle) {
+    /// 同步session状态到数据库与前端
+    pub async fn sync_rtbit(self: Arc<Self>, app_handle: tauri::AppHandle) {
         let pool = self.pool.clone();
+        let session = self.session.clone();
         tauri::async_runtime::spawn(async move {
             let mut ticker = interval(Duration::from_secs(1));
             loop {
                 ticker.tick().await;
-                let ids = Self::all_task_ids(&pool).await;
-                for id in ids {
-                    if let Some(progress) = self.get_progress(id) {
+                let tasks = Self::all_progress_tasks(&pool)
+                    .await
+                    .unwrap_or_else(|_| vec![]);
+                for task in tasks {
+                    if let Some(progress) = Self::sync_task_status_from_session(&session, task.id.unwrap()) {
+                        // 前端同步
                         let _ = app_handle.emit("download_progress", &progress);
-
-                        // 只用 progress.status 作为权威状态
+                        // 数据库状态更新
                         let repo = DownloadTaskRepository::new(&pool);
-                        if let Ok(Some(mut task)) = repo.get_by_id(id).await {
-                            if task.status != progress.status {
-                                task.status = progress.status;
-                                task.total_size = progress.total_bytes as i64;
-                                task.error_msg = progress.error_msg;
-                                task.updated_at = chrono::Utc::now().timestamp();
-                                match repo.update(&task).await {
-                                    Ok(_) => tracing::info!("更新数据库成功: id={}, status={:?}", id, task.status),
-                                    Err(e) => tracing::error!("更新数据库失败: id={}, err={}", id, e),
+                        if let Ok(Some(mut task_to_update)) = repo.get_by_id(task.id.unwrap()).await {
+                            if task_to_update.status != progress.status {
+                                task_to_update.status = progress.status;
+                                task_to_update.total_size = progress.total_bytes as i64;
+                                task_to_update.error_msg = progress.error_msg;
+                                task_to_update.updated_at = Self::get_current_timestamp();
+                                match repo.update(&task_to_update).await {
+                                    Ok(_) => tracing::debug!(
+                                        "数据库状态更新成功: task_id={}, status={:?}",
+                                        task.id.unwrap(),
+                                        task_to_update.status
+                                    ),
+                                    Err(e) => tracing::error!(
+                                        "数据库状态更新失败: task_id={}, error={}",
+                                        task.id.unwrap(),
+                                        e
+                                    ),
                                 }
                             }
                         }
@@ -204,43 +225,22 @@ impl DownloadService {
         });
     }
 
-    /// 服务启动时自动恢复所有未完成任务
-    pub async fn restore_all_tasks_on_start(&self) -> Result<(), AppError> {
-        tracing::info!("正在恢复所有未完成任务");
-        let repo = DownloadTaskRepository::new(&self.pool);
-        tracing::info!("查询所有未完成任务");
-        let tasks = repo
-            .get_all_resumable_tasks()
-            .await
-            .map_err(|e| {
-                tracing::error!("get_all_resumable_tasks 查询失败: {}", e);
-                AppError::DownloadTask(DownloadTaskError::Failed(e.to_string()))
-            })?;
-        for task in tasks {
-            tracing::info!("恢复任务: {:?}", task.id);
-            // 只恢复有 magnet_url 的任务
-            if !task.magnet_url.is_empty() {
-                let add = AddTorrent::Url(task.magnet_url.clone().into());
-                let opts = AddTorrentOptions {
-                    paused: false,
-                    overwrite: true,
-                    output_folder: task.save_path,
-                    preferred_id: Some(task.id.unwrap() as usize),
-                    ..Default::default()
-                };
-                // 忽略已存在/重复的错误，保证幂等
-                let _ = self.session.add_torrent(add, Some(opts)).await;
-            }
-        }
-        Ok(())
+    /// 获取当前时间戳
+    fn get_current_timestamp() -> i64 {
+        chrono::Utc::now().timestamp()
     }
 
-    /// 获取所有任务id（通过数据库查询所有未完成任务）
-    async fn all_task_ids(pool: &Arc<SqlitePool>) -> Vec<i64> {
+    /// 获取所有可活跃的下载任务对象
+    async fn all_progress_tasks(pool: &Arc<SqlitePool>) -> Result<Vec<DownloadTask>, AppError> {
         let repo = DownloadTaskRepository::new(pool);
-        match repo.get_all_resumable_tasks().await {
-            Ok(tasks) => tasks.into_iter().filter_map(|t| t.id).collect(),
-            Err(_) => vec![],
-        }
+        let tasks = repo.list(0, 0).await?;
+        // 只返回未完成的任务对象
+        Ok(tasks
+            .into_iter()
+            .filter(|task| {
+                // 过滤掉已完成任务
+                !matches!(task.status, DownloadStatus::Completed)
+            })
+            .collect())
     }
 }

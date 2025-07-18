@@ -4,6 +4,7 @@ use crate::{
     types::download::StartDownloadTask,
     services::download_service::DownloadService,
     repositories::download_task::DownloadTaskRepository,
+    repositories::base::Repository,
 };
 use std::sync::Arc;
 use tauri::{command, State};
@@ -48,11 +49,10 @@ pub async fn remove_download(
 }
 
 #[command(rename_all = "snake_case")]
-pub async fn fetch_all_downloads(
+pub async fn list_downloads(
     pool: State<'_, Arc<SqlitePool>>,
 ) -> Result<Vec<DownloadTask>, AppError> {
-    // fetch_all_downloads 用于前端fetch_all_downloads, 返回所有未删除的任务
     let repo = DownloadTaskRepository::new(&pool);
-    let tasks = repo.fetch_all_downloads().await?;
+    let tasks = repo.list(0, 0).await?;
     Ok(tasks)
 }

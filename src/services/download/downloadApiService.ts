@@ -18,7 +18,7 @@ class DownloadApiService {
      * 获取下载任务列表
      */
     async fetchAllDownloads(): Promise<DownloadTask[]> {
-        return invoke('fetch_all_downloads')
+        return invoke('list_downloads')
     }
 
     /**

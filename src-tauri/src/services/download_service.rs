@@ -248,13 +248,16 @@ impl DownloadService {
     }
 
     /// 同步session状态到数据库与前端
-    pub async fn sync_rtbit(self: Arc<Self>, app_handle: tauri::AppHandle) {
+    pub async fn sync_rtbit(self: Arc<Self>, app_handle: tauri::AppHandle, is_active: Arc<std::sync::atomic::AtomicBool>) {
         let pool = self.pool.clone();
         let session = self.session.clone();
         tauri::async_runtime::spawn(async move {
             let mut ticker = interval(Duration::from_secs(1));
             loop {
                 ticker.tick().await;
+                if !is_active.load(std::sync::atomic::Ordering::SeqCst) {
+                    continue;
+                }
                 let tasks = Self::all_progress_tasks(&pool)
                     .await
                     .unwrap_or_else(|_| vec![]);

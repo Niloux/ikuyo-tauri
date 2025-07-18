@@ -241,22 +241,6 @@ pub fn run() -> crate::error::Result<()> {
             };
             let pool_arc = init_db(&db_path);
 
-            // ===== 下载服务初始化与自动恢复 =====
-            let download_dir = init_download_dir();
-            let session_opts = init_session_opts(&download_dir);
-            let session =
-                tauri::async_runtime::block_on(Session::new_with_opts(download_dir, session_opts))
-                    .expect("session初始化失败");
-            let download_service = Arc::new(services::download_service::DownloadService::new(
-                pool_arc.clone(),
-                session,
-            ));
-            // 推送下载进度信息
-            let ds_clone = download_service.clone();
-            tauri::async_runtime::spawn(async move {
-                ds_clone.sync_rtbit(app_handle.clone()).await;
-            });
-
             // 4. 配置加载
             let config = load_config();
 
@@ -289,30 +273,59 @@ pub fn run() -> crate::error::Result<()> {
             app.manage(notify.clone());
             app.manage(exit_flag.clone());
             app.manage(worker);
-            app.manage(download_service);
 
             // 8. 主窗口事件注册
-            let window = app
-                .get_webview_window("main")
-                .expect("main window not found");
+            // ===== 下载服务初始化与自动恢复 =====
+            let download_dir = init_download_dir();
+            let session_opts = init_session_opts(&download_dir);
+            let session =
+                tauri::async_runtime::block_on(Session::new_with_opts(download_dir, session_opts))
+                    .expect("session初始化失败");
+            let download_service = Arc::new(services::download_service::DownloadService::new(
+                pool_arc.clone(),
+                session,
+            ));
+            app.manage(download_service.clone());
+
+            // ========== 新增：全局 is_active 标志与事件监听 ==========
+            let is_active = Arc::new(std::sync::atomic::AtomicBool::new(true));
+            let is_active_focus = is_active.clone();
+            let is_active_blur = is_active.clone();
+            let window = app.get_webview_window("main").expect("main window not found");
             window.on_window_event(move |event| {
-                if let tauri::WindowEvent::CloseRequested { .. } = event {
-                    exit_flag.store(true, Ordering::SeqCst);
-                    // 数据库退出流程：异步执行，确保所有操作完成
-                    let pool = pool_arc.clone();
-                    tauri::async_runtime::spawn(async move {
-                        tracing::info!("应用退出：执行PRAGMA wal_checkpoint(FULL)");
-                        match sqlx::query("PRAGMA wal_checkpoint(FULL);")
-                            .execute(pool.as_ref())
-                            .await
-                        {
-                            Ok(res) => tracing::info!("wal_checkpoint执行成功: {:?}", res),
-                            Err(e) => tracing::error!("wal_checkpoint执行失败: {}", e),
-                        }
-                        tracing::info!("应用退出：关闭数据库连接池");
-                        pool.close().await;
-                    });
+                match event {
+                    tauri::WindowEvent::Focused(true) => {
+                        is_active_focus.store(true, std::sync::atomic::Ordering::SeqCst);
+                    }
+                    tauri::WindowEvent::Focused(false) => {
+                        is_active_blur.store(false, std::sync::atomic::Ordering::SeqCst);
+                    }
+                    tauri::WindowEvent::CloseRequested { .. } => {
+                        exit_flag.store(true, std::sync::atomic::Ordering::SeqCst);
+                        // 数据库退出流程：异步执行，确保所有操作完成
+                        let pool = pool_arc.clone();
+                        tauri::async_runtime::spawn(async move {
+                            tracing::info!("应用退出：执行PRAGMA wal_checkpoint(FULL)");
+                            match sqlx::query("PRAGMA wal_checkpoint(FULL);")
+                                .execute(pool.as_ref())
+                                .await
+                            {
+                                Ok(res) => tracing::info!("wal_checkpoint执行成功: {:?}", res),
+                                Err(e) => tracing::error!("wal_checkpoint执行失败: {}", e),
+                            }
+                            tracing::info!("应用退出：关闭数据库连接池");
+                            pool.close().await;
+                        });
+                    }
+                    _ => {}
                 }
+            });
+
+            // 推送下载进度信息
+            let ds_clone = download_service.clone();
+            let is_active_clone = is_active.clone();
+            tauri::async_runtime::spawn(async move {
+                ds_clone.sync_rtbit(app_handle.clone(), is_active_clone).await;
             });
 
             Ok(())

@@ -59,7 +59,7 @@ impl DownloadService {
             updated_at: now,
             error_msg: None,
         };
-        let repo = DownloadTaskRepository::new(&self.pool);
+        let repo = self.repo();
         repo.create(&task).await?;
         Ok(handle.id() as i64)
     }
@@ -77,7 +77,7 @@ impl DownloadService {
             .await
             .map_err(|e| AppError::DownloadTask(DownloadTaskError::Failed(e.to_string())))?;
         // 数据库状态更新
-        let repo = DownloadTaskRepository::new(&self.pool);
+        let repo = self.repo();
         if let Some(mut task) = repo.get_by_id(id).await? {
             task.status = DownloadStatus::Paused;
             task.updated_at = Self::get_current_timestamp();
@@ -106,7 +106,7 @@ impl DownloadService {
             .await
             .map_err(|e| AppError::DownloadTask(DownloadTaskError::Failed(e.to_string())))?;
         // 数据库状态更新
-        let repo = DownloadTaskRepository::new(&self.pool);
+        let repo = self.repo();
         if let Some(mut task) = repo.get_by_id(id).await? {
             task.status = DownloadStatus::Downloading;
             task.updated_at = Self::get_current_timestamp();
@@ -128,7 +128,7 @@ impl DownloadService {
             .await
             .map_err(|e| AppError::DownloadTask(DownloadTaskError::Failed(e.to_string())))?;
         // 数据库删除任务
-        let repo = DownloadTaskRepository::new(&self.pool);
+        let repo = self.repo();
         repo.delete(id).await?;
         Ok(())
     }
@@ -184,6 +184,7 @@ impl DownloadService {
 
     /// 同步session状态到数据库与前端
     pub async fn sync_rtbit(self: Arc<Self>, app_handle: tauri::AppHandle) {
+        use futures_util::stream::{FuturesUnordered, StreamExt};
         let pool = self.pool.clone();
         let session = self.session.clone();
         tauri::async_runtime::spawn(async move {
@@ -193,34 +194,42 @@ impl DownloadService {
                 let tasks = Self::all_progress_tasks(&pool)
                     .await
                     .unwrap_or_else(|_| vec![]);
+                let mut futs = FuturesUnordered::new();
                 for task in tasks {
-                    if let Some(progress) = Self::sync_task_status_from_session(&session, task.id.unwrap()) {
-                        // 前端同步
-                        let _ = app_handle.emit("download_progress", &progress);
-                        // 数据库状态更新
-                        let repo = DownloadTaskRepository::new(&pool);
-                        if let Ok(Some(mut task_to_update)) = repo.get_by_id(task.id.unwrap()).await {
-                            if task_to_update.status != progress.status {
-                                task_to_update.status = progress.status;
-                                task_to_update.total_size = progress.total_bytes as i64;
-                                task_to_update.error_msg = progress.error_msg;
-                                task_to_update.updated_at = Self::get_current_timestamp();
-                                match repo.update(&task_to_update).await {
-                                    Ok(_) => tracing::debug!(
-                                        "数据库状态更新成功: task_id={}, status={:?}",
-                                        task.id.unwrap(),
-                                        task_to_update.status
-                                    ),
-                                    Err(e) => tracing::error!(
-                                        "数据库状态更新失败: task_id={}, error={}",
-                                        task.id.unwrap(),
-                                        e
-                                    ),
+                    let session = session.clone();
+                    let app_handle = app_handle.clone();
+                    let pool = pool.clone();
+                    futs.push(async move {
+                        if let Some(progress) = Self::sync_task_status_from_session(&session, task.id.unwrap()) {
+                            // 前端同步
+                            let _ = app_handle.emit("download_progress", &progress);
+                            // 数据库状态更新
+                            let repo = DownloadTaskRepository::new(&pool);
+                            if let Ok(Some(mut task_to_update)) = repo.get_by_id(task.id.unwrap()).await {
+                                if task_to_update.status != progress.status {
+                                    task_to_update.status = progress.status;
+                                    task_to_update.total_size = progress.total_bytes as i64;
+                                    task_to_update.error_msg = progress.error_msg;
+                                    task_to_update.updated_at = Self::get_current_timestamp();
+                                    match repo.update(&task_to_update).await {
+                                        Ok(_) => tracing::debug!(
+                                            "数据库状态更新成功: task_id={}, status={:?}",
+                                            task.id.unwrap(),
+                                            task_to_update.status
+                                        ),
+                                        Err(e) => tracing::error!(
+                                            "数据库状态更新失败: task_id={}, error={}",
+                                            task.id.unwrap(),
+                                            e
+                                        ),
+                                    }
                                 }
                             }
                         }
-                    }
+                    });
                 }
+                // 并发等待所有任务完成
+                while futs.next().await.is_some() {}
             }
         });
     }
@@ -239,8 +248,13 @@ impl DownloadService {
             .into_iter()
             .filter(|task| {
                 // 过滤掉已完成任务
-                !matches!(task.status, DownloadStatus::Completed)
+                !matches!(task.status, DownloadStatus::Completed | DownloadStatus::Paused)
             })
             .collect())
+    }
+
+    /// 获取 DownloadTaskRepository 实例，便于后续 Mock/切换实现
+    fn repo(&self) -> DownloadTaskRepository {
+        DownloadTaskRepository::new(&self.pool)
     }
 }

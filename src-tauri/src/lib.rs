@@ -169,7 +169,15 @@ fn init_download_dir() -> std::path::PathBuf {
     if !download_dir.exists() {
         std::fs::create_dir_all(&download_dir).expect("无法创建 download 目录");
     }
+    
+    // 创建session目录
+    let session_dir = download_dir.join("session");
+    if !session_dir.exists() {
+        std::fs::create_dir_all(&session_dir).expect("无法创建 session 目录");
+    }
+    
     tracing::info!("下载目录: {:?}", download_dir);
+    tracing::info!("Session目录: {:?}", session_dir);
     download_dir
 }
 
@@ -213,7 +221,27 @@ pub fn run() -> crate::error::Result<()> {
 
             // ===== 下载服务初始化与自动恢复 =====
             let download_dir = init_download_dir();
-            let session = tauri::async_runtime::block_on(Session::new(download_dir))
+            
+            // 创建session - 优化性能配置
+            let peer_opts = librqbit::PeerConnectionOptions {
+                connect_timeout: Some(Duration::from_secs(5)),      // 减少连接超时
+                read_write_timeout: Some(Duration::from_secs(10)),  // 减少读写超时
+                keep_alive_interval: Some(Duration::from_secs(10)), // 减少保活间隔
+                ..Default::default()
+            };
+            
+            let session_options = librqbit::SessionOptions {
+                disable_dht: false,
+                persistence: Some(librqbit::SessionPersistenceConfig::Json {
+                    folder: Some(download_dir.join("session")),
+                }),
+                peer_opts: Some(peer_opts),
+                fastresume: true, // 启用快速恢复
+                // 启用UPnP端口转发以提高连接性
+                enable_upnp_port_forwarding: true,
+                ..Default::default()
+            };
+            let session = tauri::async_runtime::block_on(Session::new_with_opts(download_dir, session_options))
                 .expect("session初始化失败");
             let download_service = Arc::new(services::download_service::DownloadService::new(
                 pool_arc.clone(),
@@ -222,7 +250,7 @@ pub fn run() -> crate::error::Result<()> {
             // 自动恢复未完成任务和推送下载进度信息
             let ds_clone = download_service.clone();
             tauri::async_runtime::spawn(async move {
-                let _ = ds_clone.restore_all_tasks_on_start().await;
+                // let _ = ds_clone.restore_all_tasks_on_start().await;
                 ds_clone.spawn_progress_notifier(app_handle.clone()).await;
             });
 

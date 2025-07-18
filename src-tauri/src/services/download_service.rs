@@ -27,6 +27,9 @@ impl DownloadService {
         // output表示该下载任务的保存路径,会覆盖session(path)的设置
         let opts = AddTorrentOptions {
             output_folder: task.save_path.clone(),
+            // 性能优化配置
+            paused: false,                    // 立即开始下载
+            overwrite: false,                 // 不覆盖已存在的文件
             ..Default::default()
         };
         let resp = self
@@ -116,16 +119,9 @@ impl DownloadService {
             .delete(TorrentIdOrHash::Id(id as usize), delete_files)
             .await
             .map_err(|e| AppError::DownloadTask(DownloadTaskError::Failed(e.to_string())))?;
-        // 数据库状态更新
+        // 数据库删除任务
         let repo = DownloadTaskRepository::new(&self.pool);
-        if let Some(mut task) = repo.get_by_id(id).await? {
-            task.status = DownloadStatus::Deleted;
-            task.updated_at = chrono::Utc::now().timestamp();
-            match repo.update(&task).await {
-                Ok(_) => tracing::info!("更新数据库成功: id={}, status={:?}", id, task.status),
-                Err(e) => tracing::error!("更新数据库失败: id={}, err={}", id, e),
-            }
-        }
+        repo.delete(id).await?;
         Ok(())
     }
 

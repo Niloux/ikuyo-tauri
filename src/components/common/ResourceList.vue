@@ -52,12 +52,11 @@
                   <DownloadButton
                     :status="getTaskByResourceId(resource.id)?.status || null"
                     :progress="getTaskByResourceId(resource.id)?.progress || 0"
-                    :disabled="!!getTaskByResourceId(resource.id)"
                     :error-msg="getTaskByResourceId(resource.id)?.error_msg"
                     :speed="getTaskByResourceId(resource.id)?.speed"
                     :time-remaining="getTaskByResourceId(resource.id)?.time_remaining"
-                    :button-text="'下载'"
-                    :on-click="() => handleDownload(resource)"
+                    :task-id="getTaskByResourceId(resource.id)?.id"
+                    :on-action="(action) => handleDownloadAction(action, resource)"
                   />
                 </div>
               </div>
@@ -190,6 +189,56 @@ const downloadTorrent = async (url: string) => {
     document.body.removeChild(link)
   } catch (err) {
     feedbackStore.showError('下载失败，请检查链接或重试')
+  }
+}
+
+const handleDownloadAction = async (action: 'download' | 'pause' | 'resume' | 'delete' | 'retry', resource: any) => {
+  const task = getTaskByResourceId(resource.id)
+  
+  switch (action) {
+    case 'download':
+      await handleDownload(resource)
+      break
+    case 'pause':
+      if (task?.id) {
+        try {
+          await downloadStore.pauseDownload(task.id)
+          feedbackStore.showToast('已暂停下载', 'success')
+        } catch (e: any) {
+          feedbackStore.showError(e?.message || '暂停下载失败')
+        }
+      }
+      break
+    case 'resume':
+      if (task?.id) {
+        try {
+          await downloadStore.resumeDownload(task.id)
+          feedbackStore.showToast('已恢复下载', 'success')
+        } catch (e: any) {
+          feedbackStore.showError(e?.message || '恢复下载失败')
+        }
+      }
+      break
+    case 'delete':
+      if (task?.id) {
+        try {
+          await downloadStore.removeDownload(task.id, true) // TODO: delete_files参数需要开发
+          feedbackStore.showToast('已删除下载任务', 'success')
+        } catch (e: any) {
+          feedbackStore.showError(e?.message || '删除下载任务失败')
+        }
+      }
+      break
+    case 'retry':
+      if (task?.id) {
+        try {
+          await downloadStore.removeDownload(task.id, true) // 先删除旧任务
+          await handleDownload(resource) // 重新开始下载
+        } catch (e: any) {
+          feedbackStore.showError(e?.message || '重试下载失败')
+        }
+      }
+      break
   }
 }
 

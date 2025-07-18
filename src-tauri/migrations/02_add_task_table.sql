@@ -1,6 +1,6 @@
 -- 02_add_task_table.sql
 CREATE TABLE IF NOT EXISTS download_task (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY,
     magnet_url TEXT NOT NULL,
     save_path TEXT,
     status TEXT NOT NULL,

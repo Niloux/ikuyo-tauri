@@ -32,12 +32,12 @@ impl<'a> DownloadTaskRepository<'a> {
 
 #[async_trait]
 impl<'a> Repository<DownloadTask, i64> for DownloadTaskRepository<'a> {
-    // 插入一个新任务，初始状态为metadata，返回新的任务id
     async fn create(&self, task: &DownloadTask) -> Result<()> {
         sqlx::query(
-            "INSERT INTO download_task (magnet_url, save_path, status, bangumi_id, resource_id, episode_number, name, name_cn, cover, total_size, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO download_task (id, magnet_url, save_path, status, bangumi_id, resource_id, episode_number, name, name_cn, cover, total_size, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         )
+        .bind(task.id)
         .bind(&task.magnet_url)
         .bind(&task.save_path)
         .bind(&task.status)

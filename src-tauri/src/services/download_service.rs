@@ -138,7 +138,7 @@ impl DownloadService {
             .await
             .map_err(|e| AppError::DownloadTask(DownloadTaskError::Failed(e.to_string())))?;
         // 等待 peer/写入线程安全退出
-        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
         // 数据库状态更新
         let repo = self.repo();
         if let Some(mut task) = repo.get_by_id(id).await? {
@@ -191,7 +191,7 @@ impl DownloadService {
             .await
             .map_err(|e| AppError::DownloadTask(DownloadTaskError::Failed(e.to_string())))?;
         // 等待 peer/写入线程安全退出
-        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
         // 数据库删除任务
         let repo = self.repo();
         repo.delete(id).await?;

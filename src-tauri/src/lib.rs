@@ -165,24 +165,24 @@ fn start_worker(
 // ========== 下载目录初始化 ==========
 fn init_download_dir() -> std::path::PathBuf {
     let home_dir = dirs::home_dir().expect("无法获取用户主目录");
-    let download_dir = home_dir.join("download");
-    if !download_dir.exists() {
-        std::fs::create_dir_all(&download_dir).expect("无法创建 download 目录");
+    let ikuyo_dir = home_dir.join("IKUYO");
+    if !ikuyo_dir.exists() {
+        std::fs::create_dir_all(&ikuyo_dir).expect("无法创建 IKUYO 目录");
     }
 
     // 创建session目录
-    let session_dir = download_dir.join("session");
+    let session_dir = ikuyo_dir.join("session");
     if !session_dir.exists() {
         std::fs::create_dir_all(&session_dir).expect("无法创建 session 目录");
     }
 
-    tracing::info!("下载目录: {:?}", download_dir);
-    tracing::info!("Session目录: {:?}", session_dir);
-    download_dir
+    tracing::info!("IKUYO目录: {:?}", ikuyo_dir);
+    tracing::info!("IKUYO Session目录: {:?}", session_dir);
+    ikuyo_dir
 }
 
 // ========== 下载器session配置 ==========
-fn init_session_opts(download_dir: &std::path::Path) -> librqbit::SessionOptions {
+fn init_session_opts(ikuyo_dir: &std::path::Path) -> librqbit::SessionOptions {
     let peer_opts = librqbit::PeerConnectionOptions {
         connect_timeout: Some(Duration::from_secs(5)), // 减少连接超时
         read_write_timeout: Some(Duration::from_secs(10)), // 减少读写超时
@@ -192,7 +192,7 @@ fn init_session_opts(download_dir: &std::path::Path) -> librqbit::SessionOptions
     let session_options = librqbit::SessionOptions {
         disable_dht: false,
         persistence: Some(librqbit::SessionPersistenceConfig::Json {
-            folder: Some(download_dir.join("session")),
+            folder: Some(ikuyo_dir.join("session")),
         }),
         peer_opts: Some(peer_opts),
         fastresume: true, // 启用快速恢复
@@ -276,10 +276,10 @@ pub fn run() -> crate::error::Result<()> {
 
             // 8. 主窗口事件注册
             // ===== 下载服务初始化与自动恢复 =====
-            let download_dir = init_download_dir();
-            let session_opts = init_session_opts(&download_dir);
+            let ikuyo_dir = init_download_dir();
+            let session_opts = init_session_opts(&ikuyo_dir);
             let session =
-                tauri::async_runtime::block_on(Session::new_with_opts(download_dir, session_opts))
+                tauri::async_runtime::block_on(Session::new_with_opts(ikuyo_dir, session_opts))
                     .expect("session初始化失败");
             let download_service = Arc::new(services::download_service::DownloadService::new(
                 pool_arc.clone(),

@@ -39,6 +39,12 @@ const router = createRouter({
       meta: {title: '任务管理'}
     },
     {
+      path: '/downloads',
+      name: 'download-management',
+      component: () => import('../views/DownloadManagementView.vue'),
+      meta: { title: '下载管理' }
+    },
+    {
       path: '/subscription',
       name: 'subscription',
       component: () => import('../views/SubscriptionView.vue'),
@@ -82,6 +88,10 @@ router.beforeEach(async (to, from, next) => {
   if (to.name === 'subscription') {
     import('../views/SubscriptionView.vue')
     import('../components/AnimeCard.vue')
+  }
+  // 预取下载管理页chunk
+  if (to.name === 'download-management') {
+    import('../views/DownloadManagementView.vue')
   }
 
   // 导航来源追踪现在完全由组件内的onBeforeRouteLeave处理

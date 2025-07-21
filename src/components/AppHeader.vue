@@ -29,6 +29,9 @@
         <RouterLink to="/tasks" class="nav-item" active-class="active">
           <span class="nav-text">任务</span>
         </RouterLink>
+        <RouterLink to="/downloads" class="nav-item" active-class="active">
+          <span class="nav-text">下载</span>
+        </RouterLink>
       </nav>
 
       <!-- 移动端菜单按钮 -->
@@ -56,6 +59,9 @@
       </RouterLink>
       <RouterLink to="/tasks" class="mobile-nav-item" @click="closeMobileMenu">
         任务
+      </RouterLink>
+      <RouterLink to="/downloads" class="mobile-nav-item" @click="closeMobileMenu">
+        下载管理
       </RouterLink>
     </div>
   </header>

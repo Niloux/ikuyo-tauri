@@ -20,7 +20,7 @@ import { useDownloadStore } from '@/stores/downloadStore'
 
 const props = defineProps<{
   resourceId: number
-  onAction?: (action: 'download' | 'pause' | 'resume' | 'delete' | 'retry') => void
+  onAction?: (action: 'download' | 'pause' | 'resume' | 'delete' | 'retry' | 'play') => void
 }>()
 
 const downloadStore = useDownloadStore()
@@ -85,9 +85,9 @@ const handleClick = (e: Event) => {
     props.onAction && props.onAction('pause')
     return
   }
-  let action: 'download' | 'pause' | 'resume' | 'delete' | 'retry'
+  let action: 'download' | 'pause' | 'resume' | 'delete' | 'retry' | 'play'
   switch (uiState.value.status) {
-    case 'completed': action = 'delete'; break
+    case 'completed': action = 'play'; break
     case 'failed': action = 'retry'; break
     case 'paused': action = 'resume'; break
     default: action = 'download'; break

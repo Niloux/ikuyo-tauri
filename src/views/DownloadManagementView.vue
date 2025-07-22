@@ -373,11 +373,9 @@ const openFile = async (task: any) => {
   }
   try {
     await openPath(download_path);
-    console.log(download_path);
     feedbackStore.showToast('已在文件管理器中打开', 'success');
   } catch (error: any) {
     feedbackStore.showError('打开文件失败');
-    console.error(error);
   }
 }
 

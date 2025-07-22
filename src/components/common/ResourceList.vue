@@ -70,6 +70,7 @@ import { useDownloadStore } from '@/stores/downloadStore'
 import { storeToRefs } from 'pinia'
 import type { EpisodeResource, EpisodeResourcesData } from '@/services/bangumi/bangumiTypes'
 import DownloadButton from './DownloadButton.vue'
+import { openPath } from '@tauri-apps/plugin-opener'
 
 const props = defineProps<{
   resourcesData: EpisodeResourcesData | null
@@ -187,7 +188,7 @@ const downloadTorrent = async (url: string) => {
   }
 }
 
-const handleDownloadAction = async (action: 'download' | 'pause' | 'resume' | 'delete' | 'retry', resource: EpisodeResource) => {
+const handleDownloadAction = async (action: 'download' | 'pause' | 'resume' | 'play' | 'retry' | 'delete', resource: EpisodeResource) => {
   const task = getTaskByResourceId(resource.id)
   
   switch (action) {
@@ -214,13 +215,28 @@ const handleDownloadAction = async (action: 'download' | 'pause' | 'resume' | 'd
         }
       }
       break
-    case 'delete':
+    // case 'delete':
+    //   if (task?.id != undefined) {
+    //     try {
+    //       await downloadStore.removeDownload(task.id, true) // TODO: delete_files参数需要开发
+    //       feedbackStore.showToast('已删除下载任务', 'success')
+    //     } catch (e: any) {
+    //       feedbackStore.showError(e?.message || '删除下载任务失败')
+    //     }
+    //   }
+    //   break
+    case 'play':
       if (task?.id != undefined) {
         try {
-          await downloadStore.removeDownload(task.id, true) // TODO: delete_files参数需要开发
-          feedbackStore.showToast('已删除下载任务', 'success')
+          const download_path = await downloadStore.getDownloadPath(task.id)
+          if (!download_path) {
+            feedbackStore.showError('未找到文件路径');
+            return;
+          }
+          await openPath(download_path)
+          feedbackStore.showToast('已播放', 'success')
         } catch (e: any) {
-          feedbackStore.showError(e?.message || '删除下载任务失败')
+          feedbackStore.showError(e?.message || '播放失败')
         }
       }
       break

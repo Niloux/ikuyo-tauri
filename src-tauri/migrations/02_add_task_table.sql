@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS download_task (
     magnet_url TEXT NOT NULL,
     save_path TEXT,
     status TEXT NOT NULL,
+    title TEXT NOT NULL,
     bangumi_id INTEGER NOT NULL,
     resource_id INTEGER NOT NULL,
     episode_number INTEGER NOT NULL,

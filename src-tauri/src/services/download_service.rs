@@ -108,6 +108,7 @@ impl DownloadService {
             id: Some(handle.id() as i64),
             magnet_url: task.magnet_url,
             save_path: task.save_path,
+            title: task.title,
             status: DownloadStatus::Pending,
             bangumi_id: task.bangumi_id,
             resource_id: task.resource_id,

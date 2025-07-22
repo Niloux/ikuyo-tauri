@@ -199,6 +199,7 @@ pub struct DownloadTask {
     pub magnet_url: String,
     pub save_path: Option<String>,
     pub status: DownloadStatus,
+    pub title: String,
     // 元数据
     pub bangumi_id: i64,
     pub resource_id: i64,

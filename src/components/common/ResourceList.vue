@@ -68,7 +68,7 @@ import { ref, watch, onMounted } from 'vue'
 import { useFeedbackStore } from '@/stores/feedbackStore'
 import { useDownloadStore } from '@/stores/downloadStore'
 import { storeToRefs } from 'pinia'
-import type { EpisodeResourcesData } from '@/services/bangumi/bangumiTypes'
+import type { EpisodeResource, EpisodeResourcesData } from '@/services/bangumi/bangumiTypes'
 import DownloadButton from './DownloadButton.vue'
 
 const props = defineProps<{
@@ -187,7 +187,7 @@ const downloadTorrent = async (url: string) => {
   }
 }
 
-const handleDownloadAction = async (action: 'download' | 'pause' | 'resume' | 'delete' | 'retry', resource: any) => {
+const handleDownloadAction = async (action: 'download' | 'pause' | 'resume' | 'delete' | 'retry', resource: EpisodeResource) => {
   const task = getTaskByResourceId(resource.id)
   
   switch (action) {
@@ -237,7 +237,7 @@ const handleDownloadAction = async (action: 'download' | 'pause' | 'resume' | 'd
   }
 }
 
-const handleDownload = async (resource: any) => {
+const handleDownload = async (resource: EpisodeResource) => {
   // 检查必要参数
   if (!resource.magnet_url) {
     feedbackStore.showError('缺少磁力链接，无法下载')
@@ -251,6 +251,7 @@ const handleDownload = async (resource: any) => {
   const task = {
     magnet_url: resource.magnet_url,
     // save_path: '', // 可后续扩展为用户选择
+    title: resource.title,
     bangumi_id: props.bangumiId,
     resource_id: resource.id,
     episode_number: resource.episode_number,

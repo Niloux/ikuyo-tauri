@@ -18,12 +18,13 @@ impl<'a> DownloadTaskRepository<'a> {
 impl<'a> Repository<DownloadTask, i64> for DownloadTaskRepository<'a> {
     async fn create(&self, task: &DownloadTask) -> Result<()> {
         sqlx::query(
-            "INSERT INTO download_task (id, magnet_url, save_path, status, bangumi_id, resource_id, episode_number, name, name_cn, cover, total_size, created_at, updated_at, error_msg)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO download_task (id, magnet_url, save_path, title, status, bangumi_id, resource_id, episode_number, name, name_cn, cover, total_size, created_at, updated_at, error_msg)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         )
         .bind(task.id)
         .bind(&task.magnet_url)
         .bind(&task.save_path)
+        .bind(&task.title)
         .bind(&task.status)
         .bind(task.bangumi_id)
         .bind(task.resource_id)

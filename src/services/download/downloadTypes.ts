@@ -6,6 +6,7 @@
 export interface StartDownloadTask {
     magnet_url: string
     save_path?: string
+    title: string
     bangumi_id: number
     resource_id: number
     episode_number: number
@@ -32,6 +33,7 @@ export interface DownloadTask {
     magnet_url: string
     save_path: string
     status: 'pending' | 'downloading' | 'paused' | 'completed' | 'failed' | 'deleted'
+    title: string
     bangumi_id: number
     resource_id: number
     episode_number: number

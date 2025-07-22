@@ -19,6 +19,7 @@ pub struct ProgressUpdate {
 pub struct StartDownloadTask {
     pub magnet_url: String,
     pub save_path: Option<String>,
+    pub title: String,
     pub bangumi_id: i64,
     pub resource_id: i64,
     pub episode_number: i64,

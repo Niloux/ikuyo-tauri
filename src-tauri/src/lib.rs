@@ -277,6 +277,7 @@ pub fn run() -> crate::error::Result<()> {
             // 8. 主窗口事件注册
             // ===== 下载服务初始化与自动恢复 =====
             let ikuyo_dir = init_download_dir();
+            let ikuyo_dir_clone = ikuyo_dir.clone();
             let session_opts = init_session_opts(&ikuyo_dir);
             let session =
                 tauri::async_runtime::block_on(Session::new_with_opts(ikuyo_dir, session_opts))
@@ -284,6 +285,7 @@ pub fn run() -> crate::error::Result<()> {
             let download_service = Arc::new(services::download_service::DownloadService::new(
                 pool_arc.clone(),
                 session,
+                ikuyo_dir_clone,
             ));
             app.manage(download_service.clone());
 

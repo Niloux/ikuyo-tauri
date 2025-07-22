@@ -7,6 +7,7 @@ use librqbit::api::TorrentIdOrHash;
 use librqbit::{AddTorrent, AddTorrentOptions, Session};
 use sqlx::SqlitePool;
 use std::sync::Arc;
+use std::path::PathBuf;
 use futures_util::stream::StreamExt;
 use tauri::Emitter;
 use tokio::time::{interval, Duration};
@@ -74,12 +75,13 @@ impl TaskUpdater for DefaultTaskUpdater {
 pub struct DownloadService {
     pub pool: Arc<SqlitePool>,
     pub session: Arc<Session>,
+    ikuyo_dir: PathBuf,
 }
 
 impl DownloadService {
     /// 构造函数，便于统一初始化
-    pub fn new(pool: Arc<SqlitePool>, session: Arc<Session>) -> Self {
-        Self { pool, session }
+    pub fn new(pool: Arc<SqlitePool>, session: Arc<Session>, ikuyo_dir: PathBuf) -> Self {
+        Self { pool, session, ikuyo_dir }
     }
 
     pub async fn start_new_download(&self, task: StartDownloadTask) -> Result<i64, AppError> {
@@ -104,10 +106,14 @@ impl DownloadService {
         };
         // 数据库插入 download_task，保存 handle.id() 作为任务id
         let now = Self::get_current_timestamp();
+        let output_folder = match task.save_path {
+            Some(path) => path,
+            None => self.ikuyo_dir.to_str().unwrap().to_string(),
+        };
         let task = DownloadTask {
             id: Some(handle.id() as i64),
             magnet_url: task.magnet_url,
-            save_path: task.save_path,
+            save_path: Some(output_folder),
             title: task.title,
             status: DownloadStatus::Pending,
             bangumi_id: task.bangumi_id,

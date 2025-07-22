@@ -70,7 +70,6 @@ import { useDownloadStore } from '@/stores/downloadStore'
 import { storeToRefs } from 'pinia'
 import type { EpisodeResource, EpisodeResourcesData } from '@/services/bangumi/bangumiTypes'
 import DownloadButton from './DownloadButton.vue'
-import { openPath } from '@tauri-apps/plugin-opener'
 
 const props = defineProps<{
   resourcesData: EpisodeResourcesData | null

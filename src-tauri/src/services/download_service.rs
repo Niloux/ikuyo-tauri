@@ -11,66 +11,6 @@ use std::path::PathBuf;
 use futures_util::stream::StreamExt;
 use tauri::Emitter;
 use tokio::time::{interval, Duration};
-use async_trait::async_trait;
-
-#[async_trait]
-pub trait ProgressSyncer {
-    async fn sync_progress(&self, session: &Arc<Session>, task: &DownloadTask) -> Option<ProgressUpdate>;
-}
-
-pub struct DefaultProgressSyncer;
-#[async_trait]
-impl ProgressSyncer for DefaultProgressSyncer {
-    async fn sync_progress(&self, session: &Arc<Session>, task: &DownloadTask) -> Option<ProgressUpdate> {
-        DownloadService::sync_task_status_from_session(session, task.id.unwrap())
-    }
-}
-
-#[async_trait]
-pub trait StatusPusher {
-    async fn push_status(&self, app_handle: &tauri::AppHandle, progress: &ProgressUpdate);
-}
-
-pub struct DefaultStatusPusher;
-#[async_trait]
-impl StatusPusher for DefaultStatusPusher {
-    async fn push_status(&self, app_handle: &tauri::AppHandle, progress: &ProgressUpdate) {
-        let _ = app_handle.emit("download_progress", progress);
-    }
-}
-
-#[async_trait]
-pub trait TaskUpdater {
-    async fn update_task(&self, pool: &Arc<SqlitePool>, task: &DownloadTask, progress: &ProgressUpdate);
-}
-
-pub struct DefaultTaskUpdater;
-#[async_trait]
-impl TaskUpdater for DefaultTaskUpdater {
-    async fn update_task(&self, pool: &Arc<SqlitePool>, task: &DownloadTask, progress: &ProgressUpdate) {
-        let repo = DownloadTaskRepository::new(pool);
-        if let Ok(Some(mut task_to_update)) = repo.get_by_id(task.id.unwrap()).await {
-            if task_to_update.status != progress.status.clone() {
-                task_to_update.status = progress.status.clone();
-                task_to_update.total_size = progress.total_bytes as i64;
-                task_to_update.error_msg = progress.error_msg.clone();
-                task_to_update.updated_at = DownloadService::get_current_timestamp();
-                match repo.update(&task_to_update).await {
-                    Ok(_) => tracing::debug!(
-                        "数据库状态更新成功: task_id={}, status={:?}",
-                        task.id.unwrap(),
-                        task_to_update.status
-                    ),
-                    Err(e) => tracing::error!(
-                        "数据库状态更新失败: task_id={}, error={}",
-                        task.id.unwrap(),
-                        e
-                    ),
-                }
-            }
-        }
-    }
-}
 
 pub struct DownloadService {
     pub pool: Arc<SqlitePool>,
@@ -254,6 +194,41 @@ impl DownloadService {
         })
     }
 
+    /// 进度同步、状态推送、数据库更新
+    async fn sync_and_update_task(
+        session: &Arc<Session>,
+        pool: &Arc<SqlitePool>,
+        app_handle: &tauri::AppHandle,
+        task: &DownloadTask,
+    ) {
+        if let Some(progress) = Self::sync_task_status_from_session(session, task.id.unwrap()) {
+            // 前端同步
+            let _ = app_handle.emit("download_progress", &progress);
+            // 数据库状态更新
+            let repo = DownloadTaskRepository::new(pool);
+            if let Ok(Some(mut task_to_update)) = repo.get_by_id(task.id.unwrap()).await {
+                if task_to_update.status != progress.status.clone() {
+                    task_to_update.status = progress.status.clone();
+                    task_to_update.total_size = progress.total_bytes as i64;
+                    task_to_update.error_msg = progress.error_msg.clone();
+                    task_to_update.updated_at = Self::get_current_timestamp();
+                    match repo.update(&task_to_update).await {
+                        Ok(_) => tracing::debug!(
+                            "数据库状态更新成功: task_id={}, status={:?}",
+                            task.id.unwrap(),
+                            task_to_update.status
+                        ),
+                        Err(e) => tracing::error!(
+                            "数据库状态更新失败: task_id={}, error={}",
+                            task.id.unwrap(),
+                            e
+                        ),
+                    }
+                }
+            }
+        }
+    }
+
     /// 同步session状态到数据库与前端
     pub async fn sync_rtbit(self: Arc<Self>, app_handle: tauri::AppHandle, is_active: Arc<std::sync::atomic::AtomicBool>) {
         let pool = self.pool.clone();
@@ -274,18 +249,8 @@ impl DownloadService {
                     let app_handle = app_handle.clone();
                     let pool = pool.clone();
                     futures.push(async move {
-                        let progress_syncer = DefaultProgressSyncer;
-                        let status_pusher = DefaultStatusPusher;
-                        let task_updater = DefaultTaskUpdater;
-
-                        if let Some(progress) =
-                            progress_syncer.sync_progress(&session, &task).await
-                        {
-                            // 前端同步
-                            status_pusher.push_status(&app_handle, &progress).await;
-                            // 数据库状态更新
-                            task_updater.update_task(&pool, &task, &progress).await;
-                        }
+                        // 直接调用合并后的私有方法
+                        Self::sync_and_update_task(&session, &pool, &app_handle, &task).await;
                     });
                 }
                 // 限制最大并发数为8
@@ -313,7 +278,6 @@ impl DownloadService {
                 // 过滤掉已完成任务
                 !matches!(
                     task.status,
-                    // DownloadStatus::Completed | DownloadStatus::Paused
                     DownloadStatus::Completed
                 )
             })

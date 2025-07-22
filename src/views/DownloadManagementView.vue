@@ -326,11 +326,14 @@ const resumeDownload = async (taskId: number) => {
 }
 
 const deleteDownload = async (taskId: number) => {
-  try {
-    await downloadStore.removeDownload(taskId, true)
-    feedbackStore.showToast('已删除下载任务', 'success')
-  } catch (error: any) {
-    feedbackStore.showError(error?.message || '删除下载任务失败')
+  const confirmed = await feedbackStore.showConfirm('确定要删除这个下载任务吗？相关文件将从磁盘中删除。');
+  if (confirmed) {
+    try {
+      await downloadStore.removeDownload(taskId, true)
+      feedbackStore.showToast('已删除下载任务', 'success')
+    } catch (error: any) {
+      feedbackStore.showError(error?.message || '删除下载任务失败')
+    }
   }
 }
 
@@ -362,13 +365,16 @@ const resumeAllDownloads = async () => {
 }
 
 const clearCompleted = async () => {
-  try {
-    for (const task of completedTasks.value) {
-      await downloadStore.removeDownload(task.id, true)
+  const confirmed = await feedbackStore.showConfirm('确定要清空所有已完成的任务吗？');
+  if (confirmed) {
+    try {
+      for (const task of completedTasks.value) {
+        await downloadStore.removeDownload(task.id, true)
+      }
+      feedbackStore.showToast('已清空已完成任务', 'success')
+    } catch (error: any) {
+      feedbackStore.showError('清空失败')
     }
-    feedbackStore.showToast('已清空已完成任务', 'success')
-  } catch (error: any) {
-    feedbackStore.showError('清空失败')
   }
 }
 

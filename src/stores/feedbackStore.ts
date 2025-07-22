@@ -19,6 +19,12 @@ export const useFeedbackStore = defineStore('feedback', {
         toastTimer: null as ReturnType<typeof setTimeout> | null, // 新增：toast定时器
         // 延迟loading定时器
         _loadingTimer: null as ReturnType<typeof setTimeout> | null,
+        // 确认对话框状态
+        confirmDialog: {
+            show: false,
+            message: '',
+            resolve: null as ((value: boolean) => void) | null,
+        },
     }),
     actions: {
         // 显示全局Loading遮罩（延迟150ms）
@@ -66,6 +72,23 @@ export const useFeedbackStore = defineStore('feedback', {
         // 清除全局Error弹窗
         clearError() {
             this.error = '';
+        },
+        // 显示确认对话框
+        showConfirm(message: string): Promise<boolean> {
+            this.confirmDialog.message = message;
+            this.confirmDialog.show = true;
+            return new Promise((resolve) => {
+                this.confirmDialog.resolve = resolve;
+            });
+        },
+        // 解决确认对话框
+        resolveConfirm(result: boolean) {
+            if (this.confirmDialog.resolve) {
+                this.confirmDialog.resolve(result);
+            }
+            this.confirmDialog.show = false;
+            this.confirmDialog.message = '';
+            this.confirmDialog.resolve = null;
         },
     },
 });

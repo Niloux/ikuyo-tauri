@@ -14,7 +14,8 @@
         </div>
         <div class="tab-actions">
           <button class="action-link" @click="openDownloadFolder">
-            📂 打开目录
+            <Icon name="folder-open" :size="16" hover />
+            打开目录
           </button>
         </div>
       </div>
@@ -27,17 +28,19 @@
             class="action-btn primary" 
             @click="pauseAllDownloads"
           >
-            ⏸️ 暂停全部
+            <Icon name="pause" :size="16" />
+            暂停全部
           </button>
           <button 
             v-if="hasPausedDownloads" 
             class="action-btn primary" 
             @click="resumeAllDownloads"
           >
-            ▶️ 继续全部
+            <Icon name="play" :size="16" />
+            继续全部
           </button>
           <button class="action-btn secondary" @click="showMoreActions = !showMoreActions">
-            ⋯
+            <Icon name="more-horizontal" :size="16" hover />
           </button>
           <div v-if="showMoreActions" class="more-actions-dropdown">
             <button @click="clearCompleted">清空已完成</button>
@@ -52,7 +55,9 @@
               placeholder="搜索番剧名称..."
               class="search-input"
             />
-            <span class="search-icon">🔍</span>
+            <span class="search-icon">
+              <Icon name="search" :size="16" color="#6b7280" />
+            </span>
           </div>
         </div>
       </div>
@@ -112,20 +117,28 @@
                 </div>
               </div>
               <div v-else-if="task.status === 'completed'" class="completed-status">
-                <span class="status-icon">✅</span>
+                <span class="status-icon">
+                  <Icon name="check-circle" :size="16" color="#10b981" />
+                </span>
                 <span>已完成</span>
               </div>
               <div v-else-if="task.status === 'paused'" class="paused-status">
-                <span class="status-icon">⏸️</span>
+                <span class="status-icon">
+                  <Icon name="pause" :size="16" color="#f59e0b" />
+                </span>
                 <span>已暂停</span>
               </div>
               <div v-else-if="task.status === 'failed'" class="failed-status">
-                <span class="status-icon">❌</span>
+                <span class="status-icon">
+                  <Icon name="x-circle" :size="16" color="#ef4444" />
+                </span>
                 <span>下载失败</span>
                 <button class="retry-btn" @click="retryDownload(task.id)">重试</button>
               </div>
               <div v-else class="pending-status">
-                <span class="status-icon">⏳</span>
+                <span class="status-icon">
+                  <Icon name="clock" :size="16" color="#6b7280" />
+                </span>
                 <span>等待中</span>
               </div>
             </div>
@@ -144,7 +157,7 @@
                 @click="pauseDownload(task.id)"
                 title="暂停"
               >
-                ⏸️
+                <Icon name="pause" :size="16" hover />
               </button>
               <button 
                 v-else-if="task.status === 'paused'"
@@ -152,7 +165,7 @@
                 @click="resumeDownload(task.id)"
                 title="继续"
               >
-                ▶️
+                <Icon name="play" :size="16" hover />
               </button>
               <button 
                 v-if="task.status === 'completed'"
@@ -160,14 +173,14 @@
                 @click="openFile(task.id)"
                 title="打开文件"
               >
-                📁
+                <Icon name="folder" :size="16" hover />
               </button>
               <button 
                 class="action-icon delete"
                 @click="deleteDownload(task.id)"
                 title="删除"
               >
-                🗑️
+                <Icon name="trash" :size="16" hover />
               </button>
             </div>
           </div>
@@ -175,7 +188,9 @@
 
         <!-- 空状态 -->
         <div v-else class="empty-state">
-          <div class="empty-icon">🎞</div>
+          <div class="empty-icon">
+            <Icon name="film" :size="64" color="#8b5cf6" />
+          </div>
           <h3>{{ getEmptyStateTitle() }}</h3>
           <p>{{ getEmptyStateMessage() }}</p>
         </div>
@@ -190,6 +205,7 @@ import { useDownloadStore } from '@/stores/downloadStore'
 import { useFeedbackStore } from '@/stores/feedbackStore'
 import { storeToRefs } from 'pinia'
 import defaultCover from '@/assets/ikuyo-avatar.png'
+import Icon from '@/components/common/Icon.vue'
 
 const downloadStore = useDownloadStore()
 const feedbackStore = useFeedbackStore()
@@ -500,6 +516,9 @@ onUnmounted(() => {
   background: none;
   border: none;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .action-link:hover {
@@ -533,6 +552,9 @@ onUnmounted(() => {
   cursor: pointer;
   transition: all 0.3s ease;
   font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .action-btn.primary {
@@ -846,8 +868,9 @@ onUnmounted(() => {
 }
 
 .empty-icon {
-  font-size: 4rem;
   margin-bottom: 1rem;
+  display: flex;
+  justify-content: center;
 }
 
 .empty-state h3 {

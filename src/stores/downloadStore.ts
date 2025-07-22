@@ -120,6 +120,9 @@ export const useDownloadStore = defineStore('download', {
                 delete this.tasks[id]
             }
         },
+        async getDownloadPath(id: number) {
+            return await downloadApiService.getDownloadPath(id)
+        },
     },
     getters: {
         // 获取所有任务列表

@@ -18,8 +18,7 @@ impl<'a> SubtitleGroupRepository<'a> {
         if ids.is_empty() {
             return Ok(vec![]);
         }
-        let mut query = String::from("SELECT * FROM subtitle_group WHERE id IN ("
-        );
+        let mut query = String::from("SELECT * FROM subtitle_group WHERE id IN (");
         for (i, _) in ids.iter().enumerate() {
             if i > 0 {
                 query.push_str(", ");

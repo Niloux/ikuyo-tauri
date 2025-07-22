@@ -1,14 +1,11 @@
 use crate::{
-    error::AppError,
-    models::DownloadTask,
-    types::download::StartDownloadTask,
-    services::download_service::DownloadService,
+    error::AppError, models::DownloadTask, repositories::base::Repository,
     repositories::download_task::DownloadTaskRepository,
-    repositories::base::Repository,
+    services::download_service::DownloadService, types::download::StartDownloadTask,
 };
+use sqlx::SqlitePool;
 use std::sync::Arc;
 use tauri::{command, State};
-use sqlx::SqlitePool;
 
 #[command(rename_all = "snake_case")]
 pub async fn start_download(
@@ -55,4 +52,13 @@ pub async fn list_downloads(
     let repo = DownloadTaskRepository::new(&pool);
     let tasks = repo.list(0, 0).await?;
     Ok(tasks)
+}
+
+#[command(rename_all = "snake_case")]
+pub async fn get_download_path(
+    download_service: State<'_, Arc<DownloadService>>,
+    id: i64,
+) -> Result<String, AppError> {
+    let path = download_service.get_download_path(id).await?;
+    Ok(path)
 }

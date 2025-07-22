@@ -34,12 +34,11 @@ impl BangumiService {
         let cache_id = 1;
 
         // 1. 查缓存表
-        let row = sqlx::query(
-            "SELECT content, updated_at, ttl FROM bangumi_calendar_cache WHERE id = ?",
-        )
-        .bind(cache_id)
-        .fetch_optional(&*self.pool)
-        .await?;
+        let row =
+            sqlx::query("SELECT content, updated_at, ttl FROM bangumi_calendar_cache WHERE id = ?")
+                .bind(cache_id)
+                .fetch_optional(&*self.pool)
+                .await?;
 
         if let Some(row) = &row {
             let content: String = row.get(0);
@@ -104,10 +103,11 @@ impl BangumiService {
         let ttl = self.config.bangumi_nonsub_ttl.unwrap_or(default_ttl); // 非订阅默认
 
         // 1. 查缓存表
-        let row = sqlx::query("SELECT content, updated_at, ttl FROM bangumi_subject_cache WHERE id = ?")
-            .bind(id)
-            .fetch_optional(&*self.pool)
-            .await?;
+        let row =
+            sqlx::query("SELECT content, updated_at, ttl FROM bangumi_subject_cache WHERE id = ?")
+                .bind(id)
+                .fetch_optional(&*self.pool)
+                .await?;
 
         if let Some(row) = row {
             let content: String = row.get(0);
@@ -253,7 +253,7 @@ impl BangumiService {
         use crate::repositories::anime::AnimeRepository;
         use crate::repositories::resource::ResourceRepository;
         use crate::repositories::subtitle_group::SubtitleGroupRepository;
-        use crate::types::bangumi::{EpisodeResource, SubtitleGroupResource, EpisodeResourcesData};
+        use crate::types::bangumi::{EpisodeResource, EpisodeResourcesData, SubtitleGroupResource};
         use std::collections::HashMap;
         let anime_repo = AnimeRepository::new(&self.pool);
         let resource_repo = ResourceRepository::new(&self.pool);
@@ -275,7 +275,10 @@ impl BangumiService {
             // 收集所有 group_id
             let group_ids: Vec<i64> = resources.iter().map(|r| r.subtitle_group_id).collect();
             let groups = subtitle_group_repo.get_by_ids(&group_ids).await?;
-            let group_map: HashMap<i64, String> = groups.into_iter().filter_map(|g| g.id.map(|id| (id, g.name))).collect();
+            let group_map: HashMap<i64, String> = groups
+                .into_iter()
+                .filter_map(|g| g.id.map(|id| (id, g.name)))
+                .collect();
 
             let mut subtitle_groups_map: HashMap<i64, SubtitleGroupResource> = HashMap::new();
             let mut total_resources = 0;
@@ -283,14 +286,20 @@ impl BangumiService {
             for res in resources {
                 total_resources += 1;
                 let group_id = res.subtitle_group_id;
-                let group_name = group_map.get(&group_id).cloned().unwrap_or_else(|| "Unknown".to_string());
+                let group_name = group_map
+                    .get(&group_id)
+                    .cloned()
+                    .unwrap_or_else(|| "Unknown".to_string());
 
-                let entry = subtitle_groups_map.entry(group_id).or_insert_with(|| SubtitleGroupResource {
-                    id: group_id,
-                    name: group_name.clone(),
-                    resource_count: 0,
-                    resources: Vec::new(),
-                });
+                let entry =
+                    subtitle_groups_map
+                        .entry(group_id)
+                        .or_insert_with(|| SubtitleGroupResource {
+                            id: group_id,
+                            name: group_name.clone(),
+                            resource_count: 0,
+                            resources: Vec::new(),
+                        });
 
                 entry.resource_count += 1;
                 entry.resources.push(EpisodeResource {
@@ -308,7 +317,8 @@ impl BangumiService {
                 });
             }
 
-            let mut subtitle_groups: Vec<SubtitleGroupResource> = subtitle_groups_map.into_values().collect();
+            let mut subtitle_groups: Vec<SubtitleGroupResource> =
+                subtitle_groups_map.into_values().collect();
             subtitle_groups.sort_by_key(|g| g.id);
 
             Ok(Some(EpisodeResourcesData {

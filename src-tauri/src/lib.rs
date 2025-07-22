@@ -364,6 +364,7 @@ pub fn run() -> crate::error::Result<()> {
             resume_download,
             remove_download,
             list_downloads,
+            get_download_path,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -3,12 +3,12 @@ use crate::models::{DownloadStatus, DownloadTask};
 use crate::repositories::base::Repository;
 use crate::repositories::download_task::DownloadTaskRepository;
 use crate::types::download::{ProgressUpdate, StartDownloadTask};
+use futures_util::stream::StreamExt;
 use librqbit::api::TorrentIdOrHash;
 use librqbit::{AddTorrent, AddTorrentOptions, Session};
 use sqlx::SqlitePool;
-use std::sync::Arc;
 use std::path::PathBuf;
-use futures_util::stream::StreamExt;
+use std::sync::Arc;
 use tauri::Emitter;
 use tokio::time::{interval, Duration};
 
@@ -21,7 +21,11 @@ pub struct DownloadService {
 impl DownloadService {
     /// 构造函数，便于统一初始化
     pub fn new(pool: Arc<SqlitePool>, session: Arc<Session>, ikuyo_dir: PathBuf) -> Self {
-        Self { pool, session, ikuyo_dir }
+        Self {
+            pool,
+            session,
+            ikuyo_dir,
+        }
     }
 
     pub async fn start_new_download(&self, task: StartDownloadTask) -> Result<i64, AppError> {
@@ -44,6 +48,7 @@ impl DownloadService {
             Some(h) => h,
             None => return Err(AppError::Unknown("添加下载任务失败".to_string())),
         };
+        let name = handle.name();
         // 数据库插入 download_task，保存 handle.id() 作为任务id
         let now = Self::get_current_timestamp();
         let output_folder = match task.save_path {
@@ -54,7 +59,7 @@ impl DownloadService {
             id: Some(handle.id() as i64),
             magnet_url: task.magnet_url,
             save_path: Some(output_folder),
-            title: task.title,
+            title: name.unwrap_or_default(),
             status: DownloadStatus::Pending,
             bangumi_id: task.bangumi_id,
             resource_id: task.resource_id,
@@ -145,6 +150,22 @@ impl DownloadService {
         Ok(())
     }
 
+    pub async fn get_download_path(&self, id: i64) -> Result<String, AppError> {
+        tracing::info!("获取下载文件路径: {}", id);
+        let task = self.repo().get_by_id(id).await?;
+        let path = match task {
+            Some(task) => PathBuf::from(task.save_path.unwrap_or_default()).join(task.title),
+            None => {
+                return Err(AppError::Domain(crate::error::DomainError::NotFound {
+                    resource_type: "download_task".to_string(),
+                    resource_id: id,
+                }))
+            }
+        };
+        tracing::info!("下载文件路径: {:?}", path);
+        Ok(path.to_str().unwrap().to_string())
+    }
+
     /// 从session同步任务状态
     fn sync_task_status_from_session(session: &Arc<Session>, id: i64) -> Option<ProgressUpdate> {
         session.get(TorrentIdOrHash::Id(id as usize)).map(|h| {
@@ -230,7 +251,11 @@ impl DownloadService {
     }
 
     /// 同步session状态到数据库与前端
-    pub async fn sync_rtbit(self: Arc<Self>, app_handle: tauri::AppHandle, is_active: Arc<std::sync::atomic::AtomicBool>) {
+    pub async fn sync_rtbit(
+        self: Arc<Self>,
+        app_handle: tauri::AppHandle,
+        is_active: Arc<std::sync::atomic::AtomicBool>,
+    ) {
         let pool = self.pool.clone();
         let session = self.session.clone();
         tauri::async_runtime::spawn(async move {
@@ -276,10 +301,7 @@ impl DownloadService {
             .into_iter()
             .filter(|task| {
                 // 过滤掉已完成任务
-                !matches!(
-                    task.status,
-                    DownloadStatus::Completed
-                )
+                !matches!(task.status, DownloadStatus::Completed)
             })
             .collect())
     }

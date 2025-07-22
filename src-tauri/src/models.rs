@@ -183,12 +183,12 @@ impl From<UserSubscription> for types_subscription::UserSubscription {
 #[sqlx(type_name = "TEXT")]
 #[serde(rename_all = "lowercase")]
 pub enum DownloadStatus {
-    Pending,      // 待下载
-    Downloading,  // 下载中
-    Paused,       // 已暂停
-    Completed,    // 已完成
-    Failed,       // 失败
-    Deleted,      // 已删除
+    Pending,     // 待下载
+    Downloading, // 下载中
+    Paused,      // 已暂停
+    Completed,   // 已完成
+    Failed,      // 失败
+    Deleted,     // 已删除
 }
 
 // 下载任务表

@@ -5,7 +5,7 @@ use crate::repositories::base::Repository;
 use crate::repositories::crawler_task::CrawlerTaskRepository;
 use crate::services::bangumi_service::BangumiService;
 use crate::services::crawler_service::CrawlerService;
-use futures_util::stream::{StreamExt};
+use futures_util::stream::StreamExt;
 use sqlx::SqlitePool;
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::Ordering;
@@ -13,7 +13,7 @@ use std::sync::{Arc, Mutex};
 use tokio::sync::{Notify, RwLock, Semaphore};
 use tokio::time::{sleep, Duration};
 use tokio_util::sync::CancellationToken;
-use tracing::{error, info, warn, debug};
+use tracing::{debug, error, info, warn};
 // 新增：引入上海时区
 use chrono_tz::Asia::Shanghai;
 
@@ -187,7 +187,11 @@ async fn main_refresh_loop(pool: Arc<SqlitePool>, config: Config) {
 
     loop {
         let now_shanghai = Utc::now().with_timezone(&Shanghai);
-        let today = (now_shanghai.year(), now_shanghai.month(), now_shanghai.day());
+        let today = (
+            now_shanghai.year(),
+            now_shanghai.month(),
+            now_shanghai.day(),
+        );
 
         if last_homepage_task_date != Some(today) {
             let start_of_day = now_shanghai
@@ -328,11 +332,12 @@ async fn refresh_bangumi_batch(
     let mut to_refresh = Vec::new();
     // 1. 先串行查询所有subject
     for &id in ids.iter() {
-        let row: Option<i64> = sqlx::query("SELECT updated_at FROM bangumi_subject_cache WHERE id = ?")
-            .bind(id)
-            .fetch_optional(&**pool)
-            .await?
-            .map(|r| r.get(0));
+        let row: Option<i64> =
+            sqlx::query("SELECT updated_at FROM bangumi_subject_cache WHERE id = ?")
+                .bind(id)
+                .fetch_optional(&**pool)
+                .await?
+                .map(|r| r.get(0));
         let needs_refresh = row.map_or(true, |updated_at| now - updated_at >= interval);
         if needs_refresh {
             to_refresh.push((id, "subject".to_string()));
@@ -340,11 +345,13 @@ async fn refresh_bangumi_batch(
     }
     // 2. 再串行查询所有episodes
     for &id in ids.iter() {
-        let row: Option<i64> = sqlx::query("SELECT updated_at FROM bangumi_episodes_cache WHERE id = ? AND params_hash = '0'")
-            .bind(id)
-            .fetch_optional(&**pool)
-            .await?
-            .map(|r| r.get(0));
+        let row: Option<i64> = sqlx::query(
+            "SELECT updated_at FROM bangumi_episodes_cache WHERE id = ? AND params_hash = '0'",
+        )
+        .bind(id)
+        .fetch_optional(&**pool)
+        .await?
+        .map(|r| r.get(0));
         let needs_refresh = row.map_or(true, |updated_at| now - updated_at >= interval);
         if needs_refresh {
             to_refresh.push((id, "episodes".to_string()));
@@ -361,10 +368,16 @@ async fn refresh_bangumi_batch(
             let refresh_result = if item_type == "subject" {
                 service.get_subject(id).await.map(|_| ())
             } else {
-                service.get_episodes(id, Some(0), Some(1000), Some(0)).await.map(|_| ())
+                service
+                    .get_episodes(id, Some(0), Some(1000), Some(0))
+                    .await
+                    .map(|_| ())
             };
             if let Err(e) = refresh_result {
-                warn!("[worker] 刷新{}/{}缓存失败: {}: {:?}", log_prefix, item_type, id, e);
+                warn!(
+                    "[worker] 刷新{}/{}缓存失败: {}: {:?}",
+                    log_prefix, item_type, id, e
+                );
             }
             Ok::<(), AppError>(())
         }

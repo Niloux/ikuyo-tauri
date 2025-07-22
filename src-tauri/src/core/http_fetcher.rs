@@ -1,5 +1,5 @@
-use reqwest::Client;
 use crate::error::Result;
+use reqwest::Client;
 
 pub struct HttpFetcher {
     client: Client,
@@ -16,4 +16,4 @@ impl HttpFetcher {
         let resp = self.client.get(url).send().await?.text().await?;
         Ok(resp)
     }
-} 
+}

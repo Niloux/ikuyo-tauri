@@ -14,7 +14,6 @@ pub enum CrawlerMode {
     Year,
 }
 
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum SeasonName {
     #[serde(rename = "春")]

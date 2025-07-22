@@ -1,8 +1,8 @@
 use crate::core::anime_parser::AnimeParser;
 use crate::core::AnimeData;
 use crate::error::{AppError, DomainError, Result};
-use scraper::{ElementRef, Html, Selector};
 use regex::Regex;
+use scraper::{ElementRef, Html, Selector};
 use std::collections::HashSet;
 
 pub struct MikanParser {
@@ -166,7 +166,10 @@ impl MikanParser {
         &self,
         document: &Html,
         mikan_id: i64,
-    ) -> (Vec<crate::models::SubtitleGroup>, Vec<crate::models::Resource>) {
+    ) -> (
+        Vec<crate::models::SubtitleGroup>,
+        Vec<crate::models::Resource>,
+    ) {
         let mut subtitle_groups = Vec::new();
         let mut resources = Vec::new();
         let mut seen_groups = HashSet::new();
@@ -259,7 +262,8 @@ impl MikanParser {
         };
         let episode_number = crate::core::text_parser::parse_episode_number(&resource_title);
         let resolution = crate::core::text_parser::parse_resolution(&resource_title);
-        let subtitle_type = crate::core::text_parser::parse_and_normalize_subtitle_type(&resource_title);
+        let subtitle_type =
+            crate::core::text_parser::parse_and_normalize_subtitle_type(&resource_title);
         Some(crate::models::Resource {
             id: None,
             mikan_id,
@@ -278,4 +282,4 @@ impl MikanParser {
             updated_at: Some(chrono::Utc::now().timestamp_millis()),
         })
     }
-} 
+}

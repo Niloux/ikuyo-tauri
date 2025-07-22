@@ -1,7 +1,7 @@
-pub mod text_parser;
+pub mod anime_parser;
 pub mod http_fetcher;
 pub mod mikan_parser;
-pub mod anime_parser;
+pub mod text_parser;
 
 use crate::models::{Anime, Resource, SubtitleGroup};
 // 动画、字幕组、资源等结构体（可根据models完善）

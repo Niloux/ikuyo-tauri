@@ -1,6 +1,7 @@
+use crate::core::anime_parser::AnimeParser;
 use crate::core::http_fetcher::HttpFetcher;
 use crate::core::mikan_parser::MikanParser;
-use crate::core::anime_parser::AnimeParser;
+use crate::error::{AppError, Result, TaskError};
 use crate::models::{Anime, CrawlerTaskStatus, Resource, SubtitleGroup};
 use crate::repositories::{
     anime::AnimeRepository, base::Repository, crawler_task::CrawlerTaskRepository,
@@ -12,7 +13,6 @@ use sqlx::SqlitePool;
 use std::collections::HashSet;
 use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
-use crate::error::{AppError, TaskError, Result};
 
 pub struct CrawlerService {
     pub pool: Arc<SqlitePool>,
@@ -57,10 +57,13 @@ impl CrawlerService {
             Ok(None) => {
                 tracing::error!("任务{}不存在，停止运行。", self.task_id);
                 return Err(AppError::Task(TaskError::Failed("任务不存在".to_string())));
-            },
+            }
             Err(e) => {
                 tracing::error!("查询任务{}失败: {}", self.task_id, e);
-                return Err(AppError::Task(TaskError::Failed(format!("查询任务失败: {}", e))));
+                return Err(AppError::Task(TaskError::Failed(format!(
+                    "查询任务失败: {}",
+                    e
+                ))));
             }
         };
 
@@ -190,7 +193,9 @@ impl CrawlerService {
         )
         .await;
         if failed {
-            return Err(AppError::Task(TaskError::Failed(error_message.unwrap_or_else(|| "未知错误".to_string()))));
+            return Err(AppError::Task(TaskError::Failed(
+                error_message.unwrap_or_else(|| "未知错误".to_string()),
+            )));
         }
 
         // 分批调度爬取详情，边爬边flush
@@ -204,21 +209,22 @@ impl CrawlerService {
             .map(|(i, url)| {
                 let fetcher = &fetcher;
                 let parser = &parser;
-                let mikan_id = url.split('/').last().and_then(|s| s.parse::<i64>().ok()).unwrap_or(0);
+                let mikan_id = url
+                    .split('/')
+                    .last()
+                    .and_then(|s| s.parse::<i64>().ok())
+                    .unwrap_or(0);
                 async move {
                     use tokio::time::{timeout, Duration};
-                    match timeout(
-                        Duration::from_secs(30),
-                        async {
-                            match fetcher.fetch(&url).await {
-                                Ok(html) => match parser.parse_detail(&html, mikan_id) {
-                                    Ok(anime_data) => Ok(anime_data),
-                                    Err(e) => Err(e),
-                                },
-                                Err(e) => Err(e.into()),
-                            }
-                        },
-                    )
+                    match timeout(Duration::from_secs(30), async {
+                        match fetcher.fetch(&url).await {
+                            Ok(html) => match parser.parse_detail(&html, mikan_id) {
+                                Ok(anime_data) => Ok(anime_data),
+                                Err(e) => Err(e),
+                            },
+                            Err(e) => Err(e.into()),
+                        }
+                    })
                     .await
                     {
                         Ok(Ok(anime_data)) => Some((i, anime_data)),
@@ -330,10 +336,7 @@ impl CrawlerService {
     }
 
     async fn flush_buffers(&mut self) -> crate::error::Result<()> {
-        let mut tx = self
-            .pool
-            .begin()
-            .await?;
+        let mut tx = self.pool.begin().await?;
 
         let anime_repo = AnimeRepository::new(&self.pool);
         anime_repo
@@ -350,8 +353,7 @@ impl CrawlerService {
             .insert_many_resources(&mut tx, &self.resource_buffer)
             .await?;
 
-        tx.commit()
-            .await?;
+        tx.commit().await?;
 
         self.anime_buffer.clear();
         self.subtitle_group_buffer.clear();
@@ -402,10 +404,10 @@ impl CrawlerService {
         notify: Arc<tokio::sync::Notify>,
         task: crate::types::crawler::CrawlerTaskCreate,
     ) -> Result<crate::types::crawler::TaskResponse> {
-        use crate::models::{CrawlerTask, CrawlerTaskType, CrawlerTaskStatus};
+        use crate::error::{AppError, TaskError};
+        use crate::models::{CrawlerTask, CrawlerTaskStatus, CrawlerTaskType};
         use crate::repositories::crawler_task::CrawlerTaskRepository;
         use crate::types::crawler::TaskResponse;
-        use crate::error::{AppError, TaskError};
         let repo = CrawlerTaskRepository::new(&pool);
         let parameters = serde_json::to_string(&task).unwrap_or_default();
         let current_time = chrono::Utc::now().timestamp_millis();
@@ -451,7 +453,9 @@ impl CrawlerService {
                 processing_speed: task.processing_speed,
                 estimated_remaining: task.estimated_remaining,
             }),
-            None => Err(AppError::Task(TaskError::Failed("任务创建失败".to_string()))),
+            None => Err(AppError::Task(TaskError::Failed(
+                "任务创建失败".to_string(),
+            ))),
         }
     }
 
@@ -461,10 +465,10 @@ impl CrawlerService {
         worker: Arc<crate::worker::Worker>,
         task_id: i64,
     ) -> Result<crate::types::crawler::TaskResponse> {
-        use crate::repositories::crawler_task::CrawlerTaskRepository;
-        use crate::models::{CrawlerTaskStatus};
-        use crate::types::crawler::TaskResponse;
         use crate::error::{AppError, TaskError};
+        use crate::models::CrawlerTaskStatus;
+        use crate::repositories::crawler_task::CrawlerTaskRepository;
+        use crate::types::crawler::TaskResponse;
         // 作用域内获取 token 并 clone，避免持有 MutexGuard 进入 await
         let token_opt = {
             let token_map = worker.get_token_map();
@@ -478,32 +482,32 @@ impl CrawlerService {
         let repo = CrawlerTaskRepository::new(&pool);
         let task = repo.get_by_id(task_id).await?;
         match task {
-            Some(mut task) => {
-                match task.status {
-                    CrawlerTaskStatus::Pending | CrawlerTaskStatus::Running => {
-                        task.status = CrawlerTaskStatus::Cancelled;
-                        task.completed_at = Some(chrono::Utc::now().timestamp_millis());
-                        repo.update(&task).await?;
-                        Ok(TaskResponse {
-                            id: task.id.unwrap_or_default(),
-                            task_type: task.task_type.into(),
-                            status: task.status.into(),
-                            parameters: task.parameters,
-                            result_summary: task.result_summary,
-                            created_at: Some(task.created_at.unwrap_or_default()),
-                            started_at: task.started_at,
-                            completed_at: task.completed_at,
-                            error_message: task.error_message,
-                            percentage: Some(task.percentage.unwrap_or_default()),
-                            processed_items: Some(task.processed_items.unwrap_or_default()),
-                            total_items: Some(task.total_items.unwrap_or_default()),
-                            processing_speed: task.processing_speed,
-                            estimated_remaining: task.estimated_remaining,
-                        })
-                    }
-                    _ => Err(AppError::Task(TaskError::Cancel("任务无法取消，当前状态不允许取消操作".to_string()))),
+            Some(mut task) => match task.status {
+                CrawlerTaskStatus::Pending | CrawlerTaskStatus::Running => {
+                    task.status = CrawlerTaskStatus::Cancelled;
+                    task.completed_at = Some(chrono::Utc::now().timestamp_millis());
+                    repo.update(&task).await?;
+                    Ok(TaskResponse {
+                        id: task.id.unwrap_or_default(),
+                        task_type: task.task_type.into(),
+                        status: task.status.into(),
+                        parameters: task.parameters,
+                        result_summary: task.result_summary,
+                        created_at: Some(task.created_at.unwrap_or_default()),
+                        started_at: task.started_at,
+                        completed_at: task.completed_at,
+                        error_message: task.error_message,
+                        percentage: Some(task.percentage.unwrap_or_default()),
+                        processed_items: Some(task.processed_items.unwrap_or_default()),
+                        total_items: Some(task.total_items.unwrap_or_default()),
+                        processing_speed: task.processing_speed,
+                        estimated_remaining: task.estimated_remaining,
+                    })
                 }
-            }
+                _ => Err(AppError::Task(TaskError::Cancel(
+                    "任务无法取消，当前状态不允许取消操作".to_string(),
+                ))),
+            },
             None => Err(AppError::Task(TaskError::Failed("任务不存在".to_string()))),
         }
     }

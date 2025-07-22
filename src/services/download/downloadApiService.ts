@@ -41,6 +41,13 @@ class DownloadApiService {
     async removeDownload(id: number, delete_files: boolean): Promise<void> {
         return invoke('remove_download', { id, delete_files })
     }
+
+    /**
+     * 获取下载任务路径
+     */
+    async getDownloadPath(id: number): Promise<string> {
+        return invoke('get_download_path', { id })
+    }
 }
 
 export const downloadApiService = new DownloadApiService()

@@ -1,6 +1,6 @@
 use crate::{
     error::{AppError, TaskError},
-    models::{CrawlerTask},
+    models::CrawlerTask,
     repositories::{base::Repository, crawler_task::CrawlerTaskRepository},
     types::crawler::{CrawlerTaskCreate, TaskResponse},
 };
@@ -38,7 +38,8 @@ pub async fn create_crawler_task(
         pool.inner().clone(),
         notify.inner().clone(),
         task,
-    ).await
+    )
+    .await
 }
 
 #[command(rename_all = "snake_case")]
@@ -66,9 +67,7 @@ pub async fn list_crawler_tasks(
     let current_page_size = page_size.unwrap_or(10);
     let offset = (current_page - 1) * current_page_size;
 
-    let tasks = repo
-        .list(current_page_size, offset)
-        .await?;
+    let tasks = repo.list(current_page_size, offset).await?;
     let responses: Vec<TaskResponse> = tasks.into_iter().map(convert_to_response).collect();
 
     Ok(responses)
@@ -100,7 +99,8 @@ pub async fn cancel_crawler_task(
         pool.inner().clone(),
         worker.inner().clone(),
         task_id,
-    ).await
+    )
+    .await
 }
 
 #[command(rename_all = "snake_case")]

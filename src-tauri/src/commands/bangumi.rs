@@ -1,15 +1,12 @@
+use crate::error::AppError;
 use crate::{
-    repositories::{
-        anime::AnimeRepository,
-        resource::ResourceRepository,
-    },
+    repositories::{anime::AnimeRepository, resource::ResourceRepository},
     services::bangumi_service::BangumiService,
     types::bangumi::{
         BangumiEpisodesData, BangumiSubject, BangumiWeekday, EpisodeAvailabilityData,
         EpisodeResourcesData, Pagination, SearchLibraryResponse,
     },
 };
-use crate::error::AppError;
 use sqlx::SqlitePool;
 use std::sync::Arc;
 use tauri::{command, State};
@@ -56,14 +53,10 @@ pub async fn get_episode_availability(
     let anime_repo = AnimeRepository::new(&pool);
     let resource_repo = ResourceRepository::new(&pool);
 
-    let anime = anime_repo
-        .get_by_bangumi_id(bangumi_id)
-        .await?;
+    let anime = anime_repo.get_by_bangumi_id(bangumi_id).await?;
 
     if let Some(anime) = anime {
-        let episode_counts = resource_repo
-            .count_by_episode(anime.mikan_id)
-            .await?;
+        let episode_counts = resource_repo.count_by_episode(anime.mikan_id).await?;
 
         let mut episodes_map = std::collections::HashMap::new();
         for count in episode_counts {
@@ -108,13 +101,9 @@ pub async fn search_library(
     let anime_repo = AnimeRepository::new(&pool);
 
     let offset = (page - 1) * limit;
-    let animes = anime_repo
-        .search_by_title(&query, limit, offset)
-        .await?;
+    let animes = anime_repo.search_by_title(&query, limit, offset).await?;
 
-    let total_animes = anime_repo
-        .count_by_title(&query)
-        .await?;
+    let total_animes = anime_repo.count_by_title(&query).await?;
 
     let bangumi_ids: Vec<i64> = animes.into_iter().map(|anime| anime.bangumi_id).collect();
 

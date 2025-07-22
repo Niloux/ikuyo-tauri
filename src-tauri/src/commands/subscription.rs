@@ -1,3 +1,4 @@
+use crate::error::AppError;
 use crate::{
     models::UserSubscription,
     repositories::subscription::SubscriptionRepository,
@@ -6,7 +7,6 @@ use crate::{
 use sqlx::SqlitePool;
 use std::sync::Arc;
 use tauri::{command, State};
-use crate::error::AppError;
 
 #[command(rename_all = "snake_case")]
 pub async fn get_all_subscription_ids(
@@ -14,9 +14,7 @@ pub async fn get_all_subscription_ids(
     user_id: String,
 ) -> Result<SubscriptionIdsResponse, AppError> {
     let repo = SubscriptionRepository::new(&pool);
-    let ids = repo
-        .get_all_bangumi_ids_by_user(&user_id)
-        .await?;
+    let ids = repo.get_all_bangumi_ids_by_user(&user_id).await?;
     Ok(SubscriptionIdsResponse { ids })
 }
 
@@ -37,7 +35,10 @@ pub async fn subscribe(
     rank: Option<i64>,
     images: Option<String>,
 ) -> Result<UserSubscription, AppError> {
-    let service = crate::services::subscription_service::SubscriptionService::new(pool.inner().clone(), config.inner().clone());
+    let service = crate::services::subscription_service::SubscriptionService::new(
+        pool.inner().clone(),
+        config.inner().clone(),
+    );
     service
         .subscribe(
             user_id,
@@ -63,7 +64,10 @@ pub async fn unsubscribe(
     user_id: String,
     bangumi_id: i64,
 ) -> Result<(), AppError> {
-    let service = crate::services::subscription_service::SubscriptionService::new(pool.inner().clone(), config.inner().clone());
+    let service = crate::services::subscription_service::SubscriptionService::new(
+        pool.inner().clone(),
+        config.inner().clone(),
+    );
     service.unsubscribe(user_id, bangumi_id).await
 }
 
@@ -116,9 +120,7 @@ pub async fn check_subscription(
     bangumi_id: i64,
 ) -> Result<SubscriptionStatus, AppError> {
     let repo = SubscriptionRepository::new(&pool);
-    let subscription = repo
-        .get_by_user_and_bangumi(&user_id, bangumi_id)
-        .await?;
+    let subscription = repo.get_by_user_and_bangumi(&user_id, bangumi_id).await?;
     let response = if let Some(subscription) = subscription {
         SubscriptionStatus {
             subscribed: true,

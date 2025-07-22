@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use crate::models::DownloadStatus;
+use serde::{Deserialize, Serialize};
 
 // 下载事件结构体
 #[derive(Debug, Serialize, Deserialize, Clone)]

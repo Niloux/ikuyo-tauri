@@ -164,6 +164,10 @@ impl DownloadService {
         Ok(path.to_str().unwrap().to_string())
     }
 
+    pub async fn get_download_folder(&self) -> Result<String, AppError> {
+        Ok(self.ikuyo_dir.to_str().unwrap().to_string())
+    }
+
     /// 从session同步任务状态
     fn sync_task_status_from_session(session: &Arc<Session>, id: i64) -> Option<ProgressUpdate> {
         session.get(TorrentIdOrHash::Id(id as usize)).map(|h| {

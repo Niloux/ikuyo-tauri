@@ -157,7 +157,7 @@
               <button 
                 v-if="task.status === 'completed'"
                 class="action-icon"
-                @click="openFile(task)"
+                @click="openFile(task.id)"
                 title="打开文件"
               >
                 📁
@@ -360,12 +360,22 @@ const retryAllFailed = () => {
   feedbackStore.showToast('批量重试功能开发中', 'info')
 }
 
-const openDownloadFolder = () => {
-  feedbackStore.showToast('打开下载目录功能开发中', 'info')
+const openDownloadFolder = async () => {
+  const download_folder = await downloadStore.openDownloadFolder()
+  if (!download_folder) {
+    feedbackStore.showError('未找到下载目录');
+    return;
+  }
+  try {
+    await downloadStore.openFilePath(download_folder)
+    feedbackStore.showToast('已在文件管理器中打开', 'success');
+  } catch (error: any) {
+    feedbackStore.showError('打开文件失败');
+  }
 }
 
-const openFile = async (task: any) => {
-  const download_path = await downloadStore.getDownloadPath(task.id)
+const openFile = async (taskId: number) => {
+  const download_path = await downloadStore.getDownloadPath(taskId)
   if (!download_path) {
     feedbackStore.showError('未找到文件路径');
     return;

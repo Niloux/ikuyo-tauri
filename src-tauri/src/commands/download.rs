@@ -76,3 +76,11 @@ pub fn open_file_path(path: String) -> Result<(), AppError> {
         }
     }
 }
+
+#[command(rename_all = "snake_case")]
+pub async fn get_download_folder(
+    download_service: State<'_, Arc<DownloadService>>,
+) -> Result<String, AppError> {
+    let folder = download_service.get_download_folder().await?;
+    Ok(folder)
+}

@@ -126,6 +126,9 @@ export const useDownloadStore = defineStore('download', {
         async openFilePath(path: string) {
             await downloadApiService.openFilePath(path)
         },
+        async openDownloadFolder() {
+            return await downloadApiService.openDownloadFolder()
+        }
     },
     getters: {
         // 获取所有任务列表

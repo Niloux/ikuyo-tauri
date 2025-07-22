@@ -190,7 +190,6 @@ import { useDownloadStore } from '@/stores/downloadStore'
 import { useFeedbackStore } from '@/stores/feedbackStore'
 import { storeToRefs } from 'pinia'
 import defaultCover from '@/assets/ikuyo-avatar.png'
-import { openPath } from '@tauri-apps/plugin-opener';
 
 const downloadStore = useDownloadStore()
 const feedbackStore = useFeedbackStore()
@@ -372,7 +371,7 @@ const openFile = async (task: any) => {
     return;
   }
   try {
-    await openPath(download_path);
+    await downloadStore.openFilePath(download_path)
     feedbackStore.showToast('已在文件管理器中打开', 'success');
   } catch (error: any) {
     feedbackStore.showError('打开文件失败');

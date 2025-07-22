@@ -207,8 +207,6 @@ fn init_session_opts(ikuyo_dir: &std::path::Path) -> librqbit::SessionOptions {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() -> crate::error::Result<()> {
     tauri::Builder::default()
-        .plugin(tauri_plugin_clipboard_manager::init())
-        .plugin(tauri_plugin_opener::init())
         .setup(move |app| {
             // 1. 环境识别
             let is_dev = cfg!(debug_assertions);
@@ -365,6 +363,7 @@ pub fn run() -> crate::error::Result<()> {
             remove_download,
             list_downloads,
             get_download_path,
+            open_file_path,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

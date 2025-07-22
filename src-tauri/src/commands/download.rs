@@ -1,6 +1,5 @@
 use crate::{
-    error::AppError, models::DownloadTask, repositories::base::Repository,
-    repositories::download_task::DownloadTaskRepository,
+    error::{AppError, OpenFileError}, models::DownloadTask, repositories::{base::Repository, download_task::DownloadTaskRepository},
     services::download_service::DownloadService, types::download::StartDownloadTask,
 };
 use sqlx::SqlitePool;
@@ -61,4 +60,19 @@ pub async fn get_download_path(
 ) -> Result<String, AppError> {
     let path = download_service.get_download_path(id).await?;
     Ok(path)
+}
+
+#[command(rename_all = "snake_case")]
+pub fn open_file_path(path: String) -> Result<(), AppError> {
+    // 使用 open crate 打开路径
+    match open::that(&path) {
+        Ok(_) => {
+            tracing::info!("打开文件成功: {}", path);
+            Ok(())
+        }
+        Err(e) => {
+            tracing::error!("打开文件失败: {}: {}", path, e);
+            Err(AppError::OpenFile(OpenFileError::Failed(e.to_string())))
+        }
+    }
 }

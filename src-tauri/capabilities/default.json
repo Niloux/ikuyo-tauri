@@ -6,29 +6,6 @@
     "main"
   ],
   "permissions": [
-    "core:default",
-    "opener:default",
-    {
-      "identifier": "opener:allow-open-path",
-      "allow": [
-        {
-          "path": "/Users/wuyou/IKUYO/*"
-        },
-        {
-          "path": "/Users/wuyou/IKUYO"
-        }
-      ]
-    },
-    {
-      "identifier": "opener:allow-open-url",
-      "allow": [
-        {
-          "url": "magnet:*"
-        }
-      ]
-    },
-    {
-      "identifier": "clipboard-manager:allow-write-text"
-    }
+    "core:default"
   ]
 }

@@ -48,6 +48,13 @@ class DownloadApiService {
     async getDownloadPath(id: number): Promise<string> {
         return invoke('get_download_path', { id })
     }
+
+    /**
+     * 打开文件
+     */
+    async openFilePath(path: string): Promise<void> {
+        return invoke('open_file_path', { path })
+    }
 }
 
 export const downloadApiService = new DownloadApiService()

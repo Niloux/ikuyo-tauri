@@ -20,6 +20,8 @@ pub enum AppError {
     Unknown(String),
     #[error("下载任务错误: {0}")]
     DownloadTask(#[from] DownloadTaskError),
+    #[error("打开文件错误: {0}")]
+    OpenFile(#[from] OpenFileError),
 }
 
 // Specific error types
@@ -84,6 +86,12 @@ pub enum DownloadTaskError {
 pub enum InputError {
     #[error("无效输入: {0}")]
     Invalid(String),
+}
+
+#[derive(Debug, Error, Serialize)]
+pub enum OpenFileError {
+    #[error("打开文件失败: {0}")]
+    Failed(String),
 }
 
 // Direct `From` implementations for `AppError`

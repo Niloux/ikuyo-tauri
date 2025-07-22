@@ -151,7 +151,6 @@ impl DownloadService {
     }
 
     pub async fn get_download_path(&self, id: i64) -> Result<String, AppError> {
-        tracing::info!("获取下载文件路径: {}", id);
         let task = self.repo().get_by_id(id).await?;
         let path = match task {
             Some(task) => PathBuf::from(task.save_path.unwrap_or_default()).join(task.title),
@@ -162,7 +161,6 @@ impl DownloadService {
                 }))
             }
         };
-        tracing::info!("下载文件路径: {:?}", path);
         Ok(path.to_str().unwrap().to_string())
     }
 

@@ -145,48 +145,51 @@ const isResourceDownloading = (resourceId: number) => {
 
 const getTaskByResourceId = downloadStore.getTaskByResourceId
 
-// Download logic
-const downloadMagnet = async (url: string) => {
-  if (!url) return
-  try {
-    const { openUrl } = await import('@tauri-apps/plugin-opener')
-    await openUrl(url)
-  } catch (err) {
-    let copied = false
-    try {
-      const { writeText } = await import('@tauri-apps/plugin-clipboard-manager')
-      await writeText(url)
-      copied = true
-    } catch (e1) {
-      try {
-        await navigator.clipboard.writeText(url)
-        copied = true
-      } catch (e2) {
-        copied = false
-      }
-    }
-    if (copied) {
-      feedbackStore.showError('未检测到下载工具，磁力链接已复制，请手动粘贴到下载器')
-    } else {
-      feedbackStore.showError('磁力链接复制失败，请手动复制')
-    }
-  }
-}
+// 调用系统下载器下载magnet链接
+// 需要pnpm tauri add opener
+// 剪贴板需要pnpm tauri add clipboard-manager
+// const downloadMagnet = async (url: string) => {
+//   if (!url) return
+//   try {
+//     const { openUrl } = await import('@tauri-apps/plugin-opener')
+//     await openUrl(url)
+//   } catch (err) {
+//     let copied = false
+//     try {
+//       const { writeText } = await import('@tauri-apps/plugin-clipboard-manager')
+//       await writeText(url)
+//       copied = true
+//     } catch (e1) {
+//       try {
+//         await navigator.clipboard.writeText(url)
+//         copied = true
+//       } catch (e2) {
+//         copied = false
+//       }
+//     }
+//     if (copied) {
+//       feedbackStore.showError('未检测到下载工具，磁力链接已复制，请手动粘贴到下载器')
+//     } else {
+//       feedbackStore.showError('磁力链接复制失败，请手动复制')
+//     }
+//   }
+// }
 
-const downloadTorrent = async (url: string) => {
-  if (!url) return
-  try {
-    const link = document.createElement('a')
-    link.href = url
-    link.download = ''
-    link.target = '_blank'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  } catch (err) {
-    feedbackStore.showError('下载失败，请检查链接或重试')
-  }
-}
+// // 调用浏览器下载种子文件
+// const downloadTorrent = async (url: string) => {
+//   if (!url) return
+//   try {
+//     const link = document.createElement('a')
+//     link.href = url
+//     link.download = ''
+//     link.target = '_blank'
+//     document.body.appendChild(link)
+//     link.click()
+//     document.body.removeChild(link)
+//   } catch (err) {
+//     feedbackStore.showError('下载失败，请检查链接或重试')
+//   }
+// }
 
 const handleDownloadAction = async (action: 'download' | 'pause' | 'resume' | 'play' | 'retry' | 'delete', resource: EpisodeResource) => {
   const task = getTaskByResourceId(resource.id)
@@ -233,7 +236,7 @@ const handleDownloadAction = async (action: 'download' | 'pause' | 'resume' | 'p
             feedbackStore.showError('未找到文件路径');
             return;
           }
-          await openPath(download_path)
+          await downloadStore.openFilePath(download_path)
           feedbackStore.showToast('已播放', 'success')
         } catch (e: any) {
           feedbackStore.showError(e?.message || '播放失败')

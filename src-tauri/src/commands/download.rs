@@ -65,7 +65,7 @@ pub async fn get_download_path(
 #[command(rename_all = "snake_case")]
 pub fn open_file_path(path: String) -> Result<(), AppError> {
     // 使用 open crate 打开路径
-    match open::that(&path) {
+    match open::that_detached(&path) {
         Ok(_) => {
             tracing::info!("打开文件成功: {}", path);
             Ok(())

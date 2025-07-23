@@ -1,50 +1,28 @@
 @import './base.css';
+@import './desktop-design-system.css';
 
-/* IKuYo 品牌样式系统 */
+/* IKuYo 品牌样式系统 - 向后兼容映射 */
 :root {
-  /* IKuYo 品牌主色调 */
-  --color-primary: #667eea;
-  --color-primary-dark: #5a67d8;
-  --color-primary-light: #7c3aed;
-  --color-secondary: #764ba2;
-  --color-accent: #f093fb;
-
-  /* 辅助色 */
-  --color-success: #10b981;
-  --color-warning: #f59e0b;
-  --color-error: #ef4444;
-  --color-info: #06b6d4;
-
-  /* 文字色 */
-  --color-text: #1f2937;
-  --color-text-light: #6b7280;
-  --color-text-dark: #111827;
-  --color-white: #ffffff;
-
-  /* 背景色 */
-  --color-bg: #f9fafb;
-  --color-bg-white: #ffffff;
-  --color-bg-light: #f3f4f6;
+  /* 向后兼容的变量映射 */
+  --color-primary-dark: var(--color-primary-hover);
+  --color-text: var(--color-text-primary);
+  --color-text-light: var(--color-text-secondary);
+  --color-text-dark: var(--color-text-primary);
+  --color-white: var(--color-text-inverse);
+  
+  --color-bg: var(--color-bg-secondary);
+  --color-bg-white: var(--color-bg-primary);
+  --color-bg-light: var(--color-bg-tertiary);
   --color-bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-
-  /* 边框色 */
-  --color-border: #e5e7eb;
-  --color-border-light: #f3f4f6;
-
-  /* 阴影 */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
-  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.15);
-
-  /* 圆角 */
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-
-  /* 动画时长 */
-  --transition-fast: 0.2s;
-  --transition-normal: 0.3s;
-  --transition-slow: 0.5s;
+  
+  --color-border: var(--color-border-light);
+  --color-border-light: var(--color-bg-tertiary);
+  
+  /* 成功使用新设计系统的状态色 */
+  --color-success: var(--color-status-success);
+  --color-warning: var(--color-status-warning);
+  --color-error: var(--color-status-error);
+  --color-info: var(--color-status-info);
 }
 
 /* 暗色主题 */

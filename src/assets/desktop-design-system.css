@@ -1,0 +1,609 @@
+/* IKuYo 桌面软件设计系统 */
+/* 基于下载管理页面的优秀设计，针对桌面软件优化 */
+
+/* ===== 桌面软件设计变量系统 ===== */
+:root {
+  /* 主色调系统 - 专业桌面软件风格 */
+  --color-primary: #667eea;
+  --color-primary-hover: #5a67d8;
+  --color-primary-active: #4c51bf;
+  --color-primary-light: #e0e7ff;
+  
+  /* 辅助色调 */
+  --color-secondary: #764ba2;
+  --color-accent: #f093fb;
+  
+  /* 桌面软件状态色 */
+  --color-status-success: #10b981;
+  --color-status-success-light: #d1fae5;
+  --color-status-warning: #f59e0b;
+  --color-status-warning-light: #fef3c7;
+  --color-status-error: #ef4444;
+  --color-status-error-light: #fee2e2;
+  --color-status-info: #3b82f6;
+  --color-status-info-light: #dbeafe;
+  --color-status-pending: #6b7280;
+  --color-status-pending-light: #f3f4f6;
+  
+  /* 背景色系统 */
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f8f9fa;
+  --color-bg-tertiary: #f1f3f4;
+  --color-bg-hover: #f5f5f7;
+  --color-bg-active: #e5e7eb;
+  
+  /* 文字色系统 */
+  --color-text-primary: #1f2937;
+  --color-text-secondary: #6b7280;
+  --color-text-tertiary: #9ca3af;
+  --color-text-disabled: #d1d5db;
+  --color-text-inverse: #ffffff;
+  
+  /* 边框系统 */
+  --color-border-light: #e5e7eb;
+  --color-border-medium: #d1d5db;
+  --color-border-strong: #9ca3af;
+  --color-border-focus: var(--color-primary);
+  
+  /* 桌面软件间距系统 */
+  --spacing-xs: 0.25rem;   /* 4px */
+  --spacing-sm: 0.5rem;    /* 8px */
+  --spacing-md: 0.75rem;   /* 12px */
+  --spacing-lg: 1rem;      /* 16px */
+  --spacing-xl: 1.5rem;    /* 24px */
+  --spacing-2xl: 2rem;     /* 32px */
+  --spacing-3xl: 3rem;     /* 48px */
+  
+  /* 桌面布局专用间距 */
+  --content-padding: 1.5rem;
+  --section-gap: 1.5rem;
+  --component-gap: 1rem;
+  --card-padding: 1.5rem;
+  
+  /* 圆角系统 */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  
+  /* 阴影系统 - 桌面软件风格 */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --shadow-xl: 0 8px 32px rgba(0, 0, 0, 0.15);
+  
+  /* 桌面软件过渡动画 */
+  --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* Z-index 层级系统 */
+  --z-dropdown: 100;
+  --z-modal: 1000;
+  --z-toast: 2000;
+  --z-tooltip: 3000;
+}
+
+/* 暗色主题适配 */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg-primary: #1f2937;
+    --color-bg-secondary: #374151;
+    --color-bg-tertiary: #4b5563;
+    --color-bg-hover: #374151;
+    --color-bg-active: #4b5563;
+    
+    --color-text-primary: #f9fafb;
+    --color-text-secondary: #d1d5db;
+    --color-text-tertiary: #9ca3af;
+    --color-text-disabled: #6b7280;
+    
+    --color-border-light: #374151;
+    --color-border-medium: #4b5563;
+    --color-border-strong: #6b7280;
+    
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.4);
+    --shadow-xl: 0 8px 32px rgba(0, 0, 0, 0.5);
+  }
+}
+
+/* ===== 桌面软件基础样式重置 ===== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+  background: var(--color-bg-secondary);
+  font-size: 14px; /* 桌面软件标准字体大小 */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ===== 桌面软件基础组件样式 ===== */
+
+/* 卡片容器 - 基于下载管理设计 */
+.base-card {
+  background: var(--color-bg-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--color-border-light);
+  transition: all var(--transition-normal);
+  overflow: hidden;
+}
+
+.base-card.hover:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.base-card.variant-elevated {
+  box-shadow: var(--shadow-lg);
+}
+
+.base-card.variant-flat {
+  box-shadow: none;
+  border: 1px solid var(--color-border-medium);
+}
+
+.card-header {
+  padding: var(--card-padding);
+  border-bottom: 1px solid var(--color-border-light);
+  background: var(--color-bg-secondary);
+}
+
+.card-content {
+  padding: var(--card-padding);
+}
+
+.card-footer {
+  padding: var(--card-padding);
+  border-top: 1px solid var(--color-border-light);
+  background: var(--color-bg-secondary);
+}
+
+/* 按钮系统 - 基于下载管理优化 */
+.base-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  position: relative;
+  overflow: hidden;
+  outline: none;
+  user-select: none;
+}
+
+.base-btn:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+}
+
+.base-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* 按钮变体 */
+.base-btn.variant-primary {
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+}
+
+.base-btn.variant-primary:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.base-btn.variant_secondary {
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-medium);
+}
+
+.base-btn.variant-secondary:hover:not(:disabled) {
+  background: var(--color-bg-hover);
+  border-color: var(--color-border-strong);
+}
+
+.base-btn.variant-danger {
+  background: var(--color-status-error);
+  color: var(--color-text-inverse);
+}
+
+.base-btn.variant-danger:hover:not(:disabled) {
+  background: #dc2626;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.base-btn.variant-ghost {
+  background: transparent;
+  color: var(--color-text-secondary);
+}
+
+.base-btn.variant-ghost:hover:not(:disabled) {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+/* 按钮尺寸 */
+.base-btn.size-small {
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: 12px;
+}
+
+.base-btn.size-large {
+  padding: var(--spacing-lg) var(--spacing-xl);
+  font-size: 16px;
+}
+
+/* 加载状态 */
+.base-btn.loading {
+  color: transparent;
+}
+
+.loading-spinner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* 标签页系统 - 基于下载管理设计 */
+.base-tabs {
+  background: var(--color-bg-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+.tabs-header {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--spacing-lg);
+  background: var(--color-bg-primary);
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.tab-item {
+  position: relative;
+  padding: var(--spacing-lg) 0;
+  margin-right: var(--spacing-xl);
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  font-size: 14px;
+  transition: color var(--transition-normal);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  border-bottom: 2px solid transparent;
+}
+
+.tab-item:hover {
+  color: var(--color-primary);
+}
+
+.tab-item.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+.tab-count {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-secondary);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-xl);
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 20px;
+  text-align: center;
+}
+
+.tab-item.active .tab-count {
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+}
+
+.tabs-content {
+  padding: var(--spacing-xl);
+}
+
+/* 操作栏 - 基于下载管理设计 */
+.base-action-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-lg);
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--spacing-lg);
+}
+
+.action-left,
+.action-right {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+/* 表格系统 - 桌面软件风格 */
+.base-table {
+  background: var(--color-bg-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+.table-header {
+  display: flex;
+  align-items: center;
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--color-bg-tertiary);
+  border-bottom: 1px solid var(--color-border-light);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.table-body {
+  background: var(--color-bg-primary);
+}
+
+.table-row {
+  display: flex;
+  align-items: center;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border-light);
+  transition: background-color var(--transition-fast);
+  position: relative;
+}
+
+.table-row:hover {
+  background: var(--color-bg-hover);
+}
+
+.table-row:last-child {
+  border-bottom: none;
+}
+
+/* 状态指示器 */
+.status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--radius-xl);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-indicator.success {
+  background: var(--color-status-success-light);
+  color: var(--color-status-success);
+}
+
+.status-indicator.warning {
+  background: var(--color-status-warning-light);
+  color: var(--color-status-warning);
+}
+
+.status-indicator.error {
+  background: var(--color-status-error-light);
+  color: var(--color-status-error);
+}
+
+.status-indicator.info {
+  background: var(--color-status-info-light);
+  color: var(--color-status-info);
+}
+
+.status-indicator.pending {
+  background: var(--color-status-pending-light);
+  color: var(--color-status-pending);
+}
+
+/* 输入框系统 */
+.base-input {
+  width: 100%;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border: 1px solid var(--color-border-medium);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-family: inherit;
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  transition: all var(--transition-normal);
+  outline: none;
+}
+
+.base-input:focus {
+  border-color: var(--color-border-focus);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.base-input:disabled {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-disabled);
+  cursor: not-allowed;
+}
+
+.base-input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+/* 选择框系统 */
+.base-select {
+  position: relative;
+  display: inline-block;
+}
+
+.base-select select {
+  width: 100%;
+  padding: var(--spacing-md) calc(var(--spacing-xl) + var(--spacing-lg)) var(--spacing-md) var(--spacing-lg);
+  border: 1px solid var(--color-border-medium);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-family: inherit;
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  appearance: none;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  outline: none;
+}
+
+.base-select select:focus {
+  border-color: var(--color-border-focus);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.base-select::after {
+  content: '';
+  position: absolute;
+  right: var(--spacing-lg);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4px solid var(--color-text-secondary);
+  pointer-events: none;
+}
+
+/* 工具类 */
+.text-primary { color: var(--color-text-primary); }
+.text-secondary { color: var(--color-text-secondary); }
+.text-tertiary { color: var(--color-text-tertiary); }
+.text-success { color: var(--color-status-success); }
+.text-warning { color: var(--color-status-warning); }
+.text-error { color: var(--color-status-error); }
+
+.bg-primary { background-color: var(--color-bg-primary); }
+.bg-secondary { background-color: var(--color-bg-secondary); }
+.bg-tertiary { background-color: var(--color-bg-tertiary); }
+
+.border-light { border-color: var(--color-border-light); }
+.border-medium { border-color: var(--color-border-medium); }
+.border-strong { border-color: var(--color-border-strong); }
+
+.rounded-sm { border-radius: var(--radius-sm); }
+.rounded-md { border-radius: var(--radius-md); }
+.rounded-lg { border-radius: var(--radius-lg); }
+.rounded-xl { border-radius: var(--radius-xl); }
+
+.shadow-sm { box-shadow: var(--shadow-sm); }
+.shadow-md { box-shadow: var(--shadow-md); }
+.shadow-lg { box-shadow: var(--shadow-lg); }
+
+.p-xs { padding: var(--spacing-xs); }
+.p-sm { padding: var(--spacing-sm); }
+.p-md { padding: var(--spacing-md); }
+.p-lg { padding: var(--spacing-lg); }
+.p-xl { padding: var(--spacing-xl); }
+
+.m-xs { margin: var(--spacing-xs); }
+.m-sm { margin: var(--spacing-sm); }
+.m-md { margin: var(--spacing-md); }
+.m-lg { margin: var(--spacing-lg); }
+.m-xl { margin: var(--spacing-xl); }
+
+.gap-xs { gap: var(--spacing-xs); }
+.gap-sm { gap: var(--spacing-sm); }
+.gap-md { gap: var(--spacing-md); }
+.gap-lg { gap: var(--spacing-lg); }
+.gap-xl { gap: var(--spacing-xl); }
+
+/* 布局工具类 */
+.flex { display: flex; }
+.inline-flex { display: inline-flex; }
+.grid { display: grid; }
+.block { display: block; }
+.inline-block { display: inline-block; }
+.hidden { display: none; }
+
+.flex-col { flex-direction: column; }
+.flex-row { flex-direction: row; }
+.flex-wrap { flex-wrap: wrap; }
+
+.items-center { align-items: center; }
+.items-start { align-items: flex-start; }
+.items-end { align-items: flex-end; }
+
+.justify-center { justify-content: center; }
+.justify-start { justify-content: flex-start; }
+.justify-end { justify-content: flex-end; }
+.justify-between { justify-content: space-between; }
+
+.w-full { width: 100%; }
+.h-full { height: 100%; }
+
+/* 响应式断点 */
+@media (max-width: 768px) {
+  .mobile-hidden { display: none; }
+  .mobile-flex-col { flex-direction: column; }
+  .mobile-full { width: 100%; }
+}
+
+@media (min-width: 769px) {
+  .desktop-hidden { display: none; }
+}
+
+/* 桌面软件特有的滚动条样式 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-tertiary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: var(--radius-sm);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-tertiary);
+}
+
+/* 选中状态样式 */
+::selection {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+} 

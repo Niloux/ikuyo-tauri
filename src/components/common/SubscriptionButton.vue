@@ -6,7 +6,9 @@
     :title="isSubscribed ? '取消订阅' : '订阅'"
     @click.stop="handleSubscriptionToggle"
   >
-    <span v-if="subscriptionLoading">⏳</span>
+    <span v-if="subscriptionLoading">
+      <Icon name="clock" :size="20" color="var(--color-status-warning)" />
+    </span>
     <span v-else>
       <svg v-if="!isSubscribed" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#e50914" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M16.5 3c-1.74 0-3.41 1.01-4.5 2.09C10.91 4.01 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54a2 2 0 0 0 2.9 0C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3z"/>
@@ -24,6 +26,7 @@ import { ref, computed } from 'vue'
 import { useSubscriptionStore } from '../../stores/subscriptionStore'
 import { useFeedbackStore } from '../../stores/feedbackStore'
 import type { BangumiCalendarItem } from '../../services/bangumi/bangumiTypes'
+import Icon from './Icon.vue'
 
 const props = withDefaults(defineProps<{
   anime: BangumiCalendarItem,

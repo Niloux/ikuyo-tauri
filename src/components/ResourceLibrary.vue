@@ -40,7 +40,9 @@
 
     <!-- 错误状态 -->
     <div v-else-if="error" class="error-state">
-      <div class="error-icon">⚠️</div>
+      <div class="error-icon">
+        <Icon name="x-circle" :size="48" color="var(--color-status-error)" />
+      </div>
       <p>{{ error }}</p>
       <button @click="refreshResources" class="retry-btn">重试</button>
     </div>
@@ -55,7 +57,9 @@
 
     <!-- 空状态 -->
     <div v-else class="empty-state">
-      <div class="empty-icon">📦</div>
+      <div class="empty-icon">
+        <Icon name="film" :size="48" color="var(--color-text-tertiary)" />
+      </div>
       <p>该番剧暂无可用资源</p>
       <p class="empty-subtitle">可能还没有字幕组发布资源，请稍后再试</p>
     </div>
@@ -65,7 +69,8 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useResourceStore } from '../stores/resourceStore'
-import ResourceList from './common/ResourceList.vue';
+import ResourceList from './common/ResourceList.vue'
+import Icon from './common/Icon.vue'
 
 // Props定义
 interface Props {

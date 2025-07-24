@@ -20,13 +20,16 @@
 
         <!-- 优化：骨架屏加载状态 -->
         <template v-if="shouldShowSkeleton">
-          <div v-for="n in 7" :key="`skeleton-${n}`" class="grid grid-cols-1 gap-6">
+          <div v-for="n in 3" :key="`skeleton-${n}`" class="mb-8">
             <Card class="animate-pulse">
               <CardHeader>
-                <UiSkeleton class="h-6 w-24" />
+                <div class="flex items-center gap-3">
+                  <UiSkeleton class="h-8 w-24" />
+                  <UiSkeleton class="h-5 w-12 rounded-full" />
+                </div>
               </CardHeader>
               <CardContent>
-                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                   <div v-for="m in 6" :key="`skeleton-card-${m}`" class="space-y-3">
                     <UiSkeleton class="aspect-[3/4] w-full rounded-lg" />
                     <div class="space-y-2">
@@ -52,16 +55,16 @@
             <Card class="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
               <CardHeader>
                 <div class="flex items-center gap-3">
-                  <h2 class="text-2xl font-semibold text-foreground">
+                  <CardTitle class="text-2xl">
                     {{ day.weekday.cn }}
-                  </h2>
+                  </CardTitle>
                   <Badge v-if="isToday(day.weekday.id)" variant="destructive" class="text-xs">
                     今天
                   </Badge>
                 </div>
               </CardHeader>
               <CardContent>
-                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                   <AnimeCard
                     v-for="(anime, animeIndex) in day.items"
                     :key="anime.id"
@@ -99,7 +102,7 @@ import { ensureScrollToTop } from '../utils/scrollUtils'
 import { onBeforeRouteLeave } from 'vue-router'
 
 // 导入shadcn-vue组件
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton as UiSkeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'

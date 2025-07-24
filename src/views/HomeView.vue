@@ -86,8 +86,8 @@ export default {
 </script>
 
 <script setup lang="ts">
-import { ref, onMounted, onActivated, computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { onMounted, onActivated, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useHomeStore } from '../stores/homeStore'
 import { useSubscriptionStore } from '../stores/subscriptionStore'
@@ -95,14 +95,11 @@ import AnimeCard from '../components/AnimeCard.vue'
 import WeekNavigation from '../components/WeekNavigation.vue'
 import ScrollToTopButton from '../components/ScrollToTopButton.vue'
 import Skeleton from '../components/common/Skeleton.vue'
-import { BaseCard, BaseButton } from '../components/base'
 import Icon from '../components/common/Icon.vue'
 import BangumiApiService from '../services/bangumi/bangumiApiService'
-import type { BangumiWeekday } from '../services/bangumi/bangumiTypes'
 import { ensureScrollToTop } from '../utils/scrollUtils'
 import { onBeforeRouteLeave } from 'vue-router'
 
-const route = useRoute()
 const router = useRouter()
 const homeStore = useHomeStore()
 const subscriptionStore = useSubscriptionStore()

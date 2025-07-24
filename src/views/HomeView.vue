@@ -7,40 +7,71 @@
       <!-- 置顶按钮 -->
       <ScrollToTopButton />
       <!-- 每日放送内容 -->
-      <div class="calendar-container">
+      <div class="space-y-8">
+        <!-- 错误状态 -->
+        <Alert v-if="error && !loading" variant="destructive" class="mb-6">
+          <AlertDescription class="flex items-center justify-between">
+            <span>{{ error }}</span>
+            <Button @click="loadCalendar" variant="outline" size="sm" class="ml-4">
+              重试
+            </Button>
+          </AlertDescription>
+        </Alert>
+
         <!-- 优化：骨架屏加载状态 -->
         <template v-if="shouldShowSkeleton">
-          <div v-for="n in 7" :key="`skeleton-${n}`" class="day-section content-card">
-            <div class="day-title skeleton-day-title">
-              <div class="skeleton-line" style="width: 60px; height: 24px;"></div>
-            </div>
-            <div class="anime-grid">
-              <Skeleton v-for="m in 6" :key="`skeleton-card-${m}`" type="card" />
-            </div>
+          <div v-for="n in 7" :key="`skeleton-${n}`" class="grid grid-cols-1 gap-6">
+            <Card class="animate-pulse">
+              <CardHeader>
+                <UiSkeleton class="h-6 w-24" />
+              </CardHeader>
+              <CardContent>
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+                  <div v-for="m in 6" :key="`skeleton-card-${m}`" class="space-y-3">
+                    <UiSkeleton class="aspect-[3/4] w-full rounded-lg" />
+                    <div class="space-y-2">
+                      <UiSkeleton class="h-4 w-full" />
+                      <UiSkeleton class="h-3 w-3/4" />
+                      <UiSkeleton class="h-3 w-1/2" />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </template>
 
         <!-- 数据内容 -->
-        <template v-else>
+        <template v-else-if="!error">
           <div
             v-for="(day, dayIndex) in calendar"
             :key="day.weekday.id"
             :id="`day-${day.weekday.id}`"
-            class="day-section"
+            class="mb-8"
           >
-            <div class="day-title" :class="{ 'today': isToday(day.weekday.id) }">
-              {{ day.weekday.cn }}
-              <Badge v-if="isToday(day.weekday.id)" >今天</Badge>
-            </div>
-            <div class="anime-grid">
-              <AnimeCard
-                v-for="(anime, animeIndex) in day.items"
-                :key="anime.id"
-                :anime="anime"
-                @click="goToDetail(anime.id)"
-                @image-load="() => {}"
-              />
-            </div>
+            <Card class="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+              <CardHeader>
+                <div class="flex items-center gap-3">
+                  <h2 class="text-2xl font-semibold text-foreground">
+                    {{ day.weekday.cn }}
+                  </h2>
+                  <Badge v-if="isToday(day.weekday.id)" variant="destructive" class="text-xs">
+                    今天
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+                  <AnimeCard
+                    v-for="(anime, animeIndex) in day.items"
+                    :key="anime.id"
+                    :anime="anime"
+                    @click="goToDetail(anime.id)"
+                    @image-load="() => {}"
+                  />
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </template>
       </div>
@@ -63,11 +94,15 @@ import { useSubscriptionStore } from '../stores/subscriptionStore'
 import AnimeCard from '../components/AnimeCard.vue'
 import WeekNavigation from '../components/WeekNavigation.vue'
 import ScrollToTopButton from '../components/ScrollToTopButton.vue'
-import Skeleton from '../components/common/Skeleton.vue'
 import BangumiApiService from '../services/bangumi/bangumiApiService'
 import { ensureScrollToTop } from '../utils/scrollUtils'
 import { onBeforeRouteLeave } from 'vue-router'
 
+// 导入shadcn-vue组件
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Skeleton as UiSkeleton } from '@/components/ui/skeleton'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 
 const router = useRouter()
@@ -182,126 +217,10 @@ onMounted(() => {
   padding: 0; /* 移除内边距，因为AppLayout已经处理了 */
 }
 
-.loading, .error {
-  text-align: center;
-  padding: 3rem;
-}
-
-.error {
-  color: var(--color-error);
-}
-
-.retry-btn {
-  margin-top: 1rem;
-  padding: 0.5rem 1rem;
-  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
-  color: white;
-  border: none;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: all var(--transition-normal);
-  font-weight: 500;
-}
-
-.retry-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-}
-
-.calendar-container {
-  display: flex;
-  flex-direction: column;
-  gap: 3rem;
-}
-
-.day-section {
-  background: var(--card);
-  border-radius: var(--radius);
-  padding: 2rem;
-  box-shadow: var(--shadow-md);
-  transition: transform var(--transition-normal);
-}
-
-.day-section:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-lg);
-}
-
-/* 优化：骨架屏样式 */
-.skeleton-day-title {
-  margin-bottom: 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.skeleton-line {
-  background: #e0e0e0;
-  border-radius: 4px;
-  animation: skeleton-loading 1.2s infinite linear;
-  background: linear-gradient(90deg, #e0e0e0 25%, #f0f0f0 50%, #e0e0e0 75%);
-  background-size: 200% 100%;
-}
-
-@keyframes skeleton-loading {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
-
-.day-title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--color-text-dark);
-  margin-bottom: 1.5rem;
-  border-bottom: 2px solid var(--color-primary);
-  padding-bottom: 0.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.day-title.today {
-  color: var(--color-error);
-  border-bottom-color: var(--color-error);
-}
-
-.today-badge {
-  background: linear-gradient(135deg, var(--color-error), #dc2626);
-  color: white;
-  padding: 0.25rem 0.5rem;
-  border-radius: var(--radius-lg);
-  font-size: 0.75rem;
-  font-weight: 500;
-  box-shadow: var(--shadow-sm);
-}
-
-.anime-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 1rem;
-}
-
 /* 响应式设计 */
 @media (max-width: 768px) {
-  .anime-grid {
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 0.5rem;
-  }
-  .day-section {
-    padding: 1rem 0.5rem;
-    border-radius: 8px;
-    margin-bottom: 1.2rem;
-  }
-  .day-title {
-    font-size: 1.1rem;
-    margin-bottom: 1rem;
-    padding-bottom: 0.25rem;
-    gap: 0.5rem;
-  }
-  .today-badge {
-    font-size: 0.7rem;
-    padding: 0.18rem 0.4rem;
-    border-radius: 8px;
+  .home {
+    padding: 0;
   }
 }
 </style>

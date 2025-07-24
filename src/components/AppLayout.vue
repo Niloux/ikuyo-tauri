@@ -23,8 +23,6 @@
     </footer>
 
     <GlobalLoading />
-    <GlobalToast />
-    <GlobalError />
     <GlobalConfirm />
   </div>
 </template>
@@ -33,8 +31,6 @@
 import AppHeader from './AppHeader.vue'
 import { ref, onMounted, computed } from 'vue'
 import GlobalLoading from './common/GlobalLoading.vue';
-import GlobalToast from './common/GlobalToast.vue';
-import GlobalError from './common/GlobalError.vue';
 import GlobalConfirm from './common/GlobalConfirm.vue';
 
 const headerHeight = ref(0)

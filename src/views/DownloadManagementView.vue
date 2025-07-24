@@ -206,6 +206,7 @@ import { useFeedbackStore } from '@/stores/feedbackStore'
 import { storeToRefs } from 'pinia'
 import defaultCover from '@/assets/ikuyo-avatar.png'
 import Icon from '@/components/common/Icon.vue'
+import { toast } from 'vue-sonner'
 
 const downloadStore = useDownloadStore()
 const feedbackStore = useFeedbackStore()
@@ -310,18 +311,18 @@ const getEmptyStateMessage = (): string => {
 const pauseDownload = async (taskId: number) => {
   try {
     await downloadStore.pauseDownload(taskId)
-    feedbackStore.showToast('已暂停下载', 'success')
+    toast.success('已暂停下载')
   } catch (error: any) {
-    feedbackStore.showError(error?.message || '暂停下载失败')
+    toast.error(error?.message || '暂停下载失败')
   }
 }
 
 const resumeDownload = async (taskId: number) => {
   try {
     await downloadStore.resumeDownload(taskId)
-    feedbackStore.showToast('已恢复下载', 'success')
+    toast.success('已恢复下载')
   } catch (error: any) {
-    feedbackStore.showError(error?.message || '恢复下载失败')
+    toast.error(error?.message || '恢复下载失败')
   }
 }
 
@@ -330,16 +331,16 @@ const deleteDownload = async (taskId: number) => {
   if (confirmed) {
     try {
       await downloadStore.removeDownload(taskId, true)
-      feedbackStore.showToast('已删除下载任务', 'success')
+      toast.success('已删除下载任务')
     } catch (error: any) {
-      feedbackStore.showError(error?.message || '删除下载任务失败')
+      toast.error(error?.message || '删除下载任务失败')
     }
   }
 }
 
 const retryDownload = async (taskId: number) => {
   // TODO: 实现重试逻辑
-  feedbackStore.showToast('重试功能开发中', 'info')
+  toast('重试功能开发中')
 }
 
 const pauseAllDownloads = async () => {
@@ -347,9 +348,9 @@ const pauseAllDownloads = async () => {
     for (const task of downloadingTasks.value) {
       await downloadStore.pauseDownload(task.id)
     }
-    feedbackStore.showToast('已暂停所有下载', 'success')
+    toast.success('已暂停所有下载')
   } catch (error: any) {
-    feedbackStore.showError('批量暂停失败')
+    toast.error('批量暂停失败')
   }
 }
 
@@ -358,9 +359,9 @@ const resumeAllDownloads = async () => {
     for (const task of pausedTasks.value) {
       await downloadStore.resumeDownload(task.id)
     }
-    feedbackStore.showToast('已恢复所有下载', 'success')
+    toast.success('已恢复所有下载')
   } catch (error: any) {
-    feedbackStore.showError('批量恢复失败')
+    toast.error('批量恢复失败')
   }
 }
 
@@ -371,42 +372,42 @@ const clearCompleted = async () => {
       for (const task of completedTasks.value) {
         await downloadStore.removeDownload(task.id, true)
       }
-      feedbackStore.showToast('已清空已完成任务', 'success')
+      toast.success('已清空已完成任务')
     } catch (error: any) {
-      feedbackStore.showError('清空失败')
+      toast.error('清空失败')
     }
   }
 }
 
 const retryAllFailed = () => {
-  feedbackStore.showToast('批量重试功能开发中', 'info')
+  toast.info('批量重试功能开发中')
 }
 
 const openDownloadFolder = async () => {
   const download_folder = await downloadStore.openDownloadFolder()
   if (!download_folder) {
-    feedbackStore.showError('未找到下载目录');
+    toast.error('未找到下载目录');
     return;
   }
   try {
     await downloadStore.openFilePath(download_folder)
-    feedbackStore.showToast('已在文件管理器中打开', 'success');
+    toast.success('已在文件管理器中打开')
   } catch (error: any) {
-    feedbackStore.showError('打开文件失败');
+    toast.error('打开文件失败');
   }
 }
 
 const openFile = async (taskId: number) => {
   const download_path = await downloadStore.getDownloadPath(taskId)
   if (!download_path) {
-    feedbackStore.showError('未找到文件路径');
+    toast.error('未找到文件路径');
     return;
   }
   try {
     await downloadStore.openFilePath(download_path)
-    feedbackStore.showToast('已在文件管理器中打开', 'success');
+    toast.success('已在文件管理器中打开')
   } catch (error: any) {
-    feedbackStore.showError('打开文件失败');
+    toast.error('打开文件失败');
   }
 }
 
@@ -422,7 +423,7 @@ onMounted(async () => {
     await downloadStore.init()
     await downloadStore.fetchAllDownloads()
   } catch (error) {
-    feedbackStore.showError('加载下载任务失败')
+    toast.error('加载下载任务失败')
   } finally {
     loading.value = false
   }

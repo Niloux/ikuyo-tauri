@@ -1,11 +1,10 @@
-import { useFeedbackStore } from '../stores/feedbackStore'
+import { toast } from 'vue-sonner'
 
 /**
  * 统一错误处理composable
  * 提供标准化的错误处理方法，保持现有业务逻辑不变
  */
 export const useErrorHandler = () => {
-    const feedbackStore = useFeedbackStore()
 
     /**
      * 处理API错误（显示错误弹窗）
@@ -22,7 +21,7 @@ export const useErrorHandler = () => {
         }
 
         const finalMessage = context ? `${context}: ${message}` : message
-        feedbackStore.showError(finalMessage)
+        toast.error(finalMessage)
     }
 
     /**
@@ -32,7 +31,7 @@ export const useErrorHandler = () => {
      */
     const showSuccess = (message: string, context?: string) => {
         const finalMessage = context ? `${context}: ${message}` : message
-        feedbackStore.showToast(finalMessage, 'success')
+        toast.success(finalMessage)
     }
 
     /**
@@ -42,7 +41,7 @@ export const useErrorHandler = () => {
      */
     const showInfo = (message: string, context?: string) => {
         const finalMessage = context ? `${context}: ${message}` : message
-        feedbackStore.showToast(finalMessage, 'info')
+        toast(finalMessage)
     }
 
     /**
@@ -54,7 +53,7 @@ export const useErrorHandler = () => {
         const firstError = Object.values(errors)[0]
         if (firstError) {
             const finalMessage = context ? `${context}: ${firstError}` : firstError
-            feedbackStore.showError(finalMessage)
+            toast.error(finalMessage)
         }
     }
 
@@ -82,7 +81,7 @@ export const useErrorHandler = () => {
         }
 
         const finalMessage = context ? `${context}: ${message}` : message
-        feedbackStore.showError(finalMessage)
+        toast.error(finalMessage)
     }
 
     return {

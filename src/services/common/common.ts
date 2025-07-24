@@ -6,6 +6,7 @@ import axios, { type AxiosResponse } from 'axios'
 import { useFeedbackStore } from '../../stores/feedbackStore';
 import { debounce, throttle } from '../../utils/debounce'
 import { UserManager } from '../../utils/userManager'
+import { toast } from 'vue-sonner'
 
 // API基础配置
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1';
@@ -83,23 +84,23 @@ apiClient.interceptors.response.use(
                 case 401:
                 case 403:
                     msg = '认证失败，请重新登录';
-                    feedbackStore.showError(msg);
+                    toast.error(msg);
                     window.location.href = '/login';
                     break;
                 case 404:
                     msg = '资源未找到';
-                    feedbackStore.showError(msg);
+                    toast.error(msg);
                     break;
                 case 500:
                     msg = '服务器内部错误';
-                    feedbackStore.showError(msg);
+                    toast.error(msg);
                     break;
                 default:
-                    feedbackStore.showError(msg);
+                    toast.error(msg);
                     break;
             }
         } else {
-            feedbackStore.showError('网络连接失败');
+            toast.error('网络连接失败');
         }
         return Promise.reject(error);
     }

@@ -92,10 +92,6 @@
         :subject="subject"
       />
     </div>
-    <div v-if="!loading && error" class="error-message">
-      <p>{{ error || '加载失败' }}</p>
-      <button @click="feedbackStore.showError(error || '加载失败')">全局弹窗提示</button>
-    </div>
   </div>
 </template>
 
@@ -105,7 +101,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useAnimeDetailStore } from '../stores/animeDetailStore'
 import { useResourceStore } from '../stores/resourceStore'
-import { useFeedbackStore } from '../stores/feedbackStore'
 import { useSubscriptionStore } from '../stores/subscriptionStore'
 import { ensureScrollToTop } from '../utils/scrollUtils'
 import Skeleton from '../components/common/Skeleton.vue'
@@ -116,7 +111,6 @@ const route = useRoute()
 const router = useRouter()
 const animeDetailStore = useAnimeDetailStore()
 const resourceStore = useResourceStore()
-const feedbackStore = useFeedbackStore()
 const { subject, episodes, availability } = storeToRefs(animeDetailStore)
 const loading = computed(() =>
   isResourceMode ? animeDetailStore.fetchSubjectAsync.loading : animeDetailStore.fetchAllAsync.loading

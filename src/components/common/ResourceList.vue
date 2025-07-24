@@ -65,11 +65,11 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
-import { useFeedbackStore } from '@/stores/feedbackStore'
 import { useDownloadStore } from '@/stores/downloadStore'
 import { storeToRefs } from 'pinia'
 import type { EpisodeResource, EpisodeResourcesData } from '@/services/bangumi/bangumiTypes'
 import DownloadButton from './DownloadButton.vue'
+import { toast } from 'vue-sonner'
 
 const props = defineProps<{
   resourcesData: EpisodeResourcesData | null
@@ -83,7 +83,6 @@ const props = defineProps<{
   }
 }>()
 
-const feedbackStore = useFeedbackStore()
 const downloadStore = useDownloadStore()
 const { tasks } = storeToRefs(downloadStore)
 
@@ -201,9 +200,9 @@ const handleDownloadAction = async (action: 'download' | 'pause' | 'resume' | 'p
       if (task?.id != undefined) {
         try {
           await downloadStore.pauseDownload(task.id)
-          feedbackStore.showToast('已暂停下载', 'success')
+          toast.success('已暂停下载')
         } catch (e: any) {
-          feedbackStore.showError(e?.message || '暂停下载失败')
+          toast.error(e?.message || '暂停下载失败')
         }
       }
       break
@@ -211,9 +210,9 @@ const handleDownloadAction = async (action: 'download' | 'pause' | 'resume' | 'p
       if (task?.id != undefined) {
         try {
           await downloadStore.resumeDownload(task.id)
-          feedbackStore.showToast('已恢复下载', 'success')
+          toast.success('已恢复下载')
         } catch (e: any) {
-          feedbackStore.showError(e?.message || '恢复下载失败')
+          toast.error(e?.message || '恢复下载失败')
         }
       }
       break
@@ -232,13 +231,13 @@ const handleDownloadAction = async (action: 'download' | 'pause' | 'resume' | 'p
         try {
           const download_path = await downloadStore.getDownloadPath(task.id)
           if (!download_path) {
-            feedbackStore.showError('未找到文件路径');
+            toast.error('未找到文件路径');
             return;
           }
           await downloadStore.openFilePath(download_path)
-          feedbackStore.showToast('已播放', 'success')
+          toast.success('已播放')
         } catch (e: any) {
-          feedbackStore.showError(e?.message || '播放失败')
+          toast.error(e?.message || '播放失败')
         }
       }
       break
@@ -248,7 +247,7 @@ const handleDownloadAction = async (action: 'download' | 'pause' | 'resume' | 'p
           await downloadStore.removeDownload(task.id, true) // 先删除旧任务
           await handleDownload(resource) // 重新开始下载
         } catch (e: any) {
-          feedbackStore.showError(e?.message || '重试下载失败')
+          toast.error(e?.message || '重试下载失败')
         }
       }
       break
@@ -258,11 +257,11 @@ const handleDownloadAction = async (action: 'download' | 'pause' | 'resume' | 'p
 const handleDownload = async (resource: EpisodeResource) => {
   // 检查必要参数
   if (!resource.magnet_url) {
-    feedbackStore.showError('缺少磁力链接，无法下载')
+    toast.error('缺少磁力链接，无法下载')
     return
   }
   if (!props.bangumiId || !props.subject) {
-    feedbackStore.showError('番剧信息缺失，无法下载')
+    toast.error('番剧信息缺失，无法下载')
     return
   }
   // 组装 StartDownloadTask
@@ -280,9 +279,9 @@ const handleDownload = async (resource: EpisodeResource) => {
   }
   try {
     await downloadStore.startDownload(task)
-    feedbackStore.showToast('已添加到下载任务', 'success')
+    toast.success('已添加到下载任务')
   } catch (e: any) {
-    feedbackStore.showError(e?.message || '添加下载任务失败')
+    toast.error(e?.message || '添加下载任务失败')
   }
 }
 

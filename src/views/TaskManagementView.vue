@@ -35,7 +35,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, onActivated } from 'vue'
 import { useTaskStore } from '../stores/taskStore'
-import { useFeedbackStore } from '../stores/feedbackStore'
 import { useErrorHandler } from '../utils/useErrorHandler'
 import TaskTable from '../components/TaskTable.vue'
 import { defineAsyncComponent } from 'vue'

@@ -24,9 +24,9 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useSubscriptionStore } from '../../stores/subscriptionStore'
-import { useFeedbackStore } from '../../stores/feedbackStore'
 import type { BangumiCalendarItem } from '../../services/bangumi/bangumiTypes'
 import Icon from './Icon.vue'
+import { toast } from 'vue-sonner'
 
 const props = withDefaults(defineProps<{
   anime: BangumiCalendarItem,
@@ -38,7 +38,6 @@ const props = withDefaults(defineProps<{
 })
 
 const subscriptionStore = useSubscriptionStore()
-const feedbackStore = useFeedbackStore()
 const subscriptionLoading = ref(false)
 
 const isSubscribed = computed(() => subscriptionStore.isSubscribed(props.anime.id))
@@ -56,7 +55,7 @@ const handleSubscriptionToggle = async () => {
     subscriptionLoading.value = true
     await subscriptionStore.toggleSubscription(props.anime)
   } catch (error) {
-    feedbackStore.showError('订阅操作失败，请重试')
+    toast.error('订阅操作失败，请重试')
     console.error('订阅操作失败:', error)
   } finally {
     subscriptionLoading.value = false

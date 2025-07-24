@@ -6,16 +6,13 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import subscriptionApiService from '../services/subscription/subscriptionApiService'
-import bangumiApiService from '../services/bangumi/bangumiApiService'
-import { useFeedbackStore } from './feedbackStore'
 import type {
     SubscriptionWithAnime,
     GetSubscriptionsParams,
     PaginationInfo,
-    UserSubscription,
-    SubscriptionIdsResponse
 } from '../services/subscription/subscriptionTypes'
 import type { BangumiCalendarItem } from '../services/bangumi/bangumiTypes'
+import { toast } from 'vue-sonner'
 
 export const useSubscriptionStore = defineStore('subscription', () => {
     // 状态
@@ -36,8 +33,6 @@ export const useSubscriptionStore = defineStore('subscription', () => {
         page: 1,
         limit: 8
     })
-
-    const feedbackStore = useFeedbackStore()
 
     // 全量订阅ID集合（用于全局判断）
     const allSubscribedBangumiIds = ref<Set<number> | null>(null)
@@ -63,7 +58,7 @@ export const useSubscriptionStore = defineStore('subscription', () => {
             const response = await subscriptionApiService.getAllSubscriptionIds()
             allSubscribedBangumiIds.value = new Set(response.ids)
         } catch (err) {
-            feedbackStore.showError('获取全部订阅ID失败')
+            toast.error('获取全部订阅ID失败')
         }
     }
 
@@ -121,7 +116,7 @@ export const useSubscriptionStore = defineStore('subscription', () => {
 
         } catch (err) {
             error.value = err instanceof Error ? err.message : '获取订阅列表失败'
-            feedbackStore.showError(error.value)
+            toast.error(error.value)
         } finally {
             loading.value = false
         }
@@ -176,7 +171,7 @@ export const useSubscriptionStore = defineStore('subscription', () => {
                 anime.rank,
                 JSON.stringify(anime.images),
             )
-            feedbackStore.showToast('订阅成功', 'success')
+            toast.success('订阅成功')
         } catch (err) {
             // 如果失败，移除乐观添加的项目
             subscriptions.value = subscriptions.value.filter(sub => sub.bangumi_id !== anime.id)
@@ -185,7 +180,7 @@ export const useSubscriptionStore = defineStore('subscription', () => {
                 allSubscribedBangumiIds.value.delete(anime.id)
             }
             const errorMsg = err instanceof Error ? err.message : '订阅失败'
-            feedbackStore.showError(errorMsg)
+            toast.error(errorMsg)
             throw err
         }
     }
@@ -210,7 +205,7 @@ export const useSubscriptionStore = defineStore('subscription', () => {
         try {
             // 调用API确认取消订阅
             await subscriptionApiService.unsubscribe(bangumiId)
-            feedbackStore.showToast('取消订阅成功', 'success')
+            toast.success('取消订阅成功')
         } catch (err) {
             // 如果失败，恢复原始数据
             subscriptions.value = originalSubscriptions
@@ -219,7 +214,7 @@ export const useSubscriptionStore = defineStore('subscription', () => {
                 allSubscribedBangumiIds.value.add(bangumiId)
             }
             const errorMsg = err instanceof Error ? err.message : '取消订阅失败'
-            feedbackStore.showError(errorMsg)
+            toast.error(errorMsg)
             throw err
         }
     }

@@ -76,7 +76,7 @@ const availableYears = computed(() => {
 })
 </script>
 
-<style src="../assets/task.css"></style>
+<style src="../styles/globals.css"></style>
 <style scoped>
 .modal-fade-enter-active, .modal-fade-leave-active {
   transition: opacity 0.25s cubic-bezier(.4,1.3,.6,1), transform 0.25s cubic-bezier(.4,1.3,.6,1);

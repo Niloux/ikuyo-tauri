@@ -41,7 +41,6 @@ import TaskTable from '../components/TaskTable.vue'
 import { defineAsyncComponent } from 'vue'
 import type { CrawlerTaskCreate } from '../services/crawler/crawlerTypes'
 import { ensureScrollToTop } from '../utils/scrollUtils'
-import { ElMessageBox } from 'element-plus'
 
 const taskStore = useTaskStore()
 const { handleApiError, showSuccess, handleValidationErrors } = useErrorHandler()
@@ -170,4 +169,4 @@ const handlePageChange = (page: number) => {
 const TaskModal = defineAsyncComponent(() => import('../components/TaskModal.vue'))
 </script>
 
-<style src="../assets/task.css"></style>
+<style src="../styles/globals.css"></style>

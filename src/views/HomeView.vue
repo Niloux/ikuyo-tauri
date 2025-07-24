@@ -1,80 +1,49 @@
 <template>
   <div class="home">
-    <!-- 星期导航栏 -->
-    <WeekNavigation :calendar="calendar" />
-    
-    <!-- 置顶按钮 -->
-    <ScrollToTopButton />
-    
-    <!-- 每日放送内容 -->
-    <div class="calendar-container">
-      <!-- 错误状态 -->
-      <BaseCard v-if="error && !loading" class="error-state">
-        <div class="error-content">
-          <div class="error-icon">
-            <Icon name="x-circle" :size="48" color="var(--color-status-error)" />
-          </div>
-          <h3>加载失败</h3>
-          <p>{{ error }}</p>
-          <BaseButton 
-            variant="primary" 
-            @click="loadCalendar"
-            class="retry-button"
-          >
-            <template #icon>
-              <Icon name="refresh" :size="16" />
-            </template>
-            重试
-          </BaseButton>
-        </div>
-      </BaseCard>
-
-      <!-- 骨架屏加载状态 -->
-      <template v-else-if="shouldShowSkeleton">
-        <BaseCard
-          v-for="n in 7" 
-          :key="`skeleton-${n}`" 
-          class="day-section"
-          hover
-        >
-          <template #header>
-            <div class="skeleton-day-title">
+    <!-- 直接渲染内容区，无需v-else -->
+    <div>
+      <!-- 星期导航栏 -->
+      <WeekNavigation :calendar="calendar" />
+      <!-- 置顶按钮 -->
+      <ScrollToTopButton />
+      <!-- 每日放送内容 -->
+      <div class="calendar-container">
+        <!-- 优化：骨架屏加载状态 -->
+        <template v-if="shouldShowSkeleton">
+          <div v-for="n in 7" :key="`skeleton-${n}`" class="day-section content-card">
+            <div class="day-title skeleton-day-title">
               <div class="skeleton-line" style="width: 60px; height: 24px;"></div>
             </div>
-          </template>
-          <div class="anime-grid">
-            <Skeleton v-for="m in 6" :key="`skeleton-card-${m}`" type="card" />
+            <div class="anime-grid">
+              <Skeleton v-for="m in 6" :key="`skeleton-card-${m}`" type="card" />
+            </div>
           </div>
-        </BaseCard>
-      </template>
+        </template>
 
-      <!-- 数据内容 -->
-      <template v-else>
-        <BaseCard
-          v-for="(day, dayIndex) in calendar"
-          :key="day.weekday.id"
-          :id="`day-${day.weekday.id}`"
-          class="day-section"
-          hover
-        >
-          <template #header>
-            <h2 class="day-title" :class="{ 'today': isToday(day.weekday.id) }">
+        <!-- 数据内容 -->
+        <template v-else>
+          <div
+            v-for="(day, dayIndex) in calendar"
+            :key="day.weekday.id"
+            :id="`day-${day.weekday.id}`"
+            class="day-section"
+          >
+            <div class="day-title" :class="{ 'today': isToday(day.weekday.id) }">
               {{ day.weekday.cn }}
-              <span v-if="isToday(day.weekday.id)" class="today-badge">今天</span>
-            </h2>
-          </template>
-          
-          <div class="anime-grid">
-            <AnimeCard
-              v-for="(anime, animeIndex) in day.items"
-              :key="anime.id"
-              :anime="anime"
-              @click="goToDetail(anime.id)"
-              @image-load="() => {}"
-            />
+              <Badge v-if="isToday(day.weekday.id)" >今天</Badge>
+            </div>
+            <div class="anime-grid">
+              <AnimeCard
+                v-for="(anime, animeIndex) in day.items"
+                :key="anime.id"
+                :anime="anime"
+                @click="goToDetail(anime.id)"
+                @image-load="() => {}"
+              />
+            </div>
           </div>
-        </BaseCard>
-      </template>
+        </template>
+      </div>
     </div>
   </div>
 </template>
@@ -95,10 +64,11 @@ import AnimeCard from '../components/AnimeCard.vue'
 import WeekNavigation from '../components/WeekNavigation.vue'
 import ScrollToTopButton from '../components/ScrollToTopButton.vue'
 import Skeleton from '../components/common/Skeleton.vue'
-import Icon from '../components/common/Icon.vue'
 import BangumiApiService from '../services/bangumi/bangumiApiService'
 import { ensureScrollToTop } from '../utils/scrollUtils'
 import { onBeforeRouteLeave } from 'vue-router'
+
+import { Badge } from '@/components/ui/badge'
 
 const router = useRouter()
 const homeStore = useHomeStore()
@@ -208,70 +178,68 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* 使用新的桌面设计系统 */
 .home {
-  padding: 0;
-  max-width: 1200px;
-  margin: 0 auto;
+  padding: 0; /* 移除内边距，因为AppLayout已经处理了 */
 }
 
-/* 错误状态样式 */
-.error-state {
-  margin: var(--spacing-2xl) 0;
-}
-
-.error-content {
+.loading, .error {
   text-align: center;
-  padding: var(--spacing-2xl);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--spacing-lg);
+  padding: 3rem;
 }
 
-.error-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0.8;
+.error {
+  color: var(--color-error);
 }
 
-.error-content h3 {
-  color: var(--color-text-primary);
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin: 0;
+.retry-btn {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  font-weight: 500;
 }
 
-.error-content p {
-  color: var(--color-text-secondary);
-  margin: 0;
-  max-width: 400px;
-  line-height: 1.6;
+.retry-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
-/* 日历容器 */
 .calendar-container {
   display: flex;
   flex-direction: column;
-  gap: var(--section-gap);
+  gap: 3rem;
 }
 
-/* 骨架屏样式 */
+.day-section {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 2rem;
+  box-shadow: var(--shadow-md);
+  transition: transform var(--transition-normal);
+}
+
+.day-section:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* 优化：骨架屏样式 */
 .skeleton-day-title {
+  margin-bottom: 1.5rem;
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: 0.5rem;
 }
 
 .skeleton-line {
-  background: var(--color-bg-tertiary);
-  border-radius: var(--radius-sm);
+  background: #e0e0e0;
+  border-radius: 4px;
   animation: skeleton-loading 1.2s infinite linear;
-  background: linear-gradient(90deg, 
-    var(--color-bg-tertiary) 25%, 
-    var(--color-bg-hover) 50%, 
-    var(--color-bg-tertiary) 75%);
+  background: linear-gradient(90deg, #e0e0e0 25%, #f0f0f0 50%, #e0e0e0 75%);
   background-size: 200% 100%;
 }
 
@@ -280,61 +248,60 @@ onMounted(() => {
   100% { background-position: -200% 0; }
 }
 
-/* 日标题样式 */
 .day-title {
   font-size: 1.5rem;
   font-weight: 600;
-  color: var(--color-text-primary);
-  margin: 0;
+  color: var(--color-text-dark);
+  margin-bottom: 1.5rem;
+  border-bottom: 2px solid var(--color-primary);
+  padding-bottom: 0.5rem;
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
+  gap: 0.75rem;
 }
 
 .day-title.today {
-  color: var(--color-status-error);
+  color: var(--color-error);
+  border-bottom-color: var(--color-error);
 }
 
 .today-badge {
-  background: var(--color-status-error);
-  color: var(--color-text-inverse);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-xl);
-  font-size: 12px;
-  font-weight: 600;
+  background: linear-gradient(135deg, var(--color-error), #dc2626);
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-lg);
+  font-size: 0.75rem;
+  font-weight: 500;
   box-shadow: var(--shadow-sm);
 }
 
-/* 动画网格 */
 .anime-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: var(--component-gap);
+  gap: 1rem;
 }
 
 /* 响应式设计 */
 @media (max-width: 768px) {
-  .home {
-    padding: var(--spacing-sm);
-  }
-  
-  .calendar-container {
-    gap: var(--spacing-xl);
-  }
-  
   .anime-grid {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: var(--spacing-md);
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 0.5rem;
   }
-  
+  .day-section {
+    padding: 1rem 0.5rem;
+    border-radius: 8px;
+    margin-bottom: 1.2rem;
+  }
   .day-title {
-    font-size: 1.25rem;
-    gap: var(--spacing-sm);
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.25rem;
+    gap: 0.5rem;
   }
-  
   .today-badge {
-    font-size: 11px;
-    padding: 2px var(--spacing-sm);
+    font-size: 0.7rem;
+    padding: 0.18rem 0.4rem;
+    border-radius: 8px;
   }
 }
 </style>

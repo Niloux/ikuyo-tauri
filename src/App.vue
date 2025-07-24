@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { RouterView, useRouter } from 'vue-router'
+import { RouterView } from 'vue-router'
 import AppLayout from './components/AppLayout.vue'
 import { onMounted } from 'vue'
 import { useDownloadStore } from '@/stores/downloadStore'
 import { Toaster } from '@/components/ui/sonner'
 import 'vue-sonner/style.css'
 
-const router = useRouter()
 const downloadStore = useDownloadStore()
 
 onMounted(() => {

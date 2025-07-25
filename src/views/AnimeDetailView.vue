@@ -10,6 +10,8 @@
             v-if="calendarItem"
             :anime="calendarItem!"
             size="large"
+            :showText="false"
+            class="bg-background/90 hover:bg-background h-9 w-9 rounded-full shadow-sm backdrop-blur-sm transition-all duration-300 hover:scale-110 active:scale-95"
           />
         </div>
         <div class="anime-cover">

@@ -5,7 +5,6 @@
     :title="isSubscribed ? '取消订阅' : '订阅'"
     @click.stop="handleSubscriptionToggle"
     :variant="isSubscribed ? 'secondary' : 'default'"
-    class="subscription-btn"
   >
     <template v-if="subscriptionLoading">
       <Loader :size="20" class="animate-spin" />

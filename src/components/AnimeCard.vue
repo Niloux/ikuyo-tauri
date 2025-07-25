@@ -7,22 +7,15 @@
     <!-- 番剧封面 -->
     <div class="bg-muted relative h-[66.7%] max-h-[240px] overflow-hidden">
       <!-- 订阅按钮 -->
-      <Button
+      <SubscriptionButton
         v-if="props.showSubscriptionButton"
-        variant="secondary"
-        size="icon"
+        :anime="props.anime"
+        :isSubscribed="props.isSubscribed"
+        size="small"
+        :showText="false"
         class="bg-background/90 hover:bg-background absolute top-2 left-2 z-20 h-9 w-9 rounded-full shadow-sm backdrop-blur-sm transition-all duration-300 hover:scale-110 active:scale-95"
         @click.stop="handleSubscriptionClick"
-      >
-        <Heart
-          :class="[
-            'h-4 w-4 transition-colors',
-            isSubscribed
-              ? 'fill-red-500 text-red-500'
-              : 'text-muted-foreground',
-          ]"
-        />
-      </Button>
+      />
 
       <!-- 评分徽章 -->
       <Badge
@@ -79,7 +72,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
-import { Heart, Star, Calendar, Users } from "lucide-vue-next";
+import { Star, Calendar, Users } from "lucide-vue-next";
 import type { BangumiCalendarItem } from "../services/bangumi/bangumiTypes";
 import defaultCover from "../assets/ikuyo-avatar.png";
 import { createLazyObserver } from "../utils/lazyLoad";
@@ -92,8 +85,8 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import SubscriptionButton from "./common/SubscriptionButton.vue";
 
 // Props定义
 const props = withDefaults(

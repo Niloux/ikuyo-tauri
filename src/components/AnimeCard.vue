@@ -5,7 +5,7 @@
     ref="cardRef"
   >
     <!-- 番剧封面 -->
-    <div class="relative w-full h-full overflow-hidden bg-muted">
+    <div class="relative overflow-hidden bg-muted" style="height: 68.8%;">
       <!-- 订阅按钮 -->
       <Button
         v-if="props.showSubscriptionButton"
@@ -44,7 +44,7 @@
     </div>
 
     <!-- 番剧信息 -->
-    <CardContent class="flex-1 p-4 flex flex-col min-h-28">
+    <CardContent class="flex-1 px-4 pb-4 pt-0 flex flex-col min-h-0">
       <CardTitle class="line-clamp-1 h-6 text-base font-semibold mb-1 leading-tight">
         {{ props.anime.name_cn || props.anime.name }}
       </CardTitle>
@@ -180,6 +180,7 @@ onUnmounted(() => {
 .line-clamp-1 {
   display: -webkit-box;
   -webkit-line-clamp: 1;
+  line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -187,6 +188,7 @@ onUnmounted(() => {
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }

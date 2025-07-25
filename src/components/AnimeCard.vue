@@ -1,22 +1,22 @@
 <template>
   <Card 
-    class="group overflow-hidden min-h-[280px] max-h-[400px] transition-all duration-300 hover:shadow-lg hover:-translate-y-1 active:scale-[0.98] cursor-pointer flex flex-col p-0"
+    class="group flex cursor-pointer flex-col overflow-hidden p-0 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg active:scale-[0.98] min-h-[200px] max-h-[280px] md:min-h-[240px] md:max-h-[320px] lg:min-h-[280px] lg:max-h-[400px]"
     @click="handleCardClick" 
     ref="cardRef"
   >
     <!-- 番剧封面 -->
-    <div class="relative overflow-hidden bg-muted h-[66.7%] max-h-[240px]">
+    <div class="relative h-[66.7%] max-h-[240px] overflow-hidden bg-muted">
       <!-- 订阅按钮 -->
       <Button
         v-if="props.showSubscriptionButton"
         variant="secondary"
         size="icon"
-        class="absolute top-2 left-2 z-20 w-9 h-9 rounded-full bg-background/90 backdrop-blur-sm hover:bg-background shadow-sm transition-all duration-300 hover:scale-110 active:scale-95"
+        class="absolute top-2 left-2 z-20 h-9 w-9 rounded-full bg-background/90 shadow-sm backdrop-blur-sm transition-all duration-300 hover:scale-110 hover:bg-background active:scale-95"
         @click.stop="handleSubscriptionClick"
       >
         <Heart 
           :class="[
-            'w-4 h-4 transition-colors',
+            'h-4 w-4 transition-colors',
             isSubscribed ? 'fill-red-500 text-red-500' : 'text-muted-foreground'
           ]"
         />
@@ -25,9 +25,9 @@
       <!-- 评分徽章 -->
       <Badge 
         v-if="props.anime.rating && props.anime.rating.score > 0"
-        class="absolute top-2 right-2 z-20 bg-orange-500 text-white font-semibold px-2 py-1 flex items-center gap-1"
+        class="absolute top-2 right-2 z-20 flex items-center gap-1 bg-orange-500 px-2 py-1 font-semibold text-white"
       >
-        <Star class="w-3 h-3 fill-current" />
+        <Star class="h-3 w-3 fill-current" />
         {{ props.anime.rating.score.toFixed(1) }}
       </Badge>
 
@@ -38,26 +38,26 @@
         :alt="props.anime.name_cn || props.anime.name"
         @error="onImageError"
         @load="$emit('imageLoad')"
-        class="w-full h-full object-cover object-top transition-transform duration-300 group-hover:scale-105"
+        class="h-full w-full object-cover object-top transition-transform duration-300 group-hover:scale-105"
       />
-      <Skeleton v-else class="w-full h-full" />
+      <Skeleton v-else class="h-full w-full" />
     </div>
 
     <!-- 番剧信息 -->
-    <CardContent class="flex-1 px-4 pb-4 pt-3 flex flex-col min-h-[100px]">
-      <CardTitle class="line-clamp-2 text-base font-semibold mb-2 leading-tight">
+    <CardContent class="flex min-h-[100px] flex-1 flex-col px-4 pt-3 pb-4">
+      <CardTitle class="line-clamp-2 mb-2 text-base font-semibold leading-tight">
         {{ props.anime.name_cn || props.anime.name }}
       </CardTitle>
       
       <CardDescription 
-        class="line-clamp-1 text-sm text-muted-foreground mb-3"
+        class="line-clamp-1 mb-3 text-sm text-muted-foreground"
       >
-        {{ (props.anime.name_cn && props.anime.name !== props.anime.name_cn) ? props.anime.name : '' }}
+        {{ originalName }}
       </CardDescription>
 
       <div class="mt-auto flex items-center justify-between text-sm text-muted-foreground">
         <div class="flex items-center gap-1">
-          <Calendar class="w-4 h-4" />
+          <Calendar class="h-4 w-4" />
           <span>{{ formattedAirDate }}</span>
         </div>
         
@@ -65,7 +65,7 @@
           v-if="props.anime.rating && props.anime.rating.total > 0"
           class="flex items-center gap-1"
         >
-          <Users class="w-4 h-4" />
+          <Users class="h-4 w-4" />
           <span>{{ formatRatingCount(props.anime.rating.total) }}</span>
         </div>
       </div>
@@ -108,7 +108,14 @@ const shouldLoadImage = ref(false)
 const cardRef = ref<any>(null)
 let observer: IntersectionObserver | null = null
 
-// 格式化播出日期
+// 计算属性
+const originalName = computed(() => {
+  if (props.anime.name_cn && props.anime.name !== props.anime.name_cn) {
+    return props.anime.name
+  }
+  return ''
+})
+
 const formattedAirDate = computed(() => {
   const dateStr = props.anime.air_date
   if (!dateStr) return '未知'
@@ -124,7 +131,13 @@ const formattedAirDate = computed(() => {
   }
 })
 
-// 格式化评价人数
+const imageUrl = computed(() => {
+  const imgObj = props.anime.images
+  if (!imgObj?.large) return defaultCover
+  return imgObj.large.replace(/^http:/, 'https:')
+})
+
+// 方法
 const formatRatingCount = (count: number): string => {
   if (count >= 10000) {
     return `${Math.floor(count / 10000)}万人`
@@ -134,31 +147,21 @@ const formatRatingCount = (count: number): string => {
   return `${count}人`
 }
 
-// 图片URL处理
-const imageUrl = computed(() => {
-  const imgObj = props.anime.images
-  if (!imgObj?.large) return defaultCover
-  return imgObj.large.replace(/^http:/, 'https:')
-})
-
-// 图片加载失败处理
 const onImageError = (event: Event) => {
   const img = event.target as HTMLImageElement
   img.src = defaultCover
 }
 
-// 卡片点击处理
 const handleCardClick = () => {
   emit('click')
 }
 
-// 订阅按钮点击处理
 const handleSubscriptionClick = (event: Event) => {
   event.stopPropagation()
   emit('subscribe')
 }
 
-// 懒加载初始化
+// 生命周期钩子
 onMounted(() => {
   if (cardRef.value?.$el) {
     observer = createLazyObserver(cardRef.value.$el, () => {
@@ -176,39 +179,5 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* 多行文本截断工具类 */
-.line-clamp-1 {
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-/* 响应式调整 */
-@media (max-width: 768px) {
-  .min-h-\[280px\] {
-    min-height: 240px;
-  }
-  .max-h-\[400px\] {
-    max-h: 320px;
-  }
-}
-
-@media (max-width: 480px) {
-  .min-h-\[280px\] {
-    min-height: 200px;
-  }
-  .max-h-\[400px\] {
-    max-height: 280px;
-  }
-}
+/* 样式保持为空，因为所有样式都由Tailwind处理 */
 </style>

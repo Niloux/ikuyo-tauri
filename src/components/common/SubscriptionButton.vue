@@ -17,9 +17,6 @@
         :fill="isSubscribed ? '#e50914' : 'none'"
         :stroke="'#e50914'"
       />
-      <span v-if="showText" class="btn-text">
-        {{ isSubscribed ? "已订阅" : "订阅" }}
-      </span>
     </template>
   </Button>
 </template>
@@ -36,11 +33,9 @@ const props = withDefaults(
   defineProps<{
     anime: BangumiCalendarItem;
     size?: "small" | "medium" | "large";
-    showText?: boolean;
   }>(),
   {
     size: "medium",
-    showText: false,
   },
 );
 
@@ -76,10 +71,4 @@ const handleSubscriptionToggle = async () => {
 </script>
 
 <style scoped>
-.btn-text {
-  margin-left: 0.5em;
-  font-size: 1rem;
-  color: #e50914;
-  font-weight: 600;
-}
 </style>

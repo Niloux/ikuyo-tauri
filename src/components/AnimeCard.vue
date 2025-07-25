@@ -12,7 +12,6 @@
         :anime="props.anime"
         :isSubscribed="props.isSubscribed"
         size="small"
-        :showText="false"
         class="bg-background/90 hover:bg-background absolute top-2 left-2 z-20 h-9 w-9 rounded-full shadow-sm backdrop-blur-sm transition-all duration-300 hover:scale-110 active:scale-95"
         @click.stop="handleSubscriptionClick"
       />

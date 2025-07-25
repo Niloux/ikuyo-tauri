@@ -1,16 +1,16 @@
 <script setup lang="ts">
-import { RouterView } from 'vue-router'
-import AppLayout from './components/AppLayout.vue'
-import { onMounted } from 'vue'
-import { useDownloadStore } from '@/stores/downloadStore'
-import { Toaster } from '@/components/ui/sonner'
-import 'vue-sonner/style.css'
+import { RouterView } from "vue-router";
+import AppLayout from "./components/AppLayout.vue";
+import { onMounted } from "vue";
+import { useDownloadStore } from "@/stores/downloadStore";
+import { Toaster } from "@/components/ui/sonner";
+import "vue-sonner/style.css";
 
-const downloadStore = useDownloadStore()
+const downloadStore = useDownloadStore();
 
 onMounted(() => {
-  downloadStore.init()
-})
+  downloadStore.init();
+});
 </script>
 
 <template>
@@ -27,5 +27,4 @@ onMounted(() => {
   </AppLayout>
 </template>
 
-<style scoped>
-</style>
+<style scoped></style>

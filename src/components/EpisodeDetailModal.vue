@@ -1,12 +1,26 @@
 <template>
-  <div v-if="visible" :class="['modal-overlay', { closing: isClosing }]" @click="handleOverlayClick">
-    <div :class="['modal-content', { closing: isClosing }, 'scale-in']" @click.stop>
+  <div
+    v-if="visible"
+    :class="['modal-overlay', { closing: isClosing }]"
+    @click="handleOverlayClick"
+  >
+    <div
+      :class="['modal-content', { closing: isClosing }, 'scale-in']"
+      @click.stop
+    >
       <!-- 模态框头部 - 固定不滚动 -->
       <div class="modal-header">
-        <h2 class="episode-title">{{ episodeData?.title || `第${episodeData?.number}集` }}</h2>
+        <h2 class="episode-title">
+          {{ episodeData?.title || `第${episodeData?.number}集` }}
+        </h2>
         <button class="close-button" @click="closeModal">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path
+              d="M18 6L6 18M6 6l12 12"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
           </svg>
         </button>
       </div>
@@ -15,232 +29,280 @@
       <div class="modal-body">
         <!-- 集数详细信息 -->
         <div class="episode-details">
-        <div class="episode-meta">
-          <span v-if="episodeData?.duration" class="meta-item">
-            <strong>时长:</strong> {{ episodeData.duration }}
-          </span>
-          <span v-if="episodeData?.airdate" class="meta-item">
-            <strong>首播:</strong> {{ episodeData.airdate }}
-          </span>
-          <span v-if="episodeData?.comment" class="meta-item">
-            <strong>评论:</strong> {{ episodeData.comment }}条
-          </span>
-        </div>
+          <div class="episode-meta">
+            <span v-if="episodeData?.duration" class="meta-item">
+              <strong>时长:</strong> {{ episodeData.duration }}
+            </span>
+            <span v-if="episodeData?.airdate" class="meta-item">
+              <strong>首播:</strong> {{ episodeData.airdate }}
+            </span>
+            <span v-if="episodeData?.comment" class="meta-item">
+              <strong>评论:</strong> {{ episodeData.comment }}条
+            </span>
+          </div>
 
-        <div v-if="episodeData?.subtitle" class="episode-subtitle">
-          <strong>原文标题:</strong> {{ episodeData.subtitle }}
-        </div>
+          <div v-if="episodeData?.subtitle" class="episode-subtitle">
+            <strong>原文标题:</strong> {{ episodeData.subtitle }}
+          </div>
 
-        <div v-if="episodeData?.desc" class="episode-description">
-          <strong>剧情简介:</strong>
-          <p :class="{ 'description-collapsed': !descExpanded && isDescLong }">
-            {{ episodeData.desc }}
-          </p>
-          <button
-            v-if="isDescLong"
-            @click="toggleDescription"
-            class="expand-btn"
-          >
-            {{ descExpanded ? '收起' : '展开' }}
-          </button>
-        </div>
-      </div>
-
-      <!-- 资源列表区域 -->
-      <div class="resources-section">
-        <h3 class="section-title">资源下载</h3>
-
-        <!-- 加载状态 -->
-        <div v-if="loading" class="loading-state">
-          <p>正在加载章节信息...</p>
-        </div>
-
-        <!-- 加载错误 -->
-        <div v-else-if="error" class="resources-error">
-          <div class="error-message">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" class="error-icon">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
-              <path d="m15 9-6 6m0-6 6 6" stroke="currentColor" stroke-width="2"/>
-            </svg>
-            <p>{{ error }}</p>
-            <button class="retry-btn" @click="refreshResources">重试</button>
+          <div v-if="episodeData?.desc" class="episode-description">
+            <strong>剧情简介:</strong>
+            <p
+              :class="{ 'description-collapsed': !descExpanded && isDescLong }"
+            >
+              {{ episodeData.desc }}
+            </p>
+            <button
+              v-if="isDescLong"
+              @click="toggleDescription"
+              class="expand-btn"
+            >
+              {{ descExpanded ? "收起" : "展开" }}
+            </button>
           </div>
         </div>
 
-        <!-- 有资源数据 -->
-        <div v-else-if="resourcesData" class="resources-available">
-          <div class="resource-stats">
-            找到 {{ resourcesData.total_resources }} 个可用资源，来自 {{ resourcesData.subtitle_groups.length }} 个字幕组
-          </div>
-          <ResourceList :resources-data="resourcesData" :bangumi-id="props.bangumiId ?? 0" :subject="props.subject" />
-        </div>
+        <!-- 资源列表区域 -->
+        <div class="resources-section">
+          <h3 class="section-title">资源下载</h3>
 
-        <!-- 无资源状态 -->
-        <div v-else class="resources-unavailable">
-          <div class="no-resources-message">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" class="no-resources-icon">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
-              <path d="m9 9 6 6m0-6-6 6" stroke="currentColor" stroke-width="2"/>
-            </svg>
-            <p>暂无可用资源</p>
-            <button class="refresh-resources-btn" @click="refreshResources">刷新资源</button>
+          <!-- 加载状态 -->
+          <div v-if="loading" class="loading-state">
+            <p>正在加载章节信息...</p>
+          </div>
+
+          <!-- 加载错误 -->
+          <div v-else-if="error" class="resources-error">
+            <div class="error-message">
+              <svg
+                width="48"
+                height="48"
+                viewBox="0 0 24 24"
+                fill="none"
+                class="error-icon"
+              >
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="2"
+                />
+                <path
+                  d="m15 9-6 6m0-6 6 6"
+                  stroke="currentColor"
+                  stroke-width="2"
+                />
+              </svg>
+              <p>{{ error }}</p>
+              <button class="retry-btn" @click="refreshResources">重试</button>
+            </div>
+          </div>
+
+          <!-- 有资源数据 -->
+          <div v-else-if="resourcesData" class="resources-available">
+            <div class="resource-stats">
+              找到 {{ resourcesData.total_resources }} 个可用资源，来自
+              {{ resourcesData.subtitle_groups.length }} 个字幕组
+            </div>
+            <ResourceList
+              :resources-data="resourcesData"
+              :bangumi-id="props.bangumiId ?? 0"
+              :subject="props.subject"
+            />
+          </div>
+
+          <!-- 无资源状态 -->
+          <div v-else class="resources-unavailable">
+            <div class="no-resources-message">
+              <svg
+                width="48"
+                height="48"
+                viewBox="0 0 24 24"
+                fill="none"
+                class="no-resources-icon"
+              >
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="2"
+                />
+                <path
+                  d="m9 9 6 6m0-6-6 6"
+                  stroke="currentColor"
+                  stroke-width="2"
+                />
+              </svg>
+              <p>暂无可用资源</p>
+              <button class="refresh-resources-btn" @click="refreshResources">
+                刷新资源
+              </button>
+            </div>
           </div>
         </div>
-        </div> <!-- 关闭 modal-body -->
+        <!-- 关闭 modal-body -->
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
-import { useResourceStore } from '../stores/resourceStore'
-import ResourceList from './common/ResourceList.vue';
+import { ref, watch, computed } from "vue";
+import { useResourceStore } from "../stores/resourceStore";
+import ResourceList from "./common/ResourceList.vue";
 
 // 集数详细信息类型
 interface EpisodeDetail {
-  number: number
-  title: string
-  subtitle?: string
-  duration?: string
-  airdate?: string
-  desc?: string
-  comment?: number
-  available: boolean
-  resourceCount: number
-  bangumiData?: any
+  number: number;
+  title: string;
+  subtitle?: string;
+  duration?: string;
+  airdate?: string;
+  desc?: string;
+  comment?: number;
+  available: boolean;
+  resourceCount: number;
+  bangumiData?: any;
 }
 
 // Props定义
 interface Props {
-  visible: boolean
-  episodeData: EpisodeDetail | null
-  bangumiId?: number
-  subject?: any // 可细化类型
+  visible: boolean;
+  episodeData: EpisodeDetail | null;
+  bangumiId?: number;
+  subject?: any; // 可细化类型
 }
-const props = defineProps<Props>()
+const props = defineProps<Props>();
 
-const resourceStore = useResourceStore()
+const resourceStore = useResourceStore();
 
 // 资源数据相关
-const currentEpisodeNumber = computed(() => props.episodeData?.number)
-const currentBangumiId = computed(() => props.bangumiId)
+const currentEpisodeNumber = computed(() => props.episodeData?.number);
+const currentBangumiId = computed(() => props.bangumiId);
 
 const resourceQuery = computed(() => ({
   bangumiId: currentBangumiId.value!,
   episodeNumber: currentEpisodeNumber.value,
   limit: 100,
   offset: 0,
-}))
+}));
 
 /**
  * 资源数据：API已按集过滤，无需前端再过滤
  */
-const resourcesData = computed(() => resourceStore.resourcesData)
-const loading = computed(() => resourceStore.loading)
-const error = computed(() => resourceStore.error)
+const resourcesData = computed(() => resourceStore.resourcesData);
+const loading = computed(() => resourceStore.loading);
+const error = computed(() => resourceStore.error);
 
 // 剧情简介展开/收起状态
-const descExpanded = ref(false)
-const DESC_COLLAPSE_LENGTH = 150 // 收起时显示的字符数
+const descExpanded = ref(false);
+const DESC_COLLAPSE_LENGTH = 150; // 收起时显示的字符数
 
 // 关闭动画状态
-const isClosing = ref(false)
+const isClosing = ref(false);
 
 // 计算属性：判断剧情简介是否足够长需要展开/收起功能
 const isDescLong = computed(() => {
-  return props.episodeData?.desc && props.episodeData.desc.length > DESC_COLLAPSE_LENGTH
-})
+  return (
+    props.episodeData?.desc &&
+    props.episodeData.desc.length > DESC_COLLAPSE_LENGTH
+  );
+});
 
 // 切换剧情简介展开/收起
 const toggleDescription = () => {
-  descExpanded.value = !descExpanded.value
-}
+  descExpanded.value = !descExpanded.value;
+};
 
-const emit = defineEmits(['close'])
+const emit = defineEmits(["close"]);
 
 // 关闭模态框
 const closeModal = () => {
-  isClosing.value = true
+  isClosing.value = true;
   // 等待关闭动画完成后再真正关闭
   setTimeout(() => {
-    isClosing.value = false
-    emit('close') // 通知父组件关闭弹窗
-  }, 250) // 与CSS动画时间保持一致
-}
+    isClosing.value = false;
+    emit("close"); // 通知父组件关闭弹窗
+  }, 250); // 与CSS动画时间保持一致
+};
 
 // 处理遮罩点击
 const handleOverlayClick = () => {
-  closeModal()
-}
+  closeModal();
+};
 
 // 监听弹窗打开时拉取资源
 watch(
   () => props.visible,
   (visible) => {
     if (visible && props.bangumiId && currentEpisodeNumber.value) {
-      resourceStore.fetchResources(resourceQuery.value)
+      resourceStore.fetchResources(resourceQuery.value);
     }
   },
-  { immediate: false }
-)
+  { immediate: false },
+);
 
 // 刷新资源
 const refreshResources = () => {
   if (props.bangumiId && currentEpisodeNumber.value) {
-    resourceStore.fetchResources(resourceQuery.value)
+    resourceStore.fetchResources(resourceQuery.value);
   }
-}
+};
 
 // 监听ESC键关闭
 const handleKeyDown = (event: KeyboardEvent) => {
-  if (event.key === 'Escape' && props.visible) {
-    closeModal()
+  if (event.key === "Escape" && props.visible) {
+    closeModal();
   }
-}
+};
 
 // 获取滚动条宽度
 const getScrollbarWidth = () => {
-  const outer = document.createElement('div')
-  outer.style.visibility = 'hidden'
-  outer.style.overflow = 'scroll'
+  const outer = document.createElement("div");
+  outer.style.visibility = "hidden";
+  outer.style.overflow = "scroll";
   // @ts-ignore - IE兼容性属性
-  outer.style.msOverflowStyle = 'scrollbar'
-  document.body.appendChild(outer)
+  outer.style.msOverflowStyle = "scrollbar";
+  document.body.appendChild(outer);
 
-  const inner = document.createElement('div')
-  outer.appendChild(inner)
+  const inner = document.createElement("div");
+  outer.appendChild(inner);
 
-  const scrollbarWidth = outer.offsetWidth - inner.offsetWidth
-  outer.parentNode?.removeChild(outer)
+  const scrollbarWidth = outer.offsetWidth - inner.offsetWidth;
+  outer.parentNode?.removeChild(outer);
 
-  return scrollbarWidth
-}
+  return scrollbarWidth;
+};
 
 // 禁用/恢复页面滚动，防止滚动条消失导致的偏移
 const disableBodyScroll = () => {
-  const scrollbarWidth = getScrollbarWidth()
-  document.body.style.overflow = 'hidden'
-  document.body.style.paddingRight = `${scrollbarWidth}px`
-}
+  const scrollbarWidth = getScrollbarWidth();
+  document.body.style.overflow = "hidden";
+  document.body.style.paddingRight = `${scrollbarWidth}px`;
+};
 
 const enableBodyScroll = () => {
-  document.body.style.overflow = ''
-  document.body.style.paddingRight = ''
-}
+  document.body.style.overflow = "";
+  document.body.style.paddingRight = "";
+};
 
 // 监听visible变化，添加/移除键盘事件
-watch(() => props.visible, (newVisible) => {
-  if (newVisible) {
-    document.addEventListener('keydown', handleKeyDown)
-    disableBodyScroll() // 禁止背景滚动并补偿偏移
-    descExpanded.value = false // 重置展开状态
-    isClosing.value = false // 重置关闭状态
-  } else {
-    document.removeEventListener('keydown', handleKeyDown)
-    enableBodyScroll() // 恢复背景滚动
-  }
-})
+watch(
+  () => props.visible,
+  (newVisible) => {
+    if (newVisible) {
+      document.addEventListener("keydown", handleKeyDown);
+      disableBodyScroll(); // 禁止背景滚动并补偿偏移
+      descExpanded.value = false; // 重置展开状态
+      isClosing.value = false; // 重置关闭状态
+    } else {
+      document.removeEventListener("keydown", handleKeyDown);
+      enableBodyScroll(); // 恢复背景滚动
+    }
+  },
+);
 </script>
 
 <style scoped>
@@ -479,8 +541,12 @@ watch(() => props.visible, (newVisible) => {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* 错误状态 */

@@ -10,14 +10,22 @@
       </div>
 
       <div class="filters-right">
-        <select v-model="selectedResolution" @change="handleFilterChange" class="filter-select">
+        <select
+          v-model="selectedResolution"
+          @change="handleFilterChange"
+          class="filter-select"
+        >
           <option value="">全部分辨率</option>
           <option value="1080p">1080p</option>
           <option value="720p">720p</option>
           <option value="4K">4K</option>
         </select>
 
-        <select v-model="selectedSubtitleType" @change="handleFilterChange" class="filter-select">
+        <select
+          v-model="selectedSubtitleType"
+          @change="handleFilterChange"
+          class="filter-select"
+        >
           <option value="">全部字幕</option>
           <option value="简体中文">简体中文</option>
           <option value="繁体中文">繁体中文</option>
@@ -26,8 +34,12 @@
           <option value="无字幕">无字幕</option>
         </select>
 
-        <button @click="refreshResources" class="refresh-btn" :disabled="loading">
-          {{ loading ? '刷新中...' : '刷新' }}
+        <button
+          @click="refreshResources"
+          class="refresh-btn"
+          :disabled="loading"
+        >
+          {{ loading ? "刷新中..." : "刷新" }}
         </button>
       </div>
     </div>
@@ -48,9 +60,9 @@
     </div>
 
     <!-- 资源列表 -->
-    <ResourceList 
-      v-else-if="resourcesData" 
-      :resources-data="resourcesData" 
+    <ResourceList
+      v-else-if="resourcesData"
+      :resources-data="resourcesData"
       :bangumi-id="props.bangumiId"
       :subject="props.subject"
     />
@@ -67,24 +79,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import { useResourceStore } from '../stores/resourceStore'
-import ResourceList from './common/ResourceList.vue'
-import Icon from './common/Icon.vue'
+import { ref, computed, watch } from "vue";
+import { useResourceStore } from "../stores/resourceStore";
+import ResourceList from "./common/ResourceList.vue";
+import Icon from "./common/Icon.vue";
 
 // Props定义
 interface Props {
-  bangumiId: number
-  subject: any // 可进一步细化类型
+  bangumiId: number;
+  subject: any; // 可进一步细化类型
 }
-const props = defineProps<Props>()
+const props = defineProps<Props>();
 
-const resourceStore = useResourceStore()
+const resourceStore = useResourceStore();
 
 // 分页和筛选状态
-const selectedResolution = ref('')
-const selectedSubtitleType = ref('')
-const fullResources = ref(0)  // 0代表不限制，全量查询
+const selectedResolution = ref("");
+const selectedSubtitleType = ref("");
+const fullResources = ref(0); // 0代表不限制，全量查询
 
 // 组装查询参数
 const getQuery = () => ({
@@ -92,49 +104,51 @@ const getQuery = () => ({
   resolution: selectedResolution.value || undefined,
   subtitleType: selectedSubtitleType.value || undefined,
   limit: fullResources.value,
-  offset: 0
-})
+  offset: 0,
+});
 
 // 监听筛选和分页变化自动拉取数据
-watch([
-  () => props.bangumiId,
-  selectedResolution,
-  selectedSubtitleType,
-  // currentLimit,
-  // currentOffset
-], () => {
-  if (props.bangumiId) {
-    resourceStore.fetchResources(getQuery())
-  }
-}, { immediate: true })
+watch(
+  [
+    () => props.bangumiId,
+    selectedResolution,
+    selectedSubtitleType,
+    // currentLimit,
+    // currentOffset
+  ],
+  () => {
+    if (props.bangumiId) {
+      resourceStore.fetchResources(getQuery());
+    }
+  },
+  { immediate: true },
+);
 
 // 计算属性
-const resourcesData = computed(() => resourceStore.resourcesData)
-const loading = computed(() => resourceStore.loading)
-const error = computed(() => resourceStore.error)
+const resourcesData = computed(() => resourceStore.resourcesData);
+const loading = computed(() => resourceStore.loading);
+const error = computed(() => resourceStore.error);
 
 const subjectComputed = computed(() => {
   if (props.subject) {
     return {
       name: props.subject.name,
       name_cn: props.subject.name_cn,
-      cover: props.subject.images?.large || props.subject.cover || ''
-    }
+      cover: props.subject.images?.large || props.subject.cover || "",
+    };
   }
-  return { name: '', name_cn: '', cover: '' }
-})
+  return { name: "", name_cn: "", cover: "" };
+});
 
 // 处理筛选变化
 const handleFilterChange = () => {
-  resourceStore.fetchResources(getQuery())
-}
+  resourceStore.fetchResources(getQuery());
+};
 
 // 刷新资源
 const refreshResources = () => {
-  resourceStore.fetchResources(getQuery())
-}
-
-
+  resourceStore.fetchResources(getQuery());
+};
 </script>
 
 <style scoped>
@@ -167,7 +181,9 @@ const refreshResources = () => {
 
 /* 新统一风格样式，参考.sort-select.unified-input */
 .filter-select {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
   font-weight: 400;
   color: #333;
   appearance: none;
@@ -179,8 +195,11 @@ const refreshResources = () => {
   font-size: 16px;
   height: 44px;
   padding: 0 40px 0 16px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s,
+    background 0.2s;
   background-image: url('data:image/svg+xml;utf8,<svg fill="%23666" height="20" viewBox="0 0 20 20" width="20" xmlns="http://www.w3.org/2000/svg"><path d="M5.8 8.3a1 1 0 0 1 1.4 0L10 11.09l2.8-2.8a1 1 0 1 1 1.4 1.42l-3.5 3.5a1 1 0 0 1-1.4 0l-3.5-3.5a1 1 0 0 1 0-1.42z"/></svg>');
   background-repeat: no-repeat;
   background-position: right 14px center;
@@ -190,12 +209,14 @@ const refreshResources = () => {
 }
 .filter-select:focus {
   border-color: #3498db;
-  box-shadow: 0 0 0 2px rgba(52,152,219,0.15);
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.15);
 }
 
 /* 统一刷新按钮风格 */
 .refresh-btn {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
   font-weight: 400;
   color: #fff;
   background: #3498db;
@@ -204,8 +225,11 @@ const refreshResources = () => {
   font-size: 16px;
   height: 44px;
   padding: 0 24px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  transition:
+    background 0.2s,
+    border-color 0.2s,
+    box-shadow 0.2s;
   cursor: pointer;
   outline: none;
   margin: 0;
@@ -239,7 +263,9 @@ const refreshResources = () => {
 }
 
 /* 状态样式 */
-.loading-state, .error-state, .empty-state {
+.loading-state,
+.error-state,
+.empty-state {
   text-align: center;
   padding: 3rem;
   color: #7f8c8d;
@@ -256,11 +282,16 @@ const refreshResources = () => {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
-.error-icon, .empty-icon {
+.error-icon,
+.empty-icon {
   font-size: 3rem;
   margin-bottom: 1rem;
 }

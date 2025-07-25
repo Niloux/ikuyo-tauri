@@ -1,6 +1,10 @@
 <template>
   <transition name="fade">
-    <div v-if="confirmDialog.show" class="global-confirm-overlay" @click.self="cancel">
+    <div
+      v-if="confirmDialog.show"
+      class="global-confirm-overlay"
+      @click.self="cancel"
+    >
       <transition name="slide-up">
         <div v-if="confirmDialog.show" class="confirm-dialog">
           <div class="dialog-header">
@@ -21,8 +25,8 @@
 </template>
 
 <script setup lang="ts">
-import { useFeedbackStore } from '@/stores/feedbackStore';
-import { storeToRefs } from 'pinia';
+import { useFeedbackStore } from "@/stores/feedbackStore";
+import { storeToRefs } from "pinia";
 
 const feedbackStore = useFeedbackStore();
 const { confirmDialog } = storeToRefs(feedbackStore);
@@ -53,7 +57,7 @@ const cancel = () => {
 .confirm-dialog {
   background: white;
   border-radius: 8px;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
   width: 90%;
   max-width: 400px;
   overflow: hidden;
@@ -127,17 +131,23 @@ const cancel = () => {
 }
 
 /* Transitions */
-.fade-enter-active, .fade-leave-active {
+.fade-enter-active,
+.fade-leave-active {
   transition: opacity 0.3s ease;
 }
-.fade-enter-from, .fade-leave-to {
+.fade-enter-from,
+.fade-leave-to {
   opacity: 0;
 }
 
-.slide-up-enter-active, .slide-up-leave-active {
-  transition: transform 0.3s ease, opacity 0.3s ease;
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition:
+    transform 0.3s ease,
+    opacity 0.3s ease;
 }
-.slide-up-enter-from, .slide-up-leave-to {
+.slide-up-enter-from,
+.slide-up-leave-to {
   opacity: 0;
   transform: translateY(30px);
 }

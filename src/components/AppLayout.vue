@@ -1,7 +1,10 @@
 <template>
   <div
     class="app-layout"
-    :style="{ '--header-height': headerHeight + 'px', '--footer-height': footerHeight + 'px' }"
+    :style="{
+      '--header-height': headerHeight + 'px',
+      '--footer-height': footerHeight + 'px',
+    }"
   >
     <!-- 应用头部 -->
     <AppHeader />
@@ -28,28 +31,28 @@
 </template>
 
 <script setup lang="ts">
-import AppHeader from './AppHeader.vue'
-import { ref, onMounted, computed } from 'vue'
-import GlobalLoading from './common/GlobalLoading.vue';
-import GlobalConfirm from './common/GlobalConfirm.vue';
+import AppHeader from "./AppHeader.vue";
+import { ref, onMounted, computed } from "vue";
+import GlobalLoading from "./common/GlobalLoading.vue";
+import GlobalConfirm from "./common/GlobalConfirm.vue";
 
-const headerHeight = ref(0)
-const footerHeight = ref(0)
-const currentYear = computed(() => new Date().getFullYear())
+const headerHeight = ref(0);
+const footerHeight = ref(0);
+const currentYear = computed(() => new Date().getFullYear());
 
 onMounted(() => {
   // 获取AppHeader的实际高度
-  const headerElement = document.querySelector('.app-header')
+  const headerElement = document.querySelector(".app-header");
   if (headerElement) {
-    headerHeight.value = headerElement.clientHeight
+    headerHeight.value = headerElement.clientHeight;
   }
 
   // 获取app-footer的实际高度
-  const footerElement = document.querySelector('.app-footer')
+  const footerElement = document.querySelector(".app-footer");
   if (footerElement) {
-    footerHeight.value = footerElement.clientHeight
+    footerHeight.value = footerElement.clientHeight;
   }
-})
+});
 </script>
 
 <style scoped>
@@ -69,7 +72,9 @@ onMounted(() => {
   max-width: 1200px;
   margin: 0 auto;
   padding: 2rem;
-  min-height: calc(100vh - var(--header-height, 70px) - var(--footer-height, 70px));
+  min-height: calc(
+    100vh - var(--header-height, 70px) - var(--footer-height, 70px)
+  );
 }
 
 .app-footer {
@@ -97,7 +102,9 @@ onMounted(() => {
 @media (max-width: 768px) {
   .content-container {
     padding: 1.5rem 1rem;
-    min-height: calc(100vh - var(--header-height, 65px) - var(--footer-height, 60px));
+    min-height: calc(
+      100vh - var(--header-height, 65px) - var(--footer-height, 60px)
+    );
   }
 
   .footer-container {

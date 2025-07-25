@@ -42,7 +42,10 @@
               <span
                 v-for="page in searchStore.getVisiblePages()"
                 :key="page"
-                :class="['page-number', { active: page === pagination.current_page }]"
+                :class="[
+                  'page-number',
+                  { active: page === pagination.current_page },
+                ]"
                 @click="goToPage(page)"
               >
                 {{ page }}
@@ -57,7 +60,10 @@
             </button>
           </div>
         </div>
-        <div v-else-if="!loading && hasSearched && searchResults.length === 0" class="empty-results">
+        <div
+          v-else-if="!loading && hasSearched && searchResults.length === 0"
+          class="empty-results"
+        >
           <p>没有找到相关番剧</p>
           <p class="empty-subtitle">尝试使用其他关键词搜索</p>
         </div>
@@ -68,123 +74,126 @@
 
 <script lang="ts">
 export default {
-  name: 'ResourceLibraryView'
-}
+  name: "ResourceLibraryView",
+};
 </script>
 
 <script setup lang="ts">
-import { ref, onMounted, onActivated, nextTick } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { storeToRefs } from 'pinia'
-import { defineAsyncComponent } from 'vue'
-import { useSearchStore } from '../stores/searchStore'
-import { ensureScrollToTop, getCurrentScrollPosition, restoreScrollPosition } from '../utils/scrollUtils'
-import { onBeforeRouteLeave } from 'vue-router'
-import { useFeedbackStore } from '../stores/feedbackStore'
+import { ref, onMounted, onActivated, nextTick } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { storeToRefs } from "pinia";
+import { defineAsyncComponent } from "vue";
+import { useSearchStore } from "../stores/searchStore";
+import {
+  ensureScrollToTop,
+  getCurrentScrollPosition,
+  restoreScrollPosition,
+} from "../utils/scrollUtils";
+import { onBeforeRouteLeave } from "vue-router";
+import { useFeedbackStore } from "../stores/feedbackStore";
 
-const route = useRoute()
-const router = useRouter()
-const searchStore = useSearchStore()
-const feedbackStore = useFeedbackStore()
+const route = useRoute();
+const router = useRouter();
+const searchStore = useSearchStore();
+const feedbackStore = useFeedbackStore();
 
 // 从store获取响应式状态
-const {
-  searchQuery,
-  searchResults,
-  loading,
-  error,
-  hasSearched,
-  pagination
-} = storeToRefs(searchStore)
+const { searchQuery, searchResults, loading, error, hasSearched, pagination } =
+  storeToRefs(searchStore);
 
 // 防抖处理
-let searchTimeout: number | null = null
+let searchTimeout: number | null = null;
 
 // 保存滚动位置的key
-const SCROLL_KEY = 'library_scroll_position'
+const SCROLL_KEY = "library_scroll_position";
 
-const AnimeCard = defineAsyncComponent(() => import('../components/AnimeCard.vue'))
+const AnimeCard = defineAsyncComponent(
+  () => import("../components/AnimeCard.vue"),
+);
 
 const handleSearchInput = async () => {
   if (searchTimeout) {
-    clearTimeout(searchTimeout)
+    clearTimeout(searchTimeout);
   }
   searchTimeout = setTimeout(async () => {
     if (searchQuery.value.trim()) {
-      feedbackStore.showLoading()
+      feedbackStore.showLoading();
       try {
-        await searchStore.performSearch(1, { debounce: true, delay: 300 })
+        await searchStore.performSearch(1, { debounce: true, delay: 300 });
       } finally {
-        feedbackStore.hideLoading()
+        feedbackStore.hideLoading();
       }
     } else {
-      searchStore.clearSearchState()
+      searchStore.clearSearchState();
     }
-  }, 150) as unknown as number
-}
+  }, 150) as unknown as number;
+};
 
 const retrySearch = async () => {
-  feedbackStore.showLoading()
+  feedbackStore.showLoading();
   try {
-    await searchStore.performSearch()
+    await searchStore.performSearch();
   } finally {
-    feedbackStore.hideLoading()
+    feedbackStore.hideLoading();
   }
-}
+};
 
 const goToLibraryDetail = (bangumiId: number) => {
   // 保存滚动位置
-  const currentScroll = getCurrentScrollPosition()
-  sessionStorage.setItem(SCROLL_KEY, String(currentScroll))
-  router.push(`/library/detail/${bangumiId}`)
-}
+  const currentScroll = getCurrentScrollPosition();
+  sessionStorage.setItem(SCROLL_KEY, String(currentScroll));
+  router.push(`/library/detail/${bangumiId}`);
+};
 
-const goToPage = async (page: number, options?: { debounce?: boolean; throttle?: boolean; delay?: number }) => {
+const goToPage = async (
+  page: number,
+  options?: { debounce?: boolean; throttle?: boolean; delay?: number },
+) => {
   if (page >= 1 && page <= pagination.value.total_pages) {
-    feedbackStore.showLoading()
+    feedbackStore.showLoading();
     try {
-      await searchStore.performSearch(page, options)
+      await searchStore.performSearch(page, options);
     } finally {
-      feedbackStore.hideLoading()
+      feedbackStore.hideLoading();
     }
   }
-}
+};
 
 // keep-alive组件恢复时的处理
 onActivated(() => {
   // 只处理滚动位置恢复，不再清空状态
-  const fromDetail = sessionStorage.getItem('fromDetail')
-  if (fromDetail === 'true') {
-    sessionStorage.removeItem('fromDetail')
-    const savedScroll = Number(sessionStorage.getItem(SCROLL_KEY) || 0)
+  const fromDetail = sessionStorage.getItem("fromDetail");
+  if (fromDetail === "true") {
+    sessionStorage.removeItem("fromDetail");
+    const savedScroll = Number(sessionStorage.getItem(SCROLL_KEY) || 0);
     nextTick(() => {
-      restoreScrollPosition(savedScroll)
-    })
+      restoreScrollPosition(savedScroll);
+    });
   } else {
     // 其他情况滚动到顶部，但不清空搜索状态
     nextTick(() => {
-      ensureScrollToTop()
-    })
+      ensureScrollToTop();
+    });
   }
-})
+});
 
 // 组件挂载时清空搜索状态，确保每次都是干净的初始状态
 onMounted(() => {
   // 首次进入或刷新页面时清空搜索状态
-  searchStore.clearSearchState()
-})
+  searchStore.clearSearchState();
+});
 
 onBeforeRouteLeave((to: any, from: any) => {
   // 离开去详情页时保存滚动位置
-  if (to.name === 'library-detail') {
-    const currentScroll = getCurrentScrollPosition()
-    sessionStorage.setItem(SCROLL_KEY, String(currentScroll))
-    sessionStorage.setItem('fromDetail', 'true')
+  if (to.name === "library-detail") {
+    const currentScroll = getCurrentScrollPosition();
+    sessionStorage.setItem(SCROLL_KEY, String(currentScroll));
+    sessionStorage.setItem("fromDetail", "true");
   } else {
-    sessionStorage.removeItem('fromDetail')
-    sessionStorage.removeItem(SCROLL_KEY)
+    sessionStorage.removeItem("fromDetail");
+    sessionStorage.removeItem(SCROLL_KEY);
   }
-})
+});
 </script>
 
 <style scoped>
@@ -221,17 +230,18 @@ onBeforeRouteLeave((to: any, from: any) => {
   border-radius: 10px;
   background: #ffffff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   transition: all 0.2s ease;
 }
 
 .search-input:focus {
-  border-color: #007AFF;
+  border-color: #007aff;
   box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
 }
 
 .search-input::placeholder {
-  color: #8E8E93;
+  color: #8e8e93;
   font-size: 16px;
 }
 
@@ -270,7 +280,10 @@ onBeforeRouteLeave((to: any, from: any) => {
   /* margin: 0 auto 3rem auto; */
 }
 
-.loading, .error, .empty-results, .initial-state {
+.loading,
+.error,
+.empty-results,
+.initial-state {
   text-align: center;
   padding: 4rem 2rem;
   max-width: 600px;

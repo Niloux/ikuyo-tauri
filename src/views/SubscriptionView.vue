@@ -11,7 +11,11 @@
             placeholder="搜索订阅番剧"
             class="search-input unified-input"
           />
-          <span v-if="loading && subscriptionStore.searchQuery" class="search-loading-spinner" style="margin-left:8px;"></span>
+          <span
+            v-if="loading && subscriptionStore.searchQuery"
+            class="search-loading-spinner"
+            style="margin-left: 8px"
+          ></span>
         </div>
         <div class="sort-controls">
           <select
@@ -32,7 +36,15 @@
       </div>
 
       <!-- 搜索无结果提示，仅提示，内容保持不变 -->
-      <div v-if="showSearchNoResult" class="search-tip" style="color: var(--color-danger, #e74c3c); margin-bottom: 1rem; text-align: left;">
+      <div
+        v-if="showSearchNoResult"
+        class="search-tip"
+        style="
+          color: var(--color-danger, #e74c3c);
+          margin-bottom: 1rem;
+          text-align: left;
+        "
+      >
         未搜索到相关订阅
       </div>
 
@@ -42,9 +54,14 @@
       </div>
 
       <!-- 动画卡片网格，仅在有订阅数据或搜索无结果时渲染 -->
-      <div v-else-if="!loading && (subscriptions.length > 0 || showSearchNoResult)" class="anime-grid">
+      <div
+        v-else-if="!loading && (subscriptions.length > 0 || showSearchNoResult)"
+        class="anime-grid"
+      >
         <AnimeCard
-          v-for="subscription in showSearchNoResult ? lastNonEmptySubscriptions : subscriptions"
+          v-for="subscription in showSearchNoResult
+            ? lastNonEmptySubscriptions
+            : subscriptions"
           :key="subscription.bangumi_id"
           :anime="subscription.anime"
           :show-subscription-button="true"
@@ -53,22 +70,60 @@
       </div>
 
       <!-- 分页控件，仅在有数据时显示 -->
-      <div v-if="!loading && (subscriptions.length > 0 || showSearchNoResult) && (showSearchNoResult ? lastNonEmptyPagination.pages : pagination.pages) > 1" class="pagination">
+      <div
+        v-if="
+          !loading &&
+          (subscriptions.length > 0 || showSearchNoResult) &&
+          (showSearchNoResult
+            ? lastNonEmptyPagination.pages
+            : pagination.pages) > 1
+        "
+        class="pagination"
+      >
         <button
-          @click="goToPage((showSearchNoResult ? lastNonEmptyPagination.page : pagination.page) - 1)"
-          :disabled="(showSearchNoResult ? lastNonEmptyPagination.page : pagination.page) <= 1"
+          @click="
+            goToPage(
+              (showSearchNoResult
+                ? lastNonEmptyPagination.page
+                : pagination.page) - 1,
+            )
+          "
+          :disabled="
+            (showSearchNoResult
+              ? lastNonEmptyPagination.page
+              : pagination.page) <= 1
+          "
           class="page-btn"
         >
           上一页
         </button>
 
         <span class="page-info">
-          {{ showSearchNoResult ? lastNonEmptyPagination.page : pagination.page }} / {{ showSearchNoResult ? lastNonEmptyPagination.pages : pagination.pages }}
+          {{
+            showSearchNoResult ? lastNonEmptyPagination.page : pagination.page
+          }}
+          /
+          {{
+            showSearchNoResult ? lastNonEmptyPagination.pages : pagination.pages
+          }}
         </span>
 
         <button
-          @click="goToPage((showSearchNoResult ? lastNonEmptyPagination.page : pagination.page) + 1)"
-          :disabled="(showSearchNoResult ? lastNonEmptyPagination.page : pagination.page) >= (showSearchNoResult ? lastNonEmptyPagination.pages : pagination.pages)"
+          @click="
+            goToPage(
+              (showSearchNoResult
+                ? lastNonEmptyPagination.page
+                : pagination.page) + 1,
+            )
+          "
+          :disabled="
+            (showSearchNoResult
+              ? lastNonEmptyPagination.page
+              : pagination.page) >=
+            (showSearchNoResult
+              ? lastNonEmptyPagination.pages
+              : pagination.pages)
+          "
           class="page-btn"
         >
           下一页
@@ -76,7 +131,14 @@
       </div>
 
       <!-- 中央提示区块：无订阅且无搜索条件时显示 -->
-      <div v-if="!loading && subscriptions.length === 0 && !subscriptionStore.searchQuery" class="empty-center-block">
+      <div
+        v-if="
+          !loading &&
+          subscriptions.length === 0 &&
+          !subscriptionStore.searchQuery
+        "
+        class="empty-center-block"
+      >
         <h3>暂无订阅</h3>
         <p>去<router-link to="/">首页</router-link>发现你喜欢的番剧吧！</p>
       </div>
@@ -91,100 +153,111 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, onActivated, watch } from 'vue'
-import { useSubscriptionStore } from '../stores/subscriptionStore'
-import AnimeCard from '../components/AnimeCard.vue'
-import Skeleton from '../components/common/Skeleton.vue'
-import type { BangumiCalendarItem } from '../services/bangumi/bangumiTypes'
-import { useRouter } from 'vue-router'
-import { ensureScrollToTop } from '../utils/scrollUtils'
-import { debounce } from '../utils/debounce'
+import { ref, onMounted, computed, onActivated, watch } from "vue";
+import { useSubscriptionStore } from "../stores/subscriptionStore";
+import AnimeCard from "../components/AnimeCard.vue";
+import Skeleton from "../components/common/Skeleton.vue";
+import type { BangumiCalendarItem } from "../services/bangumi/bangumiTypes";
+import { useRouter } from "vue-router";
+import { ensureScrollToTop } from "../utils/scrollUtils";
+import { debounce } from "../utils/debounce";
 
-const router = useRouter()
-const subscriptionStore = useSubscriptionStore()
+const router = useRouter();
+const subscriptionStore = useSubscriptionStore();
 
 // 响应式引用
 // searchQuery 状态提升到 store
 // const searchQuery = ref('')
-const sortOption = ref('subscribed_at-desc')
+const sortOption = ref("subscribed_at-desc");
 
 // 新增：缓存上一次有内容的订阅和分页
-const lastNonEmptySubscriptions = ref<any[]>([])
-const lastNonEmptyPagination = ref<any>({ page: 1, pages: 1 })
+const lastNonEmptySubscriptions = ref<any[]>([]);
+const lastNonEmptyPagination = ref<any>({ page: 1, pages: 1 });
 
 // 新增：数据初始化标志
-const isInitialized = ref(false)
+const isInitialized = ref(false);
 
 // 防抖搜索，监听 store 中的 searchQuery
 const handleSearch = debounce((val: string) => {
-  subscriptionStore.searchSubscriptions(val)
-}, 300)
+  subscriptionStore.searchSubscriptions(val);
+}, 300);
 
-watch(() => subscriptionStore.searchQuery, (val) => {
-  handleSearch(val)
-})
+watch(
+  () => subscriptionStore.searchQuery,
+  (val) => {
+    handleSearch(val);
+  },
+);
 
 // 监听订阅数据，缓存上一次有内容的订阅和分页
 watch(
   () => subscriptionStore.subscriptions,
   (subs) => {
     if (subs.length > 0) {
-      lastNonEmptySubscriptions.value = subs.slice()
-      lastNonEmptyPagination.value = { ...subscriptionStore.pagination }
+      lastNonEmptySubscriptions.value = subs.slice();
+      lastNonEmptyPagination.value = { ...subscriptionStore.pagination };
     }
   },
-  { immediate: true }
-)
+  { immediate: true },
+);
 
 const handleSortOptionChange = () => {
-  const [sort, order] = sortOption.value.split('-') as [
-    'subscribed_at' | 'rating' | 'air_date' | 'name',
-    'asc' | 'desc'
-  ]
-  subscriptionStore.sortSubscriptions(sort, order)
-}
+  const [sort, order] = sortOption.value.split("-") as [
+    "subscribed_at" | "rating" | "air_date" | "name",
+    "asc" | "desc",
+  ];
+  subscriptionStore.sortSubscriptions(sort, order);
+};
 
 // 计算属性
-const subscriptions = computed(() => subscriptionStore.subscriptions)
-const loading = computed(() => subscriptionStore.loading)
-const pagination = computed(() => subscriptionStore.pagination)
+const subscriptions = computed(() => subscriptionStore.subscriptions);
+const loading = computed(() => subscriptionStore.loading);
+const pagination = computed(() => subscriptionStore.pagination);
 
 // 优化：计算属性，只有在初次加载且无订阅数据时才显示骨架屏
 const shouldShowSkeleton = computed(() => {
-  return loading.value && subscriptions.value.length === 0 && !subscriptionStore.searchQuery
-})
+  return (
+    loading.value &&
+    subscriptions.value.length === 0 &&
+    !subscriptionStore.searchQuery
+  );
+});
 
 // 新增：判断是否处于“搜索无结果但有缓存”状态
 const showSearchNoResult = computed(() => {
-  return subscriptionStore.searchQuery && subscriptions.value.length === 0 && lastNonEmptySubscriptions.value.length > 0
-})
+  return (
+    subscriptionStore.searchQuery &&
+    subscriptions.value.length === 0 &&
+    lastNonEmptySubscriptions.value.length > 0
+  );
+});
 
 // 翻页
 const goToPage = (page: number) => {
-  subscriptionStore.goToPage(page)
-}
+  subscriptionStore.goToPage(page);
+};
 
 const goToDetail = (anime: BangumiCalendarItem) => {
   if (anime && anime.id) {
-    router.push({ name: 'anime-detail', params: { id: String(anime.id) } })
+    router.push({ name: "anime-detail", params: { id: String(anime.id) } });
   }
-}
+};
 
 // 数据获取
 const loadSubscriptions = async () => {
-  await subscriptionStore.fetchSubscriptions()
-  isInitialized.value = true
-}
+  await subscriptionStore.fetchSubscriptions();
+  isInitialized.value = true;
+};
 
 // 页面初始化
 onMounted(() => {
-  ensureScrollToTop()
-  loadSubscriptions()
-})
+  ensureScrollToTop();
+  loadSubscriptions();
+});
 
 onActivated(() => {
-  ensureScrollToTop()
-})
+  ensureScrollToTop();
+});
 </script>
 
 <style scoped>
@@ -212,13 +285,15 @@ onActivated(() => {
 .subscription-section {
   background: var(--color-bg-white);
   border-radius: var(--radius-md, 16px);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   padding: 2rem;
   margin-bottom: 30px;
-  transition: box-shadow 0.3s, transform 0.3s;
+  transition:
+    box-shadow 0.3s,
+    transform 0.3s;
 }
 .subscription-section:hover {
-  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
   transform: translateY(-2px);
 }
 
@@ -344,8 +419,12 @@ onActivated(() => {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* 优化：骨架屏样式 */
@@ -370,8 +449,12 @@ onActivated(() => {
 }
 
 @keyframes skeleton-loading {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 /* 响应式设计 */
@@ -415,7 +498,8 @@ onActivated(() => {
   .sort-controls {
     gap: 6px;
   }
-  .sort-select, .sort-order-btn {
+  .sort-select,
+  .sort-order-btn {
     font-size: 0.98rem;
     padding: 0.5rem 0.7rem;
     border-radius: 6px;
@@ -453,7 +537,9 @@ onActivated(() => {
   }
 }
 .sort-select.unified-input {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
   font-weight: 400;
   color: #333;
   appearance: none;
@@ -465,8 +551,11 @@ onActivated(() => {
   font-size: 16px;
   height: 44px;
   padding: 0 40px 0 16px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s,
+    background 0.2s;
   background-image: url('data:image/svg+xml;utf8,<svg fill="%23666" height="20" viewBox="0 0 20 20" width="20" xmlns="http://www.w3.org/2000/svg"><path d="M5.8 8.3a1 1 0 0 1 1.4 0L10 11.09l2.8-2.8a1 1 0 1 1 1.4 1.42l-3.5 3.5a1 1 0 0 1-1.4 0l-3.5-3.5a1 1 0 0 1 0-1.42z"/></svg>');
   background-repeat: no-repeat;
   background-position: right 14px center;
@@ -476,8 +565,8 @@ onActivated(() => {
   background: #f5f5f7;
 }
 .sort-select.unified-input:focus {
-  border-color: #007AFF;
-  box-shadow: 0 0 0 2px rgba(0,122,255,0.12);
+  border-color: #007aff;
+  box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.12);
   outline: none;
 }
 .sort-select.unified-input option {
@@ -499,7 +588,7 @@ onActivated(() => {
   width: 22px;
   height: 22px;
   border: 3px solid #e0e0e0;
-  border-top: 3px solid var(--color-primary, #007AFF);
+  border-top: 3px solid var(--color-primary, #007aff);
   border-radius: 50%;
   animation: spin 1s linear infinite;
   vertical-align: middle;

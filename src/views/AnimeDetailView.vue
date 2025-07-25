@@ -2,17 +2,15 @@
   <div class="anime-detail">
     <!-- 返回按钮 -->
     <div class="navigation">
-      <button @click="goBack" class="back-btn">
-        ← 返回
-      </button>
+      <button @click="goBack" class="back-btn">← 返回</button>
     </div>
 
     <Skeleton :loading="loading" type="card" customClass="detail-skeleton" />
     <div v-if="!loading && subject" class="detail-container">
       <!-- 番剧基本信息 -->
-      <div class="anime-header" style="position:relative;">
+      <div class="anime-header" style="position: relative">
         <!-- 右上角订阅按钮 -->
-        <div style="position:absolute;top:16px;right:16px;z-index:2;">
+        <div style="position: absolute; top: 16px; right: 16px; z-index: 2">
           <SubscriptionButton
             v-if="calendarItem"
             :anime="calendarItem!"
@@ -29,7 +27,10 @@
 
         <div class="anime-info">
           <h1 class="anime-title">{{ subject.name_cn || subject.name }}</h1>
-          <h2 v-if="subject.name_cn && subject.name !== subject.name_cn" class="anime-subtitle">
+          <h2
+            v-if="subject.name_cn && subject.name !== subject.name_cn"
+            class="anime-subtitle"
+          >
             {{ subject.name }}
           </h2>
 
@@ -46,7 +47,9 @@
               <span class="meta-label">评分:</span>
               <span class="meta-value rating">
                 {{ subject.rating.score.toFixed(1) }}
-                <span class="rating-total">({{ subject.rating.total }}人评价)</span>
+                <span class="rating-total"
+                  >({{ subject.rating.total }}人评价)</span
+                >
               </span>
             </div>
             <div class="meta-item" v-if="subject.rank">
@@ -56,7 +59,10 @@
           </div>
 
           <!-- 动画标签 -->
-          <div class="anime-tags" v-if="subject.tags && subject.tags.length > 0">
+          <div
+            class="anime-tags"
+            v-if="subject.tags && subject.tags.length > 0"
+          >
             <div class="tags-container">
               <span
                 v-for="tag in getTopTags(subject.tags)"
@@ -80,7 +86,9 @@
 
       <!-- 追番模式：章节信息 -->
       <EpisodeDisplay
-        v-if="!isResourceMode && (subject.total_episodes > 0 || subject.eps > 0)"
+        v-if="
+          !isResourceMode && (subject.total_episodes > 0 || subject.eps > 0)
+        "
         :bangumi-id="animeId"
         :subject="subject"
       />
@@ -96,116 +104,153 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, watch, computed, defineAsyncComponent } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { storeToRefs } from 'pinia'
-import { useAnimeDetailStore } from '../stores/animeDetailStore'
-import { useResourceStore } from '../stores/resourceStore'
-import { useSubscriptionStore } from '../stores/subscriptionStore'
-import { ensureScrollToTop } from '../utils/scrollUtils'
-import Skeleton from '../components/common/Skeleton.vue'
-import SubscriptionButton from '../components/common/SubscriptionButton.vue'
-import { convertSubjectToCalendarItem } from '../services/bangumi/bangumiApiService'
+import {
+  ref,
+  onMounted,
+  onBeforeUnmount,
+  watch,
+  computed,
+  defineAsyncComponent,
+} from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { storeToRefs } from "pinia";
+import { useAnimeDetailStore } from "../stores/animeDetailStore";
+import { useResourceStore } from "../stores/resourceStore";
+import { useSubscriptionStore } from "../stores/subscriptionStore";
+import { ensureScrollToTop } from "../utils/scrollUtils";
+import Skeleton from "../components/common/Skeleton.vue";
+import SubscriptionButton from "../components/common/SubscriptionButton.vue";
+import { convertSubjectToCalendarItem } from "../services/bangumi/bangumiApiService";
 
-const route = useRoute()
-const router = useRouter()
-const animeDetailStore = useAnimeDetailStore()
-const resourceStore = useResourceStore()
-const { subject, episodes, availability } = storeToRefs(animeDetailStore)
+const route = useRoute();
+const router = useRouter();
+const animeDetailStore = useAnimeDetailStore();
+const resourceStore = useResourceStore();
+const { subject, episodes, availability } = storeToRefs(animeDetailStore);
 const loading = computed(() =>
-  isResourceMode ? animeDetailStore.fetchSubjectAsync.loading : animeDetailStore.fetchAllAsync.loading
-)
+  isResourceMode
+    ? animeDetailStore.fetchSubjectAsync.loading
+    : animeDetailStore.fetchAllAsync.loading,
+);
 const error = computed(() =>
-  isResourceMode ? animeDetailStore.fetchSubjectAsync.error : animeDetailStore.fetchAllAsync.error
-)
+  isResourceMode
+    ? animeDetailStore.fetchSubjectAsync.error
+    : animeDetailStore.fetchAllAsync.error,
+);
 
 // 获取番剧ID
-const animeId = computed(() => parseInt(route.params.id as string))
+const animeId = computed(() => parseInt(route.params.id as string));
 
 // 判断是否为资源库模式
-const isResourceMode = route.meta.showResources === true
+const isResourceMode = route.meta.showResources === true;
 
 // 页面加载时拉取数据
 onMounted(() => {
-  ensureScrollToTop()
-  useSubscriptionStore().fetchAllSubscriptionIds()
+  ensureScrollToTop();
+  useSubscriptionStore().fetchAllSubscriptionIds();
   if (animeId.value) {
     if (isResourceMode) {
-      animeDetailStore.fetchSubject(animeId.value)
+      animeDetailStore.fetchSubject(animeId.value);
     } else {
-      animeDetailStore.fetchAll(animeId.value)
+      animeDetailStore.fetchAll(animeId.value);
     }
   }
-})
+});
 
 // 监听animeId变化，自动拉取数据
 watch(animeId, (newId, oldId) => {
   if (newId && newId !== oldId) {
     if (isResourceMode) {
-      animeDetailStore.fetchSubject(newId)
+      animeDetailStore.fetchSubject(newId);
     } else {
-      animeDetailStore.fetchAll(newId)
+      animeDetailStore.fetchAll(newId);
     }
   }
-})
+});
 
 // 页面卸载时清空store（只在真正卸载时清理，避免keep-alive下丢失）
 onBeforeUnmount(() => {
-  animeDetailStore.clear()
+  animeDetailStore.clear();
   if (isResourceMode) {
-    resourceStore.clear()
+    resourceStore.clear();
   }
-})
+});
 
 // 返回上一页
 const goBack = () => {
-  router.go(-1)
-}
+  router.go(-1);
+};
 
 // 格式化播出日期
 const formatAirDate = (dateStr: string): string => {
-  if (!dateStr) return '未知'
+  if (!dateStr) return "未知";
   try {
-    const date = new Date(dateStr)
-    return date.toLocaleDateString('zh-CN', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    })
+    const date = new Date(dateStr);
+    return date.toLocaleDateString("zh-CN", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
   } catch {
-    return dateStr
+    return dateStr;
   }
-}
+};
 
 // 获取前15个热门标签
 const getTopTags = (tags: any[]) => {
-  return tags
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 15)
-}
+  return tags.sort((a, b) => b.count - a.count).slice(0, 15);
+};
 
 // 根据标签名称返回标签类型（用于样式）
 const getTagType = (tagName: string): string => {
-  if ([
-    'TV', 'TV动画', 'OVA', 'OAD', '电影', '特别篇'
-  ].includes(tagName)) return 'tag-media'
-  if ([
-    '恋爱', '治愈', '奇幻', '科幻', '日常', '冒险', '悬疑', '战斗', '搞笑'
-  ].includes(tagName)) return 'tag-genre'
-  if (tagName.includes('改') || tagName.includes('GAL') || tagName.includes('游戏') || tagName.includes('小说') || tagName.includes('漫画')) return 'tag-source'
-  if (tagName.includes('年') || tagName.includes('月') || /^[A-Z][a-z]*\.?$/.test(tagName)) return 'tag-production'
-  return 'tag-default'
-}
+  if (["TV", "TV动画", "OVA", "OAD", "电影", "特别篇"].includes(tagName))
+    return "tag-media";
+  if (
+    [
+      "恋爱",
+      "治愈",
+      "奇幻",
+      "科幻",
+      "日常",
+      "冒险",
+      "悬疑",
+      "战斗",
+      "搞笑",
+    ].includes(tagName)
+  )
+    return "tag-genre";
+  if (
+    tagName.includes("改") ||
+    tagName.includes("GAL") ||
+    tagName.includes("游戏") ||
+    tagName.includes("小说") ||
+    tagName.includes("漫画")
+  )
+    return "tag-source";
+  if (
+    tagName.includes("年") ||
+    tagName.includes("月") ||
+    /^[A-Z][a-z]*\.?$/.test(tagName)
+  )
+    return "tag-production";
+  return "tag-default";
+};
 
 // 图片加载失败处理
 const onImageError = (event: Event) => {
-  const img = event.target as HTMLImageElement
-  img.style.display = 'none'
-}
+  const img = event.target as HTMLImageElement;
+  img.style.display = "none";
+};
 
-const AnimeResourcesList = defineAsyncComponent(() => import('../components/ResourceLibrary.vue'))
-const EpisodeDisplay = defineAsyncComponent(() => import('../components/EpisodeSection.vue'))
-const calendarItem = computed(() => subject.value ? convertSubjectToCalendarItem(subject.value) : null)
+const AnimeResourcesList = defineAsyncComponent(
+  () => import("../components/ResourceLibrary.vue"),
+);
+const EpisodeDisplay = defineAsyncComponent(
+  () => import("../components/EpisodeSection.vue"),
+);
+const calendarItem = computed(() =>
+  subject.value ? convertSubjectToCalendarItem(subject.value) : null,
+);
 </script>
 
 <style scoped>
@@ -235,7 +280,8 @@ const calendarItem = computed(() => subject.value ? convertSubjectToCalendarItem
   background-color: #2980b9;
 }
 
-.loading, .error {
+.loading,
+.error {
   text-align: center;
   padding: 3rem;
 }

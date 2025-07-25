@@ -38,7 +38,7 @@
       <button
         class="mobile-menu-btn"
         @click="toggleMobileMenu"
-        :class="{ 'active': isMobileMenuOpen }"
+        :class="{ active: isMobileMenuOpen }"
       >
         <span class="menu-line"></span>
         <span class="menu-line"></span>
@@ -47,20 +47,32 @@
     </div>
 
     <!-- 移动端菜单 -->
-    <div class="mobile-menu" :class="{ 'open': isMobileMenuOpen }">
+    <div class="mobile-menu" :class="{ open: isMobileMenuOpen }">
       <RouterLink to="/" class="mobile-nav-item" @click="closeMobileMenu">
         首页
       </RouterLink>
-      <RouterLink to="/library" class="mobile-nav-item" @click="closeMobileMenu">
+      <RouterLink
+        to="/library"
+        class="mobile-nav-item"
+        @click="closeMobileMenu"
+      >
         资源库
       </RouterLink>
-      <RouterLink to="/subscription" class="mobile-nav-item" @click="closeMobileMenu">
+      <RouterLink
+        to="/subscription"
+        class="mobile-nav-item"
+        @click="closeMobileMenu"
+      >
         我的订阅
       </RouterLink>
       <RouterLink to="/tasks" class="mobile-nav-item" @click="closeMobileMenu">
         任务
       </RouterLink>
-      <RouterLink to="/downloads" class="mobile-nav-item" @click="closeMobileMenu">
+      <RouterLink
+        to="/downloads"
+        class="mobile-nav-item"
+        @click="closeMobileMenu"
+      >
         下载管理
       </RouterLink>
     </div>
@@ -68,21 +80,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { ref } from "vue";
+import { RouterLink } from "vue-router";
 
 // 移动端菜单状态
-const isMobileMenuOpen = ref(false)
+const isMobileMenuOpen = ref(false);
 
 // 切换移动端菜单
 const toggleMobileMenu = () => {
-  isMobileMenuOpen.value = !isMobileMenuOpen.value
-}
+  isMobileMenuOpen.value = !isMobileMenuOpen.value;
+};
 
 // 关闭移动端菜单
 const closeMobileMenu = () => {
-  isMobileMenuOpen.value = false
-}
+  isMobileMenuOpen.value = false;
+};
 </script>
 
 <style scoped>
@@ -201,7 +213,7 @@ const closeMobileMenu = () => {
 }
 
 .nav-item.active::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: -2px;
   left: 50%;

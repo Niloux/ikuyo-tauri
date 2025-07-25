@@ -24,7 +24,6 @@
 - **更新提醒**: (待开发) 当你订阅的番剧更新时，发送桌面通知提醒你。
 - **现代且美观的 UI**: 基于 Vue 3 和精心设计的组件，提供流畅、直观的用户体验。
 
-
 ## 技术栈
 
 Ikuyo 是一个现代化的桌面应用，充分利用了 Web 技术和原生性能的优势。
@@ -32,10 +31,10 @@ Ikuyo 是一个现代化的桌面应用，充分利用了 Web 技术和原生性
 - **核心框架**: **[Tauri](https://tauri.app/)** - 使用 Web 前端构建轻量、快速、安全的跨平台桌面应用。
 - **后端**: **[Rust](https://www.rust-lang.org/)** - 提供内存安全、高性能的后端逻辑，负责核心业务如爬虫、数据库和文件系统操作。
 - **前端**:
-    - **[Vue 3](https.vuejs.org/)** (Composition API) - 渐进式 JavaScript 框架，用于构建用户界面。
-    - **[TypeScript](https://www.typescriptlang.org/)** - 为 JavaScript 添加静态类型，提升代码质量和可维护性。
-    - **[Vite](https://vitejs.dev/)** - 下一代前端构建工具，提供极速的开发体验。
-    - **[Pinia](https://pinia.vuejs.org/)** - Vue 的官方状态管理库。
+  - **[Vue 3](https.vuejs.org/)** (Composition API) - 渐进式 JavaScript 框架，用于构建用户界面。
+  - **[TypeScript](https://www.typescriptlang.org/)** - 为 JavaScript 添加静态类型，提升代码质量和可维护性。
+  - **[Vite](https://vitejs.dev/)** - 下一代前端构建工具，提供极速的开发体验。
+  - **[Pinia](https://pinia.vuejs.org/)** - Vue 的官方状态管理库。
 - **数据库**: **[SQLite](https://www.sqlite.org/index.html)** - 轻量级的本地文件数据库，用于存储订阅、任务等应用数据。
 
 ## 快速开始 (本地开发)
@@ -47,12 +46,14 @@ Ikuyo 是一个现代化的桌面应用，充分利用了 Web 技术和原生性
     - 根据 [Tauri 官网](https://tauri.app/) 设置好 Rust 和系统依赖。
 
 2.  **克隆仓库**:
+
     ```bash
     git clone https://github.com/Niloux/ikuyo-tauri.git
     cd ikuyo-tauri
     ```
 
 3.  **安装依赖**:
+
     ```bash
     pnpm install
     ```

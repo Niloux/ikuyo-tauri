@@ -3,7 +3,7 @@
     <button
       v-show="isVisible"
       class="scroll-to-top-btn"
-      :class="{ 'scrolling': isScrolling }"
+      :class="{ scrolling: isScrolling }"
       @click="scrollToTop"
       :aria-label="'返回顶部'"
       :disabled="isScrolling"
@@ -15,53 +15,53 @@
         stroke="currentColor"
         stroke-width="2"
       >
-        <path d="m18 15-6-6-6 6"/>
+        <path d="m18 15-6-6-6 6" />
       </svg>
     </button>
   </transition>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-import { smoothScrollToTop } from '../utils/scrollUtils'
+import { ref, onMounted, onUnmounted } from "vue";
+import { smoothScrollToTop } from "../utils/scrollUtils";
 
 // 按钮显示状态
-const isVisible = ref(false)
+const isVisible = ref(false);
 // 滚动中状态
-const isScrolling = ref(false)
+const isScrolling = ref(false);
 
 // 滚动阈值
-const SCROLL_THRESHOLD = 400
+const SCROLL_THRESHOLD = 400;
 
 // 滚动事件处理函数
 const handleScroll = () => {
-  isVisible.value = window.scrollY > SCROLL_THRESHOLD
-}
+  isVisible.value = window.scrollY > SCROLL_THRESHOLD;
+};
 
 // 点击滚动到顶部
 const scrollToTop = () => {
-  if (isScrolling.value) return // 防止重复点击
+  if (isScrolling.value) return; // 防止重复点击
 
-  isScrolling.value = true
-  smoothScrollToTop()
+  isScrolling.value = true;
+  smoothScrollToTop();
 
   // 滚动完成后重置状态
   setTimeout(() => {
-    isScrolling.value = false
-  }, 1000) // 假设滚动动画持续1秒
-}
+    isScrolling.value = false;
+  }, 1000); // 假设滚动动画持续1秒
+};
 
 // 组件挂载时添加滚动监听
 onMounted(() => {
-  window.addEventListener('scroll', handleScroll, { passive: true })
+  window.addEventListener("scroll", handleScroll, { passive: true });
   // 初始检查滚动位置
-  handleScroll()
-})
+  handleScroll();
+});
 
 // 组件卸载时移除滚动监听
 onUnmounted(() => {
-  window.removeEventListener('scroll', handleScroll)
-})
+  window.removeEventListener("scroll", handleScroll);
+});
 </script>
 
 <style scoped>
@@ -88,17 +88,19 @@ onUnmounted(() => {
 }
 
 .scroll-to-top-btn::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 1px;
   left: 1px;
   right: 1px;
   bottom: 1px;
   border-radius: 50%;
-  background: linear-gradient(135deg,
+  background: linear-gradient(
+    135deg,
     rgba(255, 255, 255, 0.15) 0%,
     rgba(255, 255, 255, 0.05) 50%,
-    rgba(0, 0, 0, 0.05) 100%);
+    rgba(0, 0, 0, 0.05) 100%
+  );
   pointer-events: none;
 }
 
@@ -119,7 +121,8 @@ onUnmounted(() => {
 }
 
 @keyframes scrollingPulse {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
     opacity: 1;
   }

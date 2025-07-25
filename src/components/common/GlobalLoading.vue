@@ -14,8 +14,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-import { useFeedbackStore } from '@/stores/feedbackStore';
+import { computed } from "vue";
+import { useFeedbackStore } from "@/stores/feedbackStore";
 
 const feedbackStore = useFeedbackStore();
 const visible = computed(() => feedbackStore.loading);
@@ -28,7 +28,7 @@ const visible = computed(() => feedbackStore.loading);
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(255,255,255,0.6);
+  background: rgba(255, 255, 255, 0.6);
   z-index: 2100;
   display: flex;
   align-items: center;
@@ -43,13 +43,19 @@ const visible = computed(() => feedbackStore.loading);
   animation: spin 1s linear infinite;
 }
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
-.fade-enter-active, .fade-leave-active {
+.fade-enter-active,
+.fade-leave-active {
   transition: opacity 0.2s;
 }
-.fade-enter-from, .fade-leave-to {
+.fade-enter-from,
+.fade-leave-to {
   opacity: 0;
 }
 </style>

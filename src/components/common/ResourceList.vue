@@ -1,6 +1,9 @@
 <template>
   <div class="resources-list">
-    <div v-if="resourcesData && resourcesData.subtitle_groups.length > 0" class="resources-content">
+    <div
+      v-if="resourcesData && resourcesData.subtitle_groups.length > 0"
+      class="resources-content"
+    >
       <div class="subtitle-groups">
         <div
           v-for="group in resourcesData.subtitle_groups"
@@ -9,16 +12,24 @@
         >
           <div
             class="group-header"
-            :class="{ 'expanded': isGroupExpanded(group.id) }"
+            :class="{ expanded: isGroupExpanded(group.id) }"
             @click="toggleGroup(group.id)"
           >
             <div class="group-info">
               <h4 class="group-name">{{ group.name }}</h4>
               <span class="group-count">{{ group.resource_count }} 个资源</span>
             </div>
-            <div class="expand-icon" :class="{ 'expanded': isGroupExpanded(group.id) }">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="m9 18 6-6-6-6"/>
+            <div
+              class="expand-icon"
+              :class="{ expanded: isGroupExpanded(group.id) }"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="m9 18 6-6-6-6" />
               </svg>
             </div>
           </div>
@@ -33,10 +44,16 @@
                 <div class="resource-info">
                   <div class="resource-title">{{ resource.title }}</div>
                   <div class="resource-meta">
-                    <span v-if="resource.resolution" class="meta-tag resolution">
+                    <span
+                      v-if="resource.resolution"
+                      class="meta-tag resolution"
+                    >
                       {{ resource.resolution }}
                     </span>
-                    <span v-if="resource.subtitle_type" class="meta-tag subtitle">
+                    <span
+                      v-if="resource.subtitle_type"
+                      class="meta-tag subtitle"
+                    >
                       {{ resource.subtitle_type }}
                     </span>
                     <span v-if="resource.size" class="meta-tag size">
@@ -51,7 +68,9 @@
                 <div class="resource-actions">
                   <DownloadButton
                     :resource-id="resource.id"
-                    :on-action="(action) => handleDownloadAction(action, resource)"
+                    :on-action="
+                      (action) => handleDownloadAction(action, resource)
+                    "
                   />
                 </div>
               </div>
@@ -64,84 +83,90 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
-import { useDownloadStore } from '@/stores/downloadStore'
-import { storeToRefs } from 'pinia'
-import type { EpisodeResource, EpisodeResourcesData } from '@/services/bangumi/bangumiTypes'
-import DownloadButton from './DownloadButton.vue'
-import { toast } from 'vue-sonner'
+import { ref, watch, onMounted } from "vue";
+import { useDownloadStore } from "@/stores/downloadStore";
+import { storeToRefs } from "pinia";
+import type {
+  EpisodeResource,
+  EpisodeResourcesData,
+} from "@/services/bangumi/bangumiTypes";
+import DownloadButton from "./DownloadButton.vue";
+import { toast } from "vue-sonner";
 
 const props = defineProps<{
-  resourcesData: EpisodeResourcesData | null
-  bangumiId: number
+  resourcesData: EpisodeResourcesData | null;
+  bangumiId: number;
   subject: {
-    name: string
-    name_cn: string
+    name: string;
+    name_cn: string;
     images: {
-      large: string
-    }
-  }
-}>()
+      large: string;
+    };
+  };
+}>();
 
-const downloadStore = useDownloadStore()
-const { tasks } = storeToRefs(downloadStore)
+const downloadStore = useDownloadStore();
+const { tasks } = storeToRefs(downloadStore);
 
 // Format release date
 const dateFormatOptions: Intl.DateTimeFormatOptions = {
-  month: 'short',
-  day: 'numeric',
-  hour: 'numeric',
-  minute: '2-digit'
-}
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+};
 const formatReleaseDate = (dateStr: string): string => {
-  if (!dateStr) return ''
+  if (!dateStr) return "";
   try {
-    const date = new Date(Number(dateStr))
-    return date.toLocaleDateString('zh-CN', dateFormatOptions)
+    const date = new Date(Number(dateStr));
+    return date.toLocaleDateString("zh-CN", dateFormatOptions);
   } catch {
-    return dateStr
+    return dateStr;
   }
-}
+};
 
 // 展开状态管理
 const expandedGroups = ref<Set<number>>(new Set());
-const expandedNumber = ref(13)
+const expandedNumber = ref(13);
 
 // 当资源数据变化时，初始化展开状态
 watch(
   () => props.resourcesData,
   (newData) => {
-    const newSet = new Set<number>()
+    const newSet = new Set<number>();
     if (newData && Array.isArray(newData.subtitle_groups)) {
       for (const group of newData.subtitle_groups) {
-        if (Array.isArray(group.resources) && group.resources.length < expandedNumber.value) {
-          newSet.add(group.id)
+        if (
+          Array.isArray(group.resources) &&
+          group.resources.length < expandedNumber.value
+        ) {
+          newSet.add(group.id);
         }
       }
     }
-    expandedGroups.value = newSet
+    expandedGroups.value = newSet;
   },
-  { immediate: true }
-)
+  { immediate: true },
+);
 
 const toggleGroup = (groupId: number) => {
-  const newExpandedGroups = new Set(expandedGroups.value)
+  const newExpandedGroups = new Set(expandedGroups.value);
   if (newExpandedGroups.has(groupId)) {
-    newExpandedGroups.delete(groupId)
+    newExpandedGroups.delete(groupId);
   } else {
-    newExpandedGroups.add(groupId)
+    newExpandedGroups.add(groupId);
   }
-  expandedGroups.value = newExpandedGroups
-}
+  expandedGroups.value = newExpandedGroups;
+};
 const isGroupExpanded = (groupId: number): boolean => {
-  return expandedGroups.value.has(groupId)
-}
+  return expandedGroups.value.has(groupId);
+};
 
 const isResourceDownloading = (resourceId: number) => {
-  return !!tasks.value[resourceId]
-}
+  return !!tasks.value[resourceId];
+};
 
-const getTaskByResourceId = downloadStore.getTaskByResourceId
+const getTaskByResourceId = downloadStore.getTaskByResourceId;
 
 // 调用系统下载器下载magnet链接
 // 需要pnpm tauri add opener
@@ -189,33 +214,36 @@ const getTaskByResourceId = downloadStore.getTaskByResourceId
 //   }
 // }
 
-const handleDownloadAction = async (action: 'download' | 'pause' | 'resume' | 'play' | 'retry' | 'delete', resource: EpisodeResource) => {
-  const task = getTaskByResourceId(resource.id)
-  
+const handleDownloadAction = async (
+  action: "download" | "pause" | "resume" | "play" | "retry" | "delete",
+  resource: EpisodeResource,
+) => {
+  const task = getTaskByResourceId(resource.id);
+
   switch (action) {
-    case 'download':
-      await handleDownload(resource)
-      break
-    case 'pause':
+    case "download":
+      await handleDownload(resource);
+      break;
+    case "pause":
       if (task?.id != undefined) {
         try {
-          await downloadStore.pauseDownload(task.id)
-          toast.success('已暂停下载')
+          await downloadStore.pauseDownload(task.id);
+          toast.success("已暂停下载");
         } catch (e: any) {
-          toast.error(e?.message || '暂停下载失败')
+          toast.error(e?.message || "暂停下载失败");
         }
       }
-      break
-    case 'resume':
+      break;
+    case "resume":
       if (task?.id != undefined) {
         try {
-          await downloadStore.resumeDownload(task.id)
-          toast.success('已恢复下载')
+          await downloadStore.resumeDownload(task.id);
+          toast.success("已恢复下载");
         } catch (e: any) {
-          toast.error(e?.message || '恢复下载失败')
+          toast.error(e?.message || "恢复下载失败");
         }
       }
-      break
+      break;
     // case 'delete':
     //   if (task?.id != undefined) {
     //     try {
@@ -226,43 +254,43 @@ const handleDownloadAction = async (action: 'download' | 'pause' | 'resume' | 'p
     //     }
     //   }
     //   break
-    case 'play':
+    case "play":
       if (task?.id != undefined) {
         try {
-          const download_path = await downloadStore.getDownloadPath(task.id)
+          const download_path = await downloadStore.getDownloadPath(task.id);
           if (!download_path) {
-            toast.error('未找到文件路径');
+            toast.error("未找到文件路径");
             return;
           }
-          await downloadStore.openFilePath(download_path)
-          toast.success('已播放')
+          await downloadStore.openFilePath(download_path);
+          toast.success("已播放");
         } catch (e: any) {
-          toast.error(e?.message || '播放失败')
+          toast.error(e?.message || "播放失败");
         }
       }
-      break
-    case 'retry':
+      break;
+    case "retry":
       if (task?.id != undefined) {
         try {
-          await downloadStore.removeDownload(task.id, true) // 先删除旧任务
-          await handleDownload(resource) // 重新开始下载
+          await downloadStore.removeDownload(task.id, true); // 先删除旧任务
+          await handleDownload(resource); // 重新开始下载
         } catch (e: any) {
-          toast.error(e?.message || '重试下载失败')
+          toast.error(e?.message || "重试下载失败");
         }
       }
-      break
+      break;
   }
-}
+};
 
 const handleDownload = async (resource: EpisodeResource) => {
   // 检查必要参数
   if (!resource.magnet_url) {
-    toast.error('缺少磁力链接，无法下载')
-    return
+    toast.error("缺少磁力链接，无法下载");
+    return;
   }
   if (!props.bangumiId || !props.subject) {
-    toast.error('番剧信息缺失，无法下载')
-    return
+    toast.error("番剧信息缺失，无法下载");
+    return;
   }
   // 组装 StartDownloadTask
   const task = {
@@ -275,20 +303,19 @@ const handleDownload = async (resource: EpisodeResource) => {
     name: props.subject.name,
     name_cn: props.subject.name_cn,
     cover: props.subject.images?.large,
-    total_size: typeof resource.size === 'number' ? resource.size : 0,
-  }
+    total_size: typeof resource.size === "number" ? resource.size : 0,
+  };
   try {
-    await downloadStore.startDownload(task)
-    toast.success('已添加到下载任务')
+    await downloadStore.startDownload(task);
+    toast.success("已添加到下载任务");
   } catch (e: any) {
-    toast.error(e?.message || '添加下载任务失败')
+    toast.error(e?.message || "添加下载任务失败");
   }
-}
+};
 
 onMounted(() => {
-  downloadStore.fetchAllDownloads()
-})
-
+  downloadStore.fetchAllDownloads();
+});
 </script>
 
 <style scoped>
@@ -437,10 +464,22 @@ onMounted(() => {
   font-weight: 500;
 }
 
-.meta-tag.resolution { background-color: #e3f2fd; color: #1976d2; }
-.meta-tag.subtitle { background-color: #f3e5f5; color: #7b1fa2; }
-.meta-tag.size { background-color: #e8f5e8; color: #388e3c; }
-.meta-tag.date { background-color: #fff3e0; color: #f57c00; }
+.meta-tag.resolution {
+  background-color: #e3f2fd;
+  color: #1976d2;
+}
+.meta-tag.subtitle {
+  background-color: #f3e5f5;
+  color: #7b1fa2;
+}
+.meta-tag.size {
+  background-color: #e8f5e8;
+  color: #388e3c;
+}
+.meta-tag.date {
+  background-color: #fff3e0;
+  color: #f57c00;
+}
 
 .resource-actions {
   display: flex;
@@ -448,26 +487,31 @@ onMounted(() => {
 }
 
 .action-btn {
-    border: none;
-    border-radius: 6px;
-    padding: 0.5rem 1rem;
-    cursor: pointer;
-    font-weight: 500;
-    font-size: 0.85rem;
-    min-width: 60px;
-    transition: all 0.3s;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.85rem;
+  min-width: 60px;
+  transition: all 0.3s;
 }
 
 .magnet-btn {
   background-color: #e74c3c;
   color: white;
 }
-.magnet-btn:hover { background-color: #c0392b; transform: translateY(-1px); }
+.magnet-btn:hover {
+  background-color: #c0392b;
+  transform: translateY(-1px);
+}
 
 .torrent-btn {
   background-color: #3498db;
   color: white;
 }
-.torrent-btn:hover { background-color: #2980b9; transform: translateY(-1px); }
-
+.torrent-btn:hover {
+  background-color: #2980b9;
+  transform: translateY(-1px);
+}
 </style>

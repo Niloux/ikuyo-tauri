@@ -9,19 +9,19 @@
 export const ensureScrollToTop = (immediate: boolean = true) => {
   const scrollToTop = () => {
     if (window.scrollY > 0) {
-      window.scrollTo({ top: 0, behavior: 'instant' })
+      window.scrollTo({ top: 0, behavior: "instant" });
     }
-  }
+  };
 
   if (immediate) {
-    scrollToTop()
+    scrollToTop();
   }
 
   // 使用requestAnimationFrame确保DOM更新后执行
   requestAnimationFrame(() => {
-    scrollToTop()
-  })
-}
+    scrollToTop();
+  });
+};
 
 /**
  * 恢复滚动位置（优化版）
@@ -30,17 +30,17 @@ export const ensureScrollToTop = (immediate: boolean = true) => {
 export const restoreScrollPosition = (position: number) => {
   if (position > 0) {
     requestAnimationFrame(() => {
-      window.scrollTo({ top: position, behavior: 'instant' })
-    })
+      window.scrollTo({ top: position, behavior: "instant" });
+    });
   }
-}
+};
 
 /**
  * 获取当前滚动位置
  */
 export const getCurrentScrollPosition = (): number => {
-  return window.scrollY
-}
+  return window.scrollY;
+};
 
 /**
  * 平滑滚动到顶部（用于置顶按钮）
@@ -48,6 +48,6 @@ export const getCurrentScrollPosition = (): number => {
 export const smoothScrollToTop = () => {
   window.scrollTo({
     top: 0,
-    behavior: 'smooth'
-  })
-}
+    behavior: "smooth",
+  });
+};

@@ -1,14 +1,24 @@
 <template>
   <div class="fade-in">
-    <Skeleton :loading="isLoading" type="list" :rows="4" customClass="task-table-skeleton" />
+    <Skeleton
+      :loading="isLoading"
+      type="list"
+      :rows="4"
+      customClass="task-table-skeleton"
+    />
     <div v-if="!isLoading && error" class="error-message">
       <p>{{ error }}</p>
       <button @click="$emit('retry')" class="retry-button">重试</button>
     </div>
 
-    <div v-else-if="!Array.isArray(tasks) || tasks.length === 0" class="no-data-message">
+    <div
+      v-else-if="!Array.isArray(tasks) || tasks.length === 0"
+      class="no-data-message"
+    >
       <p>暂无采集任务</p>
-      <p style="margin-top: 0.5rem; font-size: 0.875rem; opacity: 0.7;">采集任务将在这里显示</p>
+      <p style="margin-top: 0.5rem; font-size: 0.875rem; opacity: 0.7">
+        采集任务将在这里显示
+      </p>
     </div>
 
     <div v-else class="task-grid">
@@ -30,17 +40,27 @@
           </div>
           <div class="task-meta-item">
             <span class="task-meta-label">模式</span>
-            <span class="task-meta-value">{{ getParameter(task.parameters, 'mode') }}</span>
+            <span class="task-meta-value">{{
+              getParameter(task.parameters, "mode")
+            }}</span>
           </div>
           <div class="task-meta-item">
             <span class="task-meta-label">创建时间</span>
-            <span class="task-meta-value">{{ formatDateTime(task.created_at) }}</span>
+            <span class="task-meta-value">{{
+              formatDateTime(task.created_at)
+            }}</span>
           </div>
           <div class="task-meta-item">
             <span class="task-meta-label">进度</span>
-            <span class="task-meta-value">{{ task.processed_items || 0 }} / {{ task.total_items || 0 }}</span>
+            <span class="task-meta-value"
+              >{{ task.processed_items || 0 }} /
+              {{ task.total_items || 0 }}</span
+            >
           </div>
-          <div v-if="task.error_message" class="task-meta-item task-error-message">
+          <div
+            v-if="task.error_message"
+            class="task-meta-item task-error-message"
+          >
             <span class="task-error-label">错误信息：</span>
             <span class="task-error-value">{{ task.error_message }}</span>
           </div>
@@ -48,11 +68,18 @@
 
         <div class="progress-section" v-if="task.status === 'running'">
           <div class="progress-header">
-            <span class="progress-percentage">{{ (task.percentage || 0).toFixed(1) }}%</span>
-            <span class="progress-details">{{ formatTime(task.estimated_remaining || 0) }}</span>
+            <span class="progress-percentage"
+              >{{ (task.percentage || 0).toFixed(1) }}%</span
+            >
+            <span class="progress-details">{{
+              formatTime(task.estimated_remaining || 0)
+            }}</span>
           </div>
           <div class="progress-bar-container">
-            <div class="progress-bar" :style="{ width: (task.percentage || 0) + '%' }"></div>
+            <div
+              class="progress-bar"
+              :style="{ width: (task.percentage || 0) + '%' }"
+            ></div>
           </div>
         </div>
 
@@ -61,7 +88,7 @@
             @click="onCancel(task.id)"
             :disabled="!canCancel(task.status)"
             class="action-button cancel-button"
-            :class="{ 'disabled': !canCancel(task.status) }"
+            :class="{ disabled: !canCancel(task.status) }"
           >
             {{ getCancelButtonText(task.status) }}
           </button>
@@ -91,72 +118,72 @@
 </template>
 
 <script setup lang="ts">
-import type { TaskResponse } from '../services/crawler/crawlerTypes'
-import { getParameter, formatDateTime, formatTime } from '../utils/taskUtils'
-import Skeleton from './common/Skeleton.vue'
+import type { TaskResponse } from "../services/crawler/crawlerTypes";
+import { getParameter, formatDateTime, formatTime } from "../utils/taskUtils";
+import Skeleton from "./common/Skeleton.vue";
 
 const props = defineProps<{
-  tasks: TaskResponse[]
-  isLoading: boolean
-  error: string | null
-  onCancel: (taskId: number) => void
-  currentPage: number
-  pageSize: number
-}>()
+  tasks: TaskResponse[];
+  isLoading: boolean;
+  error: string | null;
+  onCancel: (taskId: number) => void;
+  currentPage: number;
+  pageSize: number;
+}>();
 
 const emit = defineEmits<{
-  retry: []
-  'page-change': [page: number]
-}>()
+  retry: [];
+  "page-change": [page: number];
+}>();
 
 // 获取状态文本
 const getStatusText = (status: string): string => {
   const statusMap: { [key: string]: string } = {
-    'pending': '等待中',
-    'running': '运行中',
-    'completed': '已完成',
-    'failed': '失败',
-    'cancelled': '已取消'
-  }
-  return statusMap[status] || status
-}
+    pending: "等待中",
+    running: "运行中",
+    completed: "已完成",
+    failed: "失败",
+    cancelled: "已取消",
+  };
+  return statusMap[status] || status;
+};
 
 // 获取任务标题
 const getTaskTitle = (task: TaskResponse): string => {
-  if (!task.parameters) return '采集任务'
+  if (!task.parameters) return "采集任务";
 
   try {
-    const params = JSON.parse(task.parameters)
-    const mode = params.mode
+    const params = JSON.parse(task.parameters);
+    const mode = params.mode;
 
     switch (mode) {
-      case 'homepage':
-        return '首页采集任务'
-      case 'season':
-        return `季度采集任务 (${params.year || ''}年${params.season || ''})`
-      case 'year':
-        return `年份采集任务 (${params.year || ''}年)`
+      case "homepage":
+        return "首页采集任务";
+      case "season":
+        return `季度采集任务 (${params.year || ""}年${params.season || ""})`;
+      case "year":
+        return `年份采集任务 (${params.year || ""}年)`;
       default:
-        return '采集任务'
+        return "采集任务";
     }
   } catch (e) {
-    console.error('解析任务参数失败:', e)
-    return '采集任务'
+    console.error("解析任务参数失败:", e);
+    return "采集任务";
   }
-}
+};
 
 // 判断是否可以取消
 const canCancel = (status: string): boolean => {
-  return ['pending', 'running'].includes(status)
-}
+  return ["pending", "running"].includes(status);
+};
 
 // 获取取消按钮文本
 const getCancelButtonText = (status: string): string => {
   if (canCancel(status)) {
-    return '取消'
+    return "取消";
   }
-  return '已完成'
-}
+  return "已完成";
+};
 </script>
 
 <style scoped>
@@ -194,7 +221,7 @@ const getCancelButtonText = (status: string): string => {
 }
 
 .task-id {
-  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+  font-family: "SF Mono", "Monaco", "Inconsolata", monospace;
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--color-text-light);
@@ -335,7 +362,11 @@ const getCancelButtonText = (status: string): string => {
 
 .progress-bar {
   height: 100%;
-  background: linear-gradient(45deg, var(--color-primary), var(--color-primary-light));
+  background: linear-gradient(
+    45deg,
+    var(--color-primary),
+    var(--color-primary-light)
+  );
   border-radius: var(--radius-sm);
   transition: width 0.3s ease;
 }
@@ -414,7 +445,9 @@ const getCancelButtonText = (status: string): string => {
 }
 
 /* 加载和错误状态 */
-.loading-indicator, .error-message, .no-data-message {
+.loading-indicator,
+.error-message,
+.no-data-message {
   text-align: center;
   padding: 3rem 2rem;
   color: var(--color-text-light);
@@ -469,13 +502,22 @@ const getCancelButtonText = (status: string): string => {
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .task-error-message {
@@ -512,5 +554,4 @@ const getCancelButtonText = (status: string): string => {
 .task-error-value {
   font-weight: 600;
 }
-
 </style>

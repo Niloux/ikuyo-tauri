@@ -21,7 +21,11 @@
       </div>
     </template>
     <template v-else-if="type === 'list'">
-      <div v-for="n in rows" :key="n" class="skeleton-line skeleton-list-item" />
+      <div
+        v-for="n in rows"
+        :key="n"
+        class="skeleton-line skeleton-list-item"
+      />
     </template>
     <template v-else-if="type === 'image'">
       <div class="skeleton-image" />
@@ -34,7 +38,7 @@
 
 <script setup lang="ts">
 // Skeleton骨架屏通用组件，支持延迟展示
-import { ref, watch, onUnmounted } from 'vue'
+import { ref, watch, onUnmounted } from "vue";
 
 const props = defineProps({
   loading: {
@@ -47,7 +51,7 @@ const props = defineProps({
   },
   type: {
     type: String,
-    default: 'card', // card | list | image | custom
+    default: "card", // card | list | image | custom
   },
   rows: {
     type: Number,
@@ -55,38 +59,38 @@ const props = defineProps({
   },
   customClass: {
     type: String,
-    default: '',
+    default: "",
   },
-})
+});
 
-const shouldShowSkeleton = ref(props.loading === undefined ? true : false)
-let timer: number | null = null
+const shouldShowSkeleton = ref(props.loading === undefined ? true : false);
+let timer: number | null = null;
 
 watch(
   () => props.loading,
   (newVal) => {
     if (newVal === undefined) {
-      shouldShowSkeleton.value = true // 兼容老用法
-      return
+      shouldShowSkeleton.value = true; // 兼容老用法
+      return;
     }
     if (newVal) {
       // loading为true，延迟delay毫秒后显示骨架屏
-      timer && clearTimeout(timer)
+      timer && clearTimeout(timer);
       timer = window.setTimeout(() => {
-        shouldShowSkeleton.value = true
-      }, props.delay)
+        shouldShowSkeleton.value = true;
+      }, props.delay);
     } else {
       // loading为false，立即隐藏骨架屏
-      timer && clearTimeout(timer)
-      shouldShowSkeleton.value = false
+      timer && clearTimeout(timer);
+      shouldShowSkeleton.value = false;
     }
   },
-  { immediate: true }
-)
+  { immediate: true },
+);
 
 onUnmounted(() => {
-  timer && clearTimeout(timer)
-})
+  timer && clearTimeout(timer);
+});
 </script>
 
 <style scoped>
@@ -101,7 +105,7 @@ onUnmounted(() => {
   max-width: 240px;
   border-radius: 8px;
   background: #f8f9fa;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   overflow: hidden;
   padding: 0;
 }
@@ -148,7 +152,11 @@ onUnmounted(() => {
   border-radius: 8px;
 }
 @keyframes skeleton-loading {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 </style>

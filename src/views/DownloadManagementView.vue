@@ -3,8 +3,8 @@
     <div class="content-card">
       <!-- 状态标签区域 -->
       <div class="status-tabs">
-        <div 
-          v-for="tab in statusTabs" 
+        <div
+          v-for="tab in statusTabs"
           :key="tab.key"
           :class="['tab-item', { active: activeTab === tab.key }]"
           @click="setActiveTab(tab.key)"
@@ -23,23 +23,26 @@
       <!-- 操作栏 -->
       <div class="action-bar">
         <div class="action-left">
-          <button 
-            v-if="hasActiveDownloads" 
-            class="action-btn primary" 
+          <button
+            v-if="hasActiveDownloads"
+            class="action-btn primary"
             @click="pauseAllDownloads"
           >
             <Icon name="pause" :size="16" />
             暂停全部
           </button>
-          <button 
-            v-if="hasPausedDownloads" 
-            class="action-btn primary" 
+          <button
+            v-if="hasPausedDownloads"
+            class="action-btn primary"
             @click="resumeAllDownloads"
           >
             <Icon name="play" :size="16" />
             继续全部
           </button>
-          <button class="action-btn secondary" @click="showMoreActions = !showMoreActions">
+          <button
+            class="action-btn secondary"
+            @click="showMoreActions = !showMoreActions"
+          >
             <Icon name="more-horizontal" :size="16" hover />
           </button>
           <div v-if="showMoreActions" class="more-actions-dropdown">
@@ -49,9 +52,9 @@
         </div>
         <div class="action-right">
           <div class="search-box">
-            <input 
+            <input
               v-model="searchQuery"
-              type="text" 
+              type="text"
               placeholder="搜索番剧名称..."
               class="search-input"
             />
@@ -81,18 +84,20 @@
         </div>
 
         <!-- 任务行 -->
-        <div 
+        <div
           v-else-if="filteredTasks.length > 0"
-          v-for="(task, index) in filteredTasks" 
+          v-for="(task, index) in filteredTasks"
           :key="task.id"
           :class="['task-row', `status-${task.status}`]"
           @contextmenu.prevent="showContextMenu($event, task)"
         >
-          <div class="col col-index">{{ String(index + 1).padStart(2, '0') }}</div>
+          <div class="col col-index">
+            {{ String(index + 1).padStart(2, "0") }}
+          </div>
           <div class="col col-title">
             <div class="task-info">
-              <img 
-                :src="task.cover || defaultCover" 
+              <img
+                :src="task.cover || defaultCover"
                 :alt="task.name_cn || task.name"
                 class="task-cover"
                 @error="onImageError"
@@ -105,18 +110,27 @@
           </div>
           <div class="col col-status">
             <div class="status-content">
-              <div v-if="task.status === 'downloading'" class="downloading-status">
+              <div
+                v-if="task.status === 'downloading'"
+                class="downloading-status"
+              >
                 <div class="progress-bar">
-                  <div 
-                    class="progress-fill" 
-                    :style="{ width: `${Math.round((task.progress || 0) * 100)}%` }"
+                  <div
+                    class="progress-fill"
+                    :style="{
+                      width: `${Math.round((task.progress || 0) * 100)}%`,
+                    }"
                   ></div>
                 </div>
                 <div class="progress-text">
-                  {{ Math.round((task.progress || 0) * 100) }}% | {{ formatSpeed(task.speed) }}
+                  {{ Math.round((task.progress || 0) * 100) }}% |
+                  {{ formatSpeed(task.speed) }}
                 </div>
               </div>
-              <div v-else-if="task.status === 'completed'" class="completed-status">
+              <div
+                v-else-if="task.status === 'completed'"
+                class="completed-status"
+              >
                 <span class="status-icon">
                   <Icon name="check-circle" :size="16" color="#10b981" />
                 </span>
@@ -133,7 +147,9 @@
                   <Icon name="x-circle" :size="16" color="#ef4444" />
                 </span>
                 <span>下载失败</span>
-                <button class="retry-btn" @click="retryDownload(task.id)">重试</button>
+                <button class="retry-btn" @click="retryDownload(task.id)">
+                  重试
+                </button>
               </div>
               <div v-else class="pending-status">
                 <span class="status-icon">
@@ -151,7 +167,7 @@
           </div>
           <div class="col col-actions">
             <div class="action-buttons">
-              <button 
+              <button
                 v-if="task.status === 'downloading'"
                 class="action-icon"
                 @click="pauseDownload(task.id)"
@@ -159,7 +175,7 @@
               >
                 <Icon name="pause" :size="16" hover />
               </button>
-              <button 
+              <button
                 v-else-if="task.status === 'paused'"
                 class="action-icon"
                 @click="resumeDownload(task.id)"
@@ -167,7 +183,7 @@
               >
                 <Icon name="play" :size="16" hover />
               </button>
-              <button 
+              <button
                 v-if="task.status === 'completed'"
                 class="action-icon"
                 @click="openFile(task.id)"
@@ -175,7 +191,7 @@
               >
                 <Icon name="folder" :size="16" hover />
               </button>
-              <button 
+              <button
                 class="action-icon delete"
                 @click="deleteDownload(task.id)"
                 title="删除"
@@ -200,249 +216,276 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { useDownloadStore } from '@/stores/downloadStore'
-import { useFeedbackStore } from '@/stores/feedbackStore'
-import { storeToRefs } from 'pinia'
-import defaultCover from '@/assets/ikuyo-avatar.png'
-import Icon from '@/components/common/Icon.vue'
-import { toast } from 'vue-sonner'
+import { ref, computed, onMounted, onUnmounted, watch } from "vue";
+import { useDownloadStore } from "@/stores/downloadStore";
+import { useFeedbackStore } from "@/stores/feedbackStore";
+import { storeToRefs } from "pinia";
+import defaultCover from "@/assets/ikuyo-avatar.png";
+import Icon from "@/components/common/Icon.vue";
+import { toast } from "vue-sonner";
 
-const downloadStore = useDownloadStore()
-const feedbackStore = useFeedbackStore()
-const { tasks } = storeToRefs(downloadStore)
+const downloadStore = useDownloadStore();
+const feedbackStore = useFeedbackStore();
+const { tasks } = storeToRefs(downloadStore);
 
 // 组件状态
-const activeTab = ref<'all' | 'downloading' | 'completed' | 'paused' | 'failed'>('all')
-const searchQuery = ref('')
-const showMoreActions = ref(false)
-const loading = ref(false)
+const activeTab = ref<
+  "all" | "downloading" | "completed" | "paused" | "failed"
+>("all");
+const searchQuery = ref("");
+const showMoreActions = ref(false);
+const loading = ref(false);
 
 // 状态标签配置
 const statusTabs = computed(() => [
-  { key: 'all' as const, label: '全部', count: tasks.value ? Object.keys(tasks.value).length : 0 },
-  { key: 'downloading' as const, label: '正在下载', count: downloadingTasks.value.length },
-  { key: 'completed' as const, label: '已完成', count: completedTasks.value.length },
-  { key: 'paused' as const, label: '已暂停', count: pausedTasks.value.length },
-  { key: 'failed' as const, label: '失败', count: failedTasks.value.length }
-])
+  {
+    key: "all" as const,
+    label: "全部",
+    count: tasks.value ? Object.keys(tasks.value).length : 0,
+  },
+  {
+    key: "downloading" as const,
+    label: "正在下载",
+    count: downloadingTasks.value.length,
+  },
+  {
+    key: "completed" as const,
+    label: "已完成",
+    count: completedTasks.value.length,
+  },
+  { key: "paused" as const, label: "已暂停", count: pausedTasks.value.length },
+  { key: "failed" as const, label: "失败", count: failedTasks.value.length },
+]);
 
 // 任务分类
-const allTasks = computed(() => downloadStore.getTaskList)
-const downloadingTasks = computed(() => allTasks.value.filter(task => task.status === 'downloading'))
-const completedTasks = computed(() => allTasks.value.filter(task => task.status === 'completed'))
-const pausedTasks = computed(() => allTasks.value.filter(task => task.status === 'paused'))
-const failedTasks = computed(() => allTasks.value.filter(task => task.status === 'failed'))
+const allTasks = computed(() => downloadStore.getTaskList);
+const downloadingTasks = computed(() =>
+  allTasks.value.filter((task) => task.status === "downloading"),
+);
+const completedTasks = computed(() =>
+  allTasks.value.filter((task) => task.status === "completed"),
+);
+const pausedTasks = computed(() =>
+  allTasks.value.filter((task) => task.status === "paused"),
+);
+const failedTasks = computed(() =>
+  allTasks.value.filter((task) => task.status === "failed"),
+);
 
 // 筛选后的任务
 const filteredTasks = computed(() => {
-  let tasks = allTasks.value
-  
+  let tasks = allTasks.value;
+
   // 按状态筛选
-  if (activeTab.value !== 'all') {
-    tasks = tasks.filter(task => task.status === activeTab.value)
+  if (activeTab.value !== "all") {
+    tasks = tasks.filter((task) => task.status === activeTab.value);
   }
-  
+
   // 按搜索关键词筛选
   if (searchQuery.value.trim()) {
-    const query = searchQuery.value.toLowerCase()
-    tasks = tasks.filter(task => 
-      (task.name && task.name.toLowerCase().includes(query)) ||
-      (task.name_cn && task.name_cn.toLowerCase().includes(query))
-    )
+    const query = searchQuery.value.toLowerCase();
+    tasks = tasks.filter(
+      (task) =>
+        (task.name && task.name.toLowerCase().includes(query)) ||
+        (task.name_cn && task.name_cn.toLowerCase().includes(query)),
+    );
   }
-  
-  return tasks
-})
+
+  return tasks;
+});
 
 // 状态检查
-const hasActiveDownloads = computed(() => downloadingTasks.value.length > 0)
-const hasPausedDownloads = computed(() => pausedTasks.value.length > 0)
+const hasActiveDownloads = computed(() => downloadingTasks.value.length > 0);
+const hasPausedDownloads = computed(() => pausedTasks.value.length > 0);
 
 // 方法
 const setActiveTab = (tabKey: typeof activeTab.value) => {
-  activeTab.value = tabKey
-}
+  activeTab.value = tabKey;
+};
 
 const formatSpeed = (speed: number): string => {
-  if (!speed) return '0 MB/s'
-  return `${speed.toFixed(2)} MB/s`
-}
+  if (!speed) return "0 MB/s";
+  return `${speed.toFixed(2)} MB/s`;
+};
 
 const formatSize = (bytes: number): string => {
-  if (!bytes) return '0 B'
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
-}
+  if (!bytes) return "0 B";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 * 1024 * 1024)
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+};
 
 const formatTime = (timestamp: number): string => {
-  if (!timestamp) return '未知'
-  const now = Date.now()
-  const diff = now - timestamp * 1000
-  
-  if (diff < 60000) return '刚刚'
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`
-  return `${Math.floor(diff / 86400000)}天前`
-}
+  if (!timestamp) return "未知";
+  const now = Date.now();
+  const diff = now - timestamp * 1000;
+
+  if (diff < 60000) return "刚刚";
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
+  return `${Math.floor(diff / 86400000)}天前`;
+};
 
 const onImageError = (event: Event) => {
-  const img = event.target as HTMLImageElement
-  img.src = defaultCover
-}
+  const img = event.target as HTMLImageElement;
+  img.src = defaultCover;
+};
 
 const getEmptyStateTitle = (): string => {
-  if (activeTab.value === 'downloading') return '没有正在下载的任务'
-  if (activeTab.value === 'completed') return '没有已完成的任务'
-  if (activeTab.value === 'paused') return '没有已暂停的任务'
-  if (activeTab.value === 'failed') return '没有失败的任务'
-  return '暂无下载任务'
-}
+  if (activeTab.value === "downloading") return "没有正在下载的任务";
+  if (activeTab.value === "completed") return "没有已完成的任务";
+  if (activeTab.value === "paused") return "没有已暂停的任务";
+  if (activeTab.value === "failed") return "没有失败的任务";
+  return "暂无下载任务";
+};
 
 const getEmptyStateMessage = (): string => {
-  if (searchQuery.value) return '尝试使用其他关键词搜索'
-  if (activeTab.value === 'all') return '前往番剧页面开始下载'
-  return '切换到其他标签查看任务'
-}
+  if (searchQuery.value) return "尝试使用其他关键词搜索";
+  if (activeTab.value === "all") return "前往番剧页面开始下载";
+  return "切换到其他标签查看任务";
+};
 
 // 操作方法
 const pauseDownload = async (taskId: number) => {
   try {
-    await downloadStore.pauseDownload(taskId)
-    toast.success('已暂停下载')
+    await downloadStore.pauseDownload(taskId);
+    toast.success("已暂停下载");
   } catch (error: any) {
-    toast.error(error?.message || '暂停下载失败')
+    toast.error(error?.message || "暂停下载失败");
   }
-}
+};
 
 const resumeDownload = async (taskId: number) => {
   try {
-    await downloadStore.resumeDownload(taskId)
-    toast.success('已恢复下载')
+    await downloadStore.resumeDownload(taskId);
+    toast.success("已恢复下载");
   } catch (error: any) {
-    toast.error(error?.message || '恢复下载失败')
+    toast.error(error?.message || "恢复下载失败");
   }
-}
+};
 
 const deleteDownload = async (taskId: number) => {
-  const confirmed = await feedbackStore.showConfirm('确定要删除这个下载任务吗？相关文件将从磁盘中删除。');
+  const confirmed = await feedbackStore.showConfirm(
+    "确定要删除这个下载任务吗？相关文件将从磁盘中删除。",
+  );
   if (confirmed) {
     try {
-      await downloadStore.removeDownload(taskId, true)
-      toast.success('已删除下载任务')
+      await downloadStore.removeDownload(taskId, true);
+      toast.success("已删除下载任务");
     } catch (error: any) {
-      toast.error(error?.message || '删除下载任务失败')
+      toast.error(error?.message || "删除下载任务失败");
     }
   }
-}
+};
 
 const retryDownload = async (taskId: number) => {
   // TODO: 实现重试逻辑
-  toast('重试功能开发中')
-}
+  toast("重试功能开发中");
+};
 
 const pauseAllDownloads = async () => {
   try {
     for (const task of downloadingTasks.value) {
-      await downloadStore.pauseDownload(task.id)
+      await downloadStore.pauseDownload(task.id);
     }
-    toast.success('已暂停所有下载')
+    toast.success("已暂停所有下载");
   } catch (error: any) {
-    toast.error('批量暂停失败')
+    toast.error("批量暂停失败");
   }
-}
+};
 
 const resumeAllDownloads = async () => {
   try {
     for (const task of pausedTasks.value) {
-      await downloadStore.resumeDownload(task.id)
+      await downloadStore.resumeDownload(task.id);
     }
-    toast.success('已恢复所有下载')
+    toast.success("已恢复所有下载");
   } catch (error: any) {
-    toast.error('批量恢复失败')
+    toast.error("批量恢复失败");
   }
-}
+};
 
 const clearCompleted = async () => {
-  const confirmed = await feedbackStore.showConfirm('确定要清空所有已完成的任务吗？');
+  const confirmed =
+    await feedbackStore.showConfirm("确定要清空所有已完成的任务吗？");
   if (confirmed) {
     try {
       for (const task of completedTasks.value) {
-        await downloadStore.removeDownload(task.id, true)
+        await downloadStore.removeDownload(task.id, true);
       }
-      toast.success('已清空已完成任务')
+      toast.success("已清空已完成任务");
     } catch (error: any) {
-      toast.error('清空失败')
+      toast.error("清空失败");
     }
   }
-}
+};
 
 const retryAllFailed = () => {
-  toast.info('批量重试功能开发中')
-}
+  toast.info("批量重试功能开发中");
+};
 
 const openDownloadFolder = async () => {
-  const download_folder = await downloadStore.openDownloadFolder()
+  const download_folder = await downloadStore.openDownloadFolder();
   if (!download_folder) {
-    toast.error('未找到下载目录');
+    toast.error("未找到下载目录");
     return;
   }
   try {
-    await downloadStore.openFilePath(download_folder)
-    toast.success('已在文件管理器中打开')
+    await downloadStore.openFilePath(download_folder);
+    toast.success("已在文件管理器中打开");
   } catch (error: any) {
-    toast.error('打开文件失败');
+    toast.error("打开文件失败");
   }
-}
+};
 
 const openFile = async (taskId: number) => {
-  const download_path = await downloadStore.getDownloadPath(taskId)
+  const download_path = await downloadStore.getDownloadPath(taskId);
   if (!download_path) {
-    toast.error('未找到文件路径');
+    toast.error("未找到文件路径");
     return;
   }
   try {
-    await downloadStore.openFilePath(download_path)
-    toast.success('已在文件管理器中打开')
+    await downloadStore.openFilePath(download_path);
+    toast.success("已在文件管理器中打开");
   } catch (error: any) {
-    toast.error('打开文件失败');
+    toast.error("打开文件失败");
   }
-}
+};
 
 const showContextMenu = (event: MouseEvent, task: any) => {
   // TODO: 实现右键菜单
-  console.log('Right click on task:', task)
-}
+  console.log("Right click on task:", task);
+};
 
 // 初始化
 onMounted(async () => {
-  loading.value = true
+  loading.value = true;
   try {
-    await downloadStore.init()
-    await downloadStore.fetchAllDownloads()
+    await downloadStore.init();
+    await downloadStore.fetchAllDownloads();
   } catch (error) {
-    toast.error('加载下载任务失败')
+    toast.error("加载下载任务失败");
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-})
+});
 
 // 点击外部关闭更多操作菜单
 const handleClickOutside = (event: MouseEvent) => {
-  if (!event.target || !(event.target as Element).closest('.action-left')) {
-    showMoreActions.value = false
+  if (!event.target || !(event.target as Element).closest(".action-left")) {
+    showMoreActions.value = false;
   }
-}
+};
 
 onMounted(() => {
-  document.addEventListener('click', handleClickOutside)
-})
+  document.addEventListener("click", handleClickOutside);
+});
 
 onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside)
-})
+  document.removeEventListener("click", handleClickOutside);
+});
 </script>
 
 <style scoped>
@@ -483,7 +526,7 @@ onUnmounted(() => {
 }
 
 .tab-item.active::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: -1px;
   left: 0;
@@ -710,7 +753,7 @@ onUnmounted(() => {
 .col-index {
   width: 60px;
   justify-content: center;
-  font-family: 'SF Mono', 'Monaco', monospace;
+  font-family: "SF Mono", "Monaco", monospace;
   font-weight: 600;
   color: var(--color-text-light);
 }
@@ -800,19 +843,28 @@ onUnmounted(() => {
 }
 
 .progress-fill::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
   animation: shimmer 2s infinite;
 }
 
 @keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 .progress-text {
@@ -909,7 +961,9 @@ onUnmounted(() => {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* 响应式设计 */
@@ -917,7 +971,7 @@ onUnmounted(() => {
   .col-time {
     display: none;
   }
-  
+
   .col-size {
     width: 60px;
   }
@@ -927,47 +981,47 @@ onUnmounted(() => {
   .download-management-view {
     padding: 1rem;
   }
-  
+
   .action-bar {
     flex-direction: column;
     gap: 1rem;
   }
-  
+
   .action-left,
   .action-right {
     width: 100%;
     justify-content: center;
   }
-  
+
   .search-input {
     width: 100%;
   }
-  
+
   .search-input:focus {
     width: 100%;
   }
-  
+
   .col-index {
     width: 40px;
   }
-  
+
   .col-size {
     display: none;
   }
-  
+
   .col-actions {
     width: 80px;
   }
-  
+
   .task-cover {
     width: 32px;
     height: 45px;
   }
-  
+
   .task-name {
     font-size: 0.9rem;
   }
-  
+
   .task-episode {
     font-size: 0.8rem;
   }
@@ -978,24 +1032,24 @@ onUnmounted(() => {
     flex-wrap: wrap;
     gap: 0.5rem;
   }
-  
+
   .tab-item {
     margin-right: 1rem;
     padding: 0.75rem 0;
   }
-  
+
   .tab-actions {
     width: 100%;
     justify-content: center;
     margin-top: 0.5rem;
   }
-  
+
   .col-status {
     width: 140px;
   }
-  
+
   .progress-bar {
     width: 80px;
   }
 }
-</style> 
+</style>

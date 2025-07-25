@@ -6,20 +6,20 @@
  */
 export function debounce<T extends (...args: any[]) => any>(
   func: T,
-  delay: number
+  delay: number,
 ): (...args: Parameters<T>) => void {
-  let timeoutId: number | null = null
+  let timeoutId: number | null = null;
 
   return (...args: Parameters<T>) => {
     if (timeoutId !== null) {
-      clearTimeout(timeoutId)
+      clearTimeout(timeoutId);
     }
 
     timeoutId = setTimeout(() => {
-      func(...args)
-      timeoutId = null
-    }, delay) as unknown as number
-  }
+      func(...args);
+      timeoutId = null;
+    }, delay) as unknown as number;
+  };
 }
 
 /**
@@ -27,8 +27,8 @@ export function debounce<T extends (...args: any[]) => any>(
  * 用于将多个快速操作合并为一次执行
  */
 export class BatchDebouncer {
-  private timeoutId: number | null = null
-  private pendingOperations: (() => void)[] = []
+  private timeoutId: number | null = null;
+  private pendingOperations: (() => void)[] = [];
 
   constructor(private delay: number = 300) {}
 
@@ -37,27 +37,26 @@ export class BatchDebouncer {
    * @param operation 操作函数
    */
   add(operation: () => void) {
-    this.pendingOperations.push(operation)
-    this.scheduleExecution()
+    this.pendingOperations.push(operation);
+    this.scheduleExecution();
   }
 
   private scheduleExecution() {
     if (this.timeoutId !== null) {
-      clearTimeout(this.timeoutId)
+      clearTimeout(this.timeoutId);
     }
 
     this.timeoutId = setTimeout(() => {
-      this.executePendingOperations()
-    }, this.delay) as unknown as number
+      this.executePendingOperations();
+    }, this.delay) as unknown as number;
   }
 
   private executePendingOperations() {
     if (this.pendingOperations.length > 0) {
-
-      this.pendingOperations.forEach(op => op())
-      this.pendingOperations = []
+      this.pendingOperations.forEach((op) => op());
+      this.pendingOperations = [];
     }
-    this.timeoutId = null
+    this.timeoutId = null;
   }
 
   /**
@@ -65,10 +64,10 @@ export class BatchDebouncer {
    */
   flush() {
     if (this.timeoutId !== null) {
-      clearTimeout(this.timeoutId)
-      this.timeoutId = null
+      clearTimeout(this.timeoutId);
+      this.timeoutId = null;
     }
-    this.executePendingOperations()
+    this.executePendingOperations();
   }
 }
 
@@ -80,22 +79,25 @@ export class BatchDebouncer {
  */
 export function throttle<T extends (...args: any[]) => any>(
   func: T,
-  delay: number
+  delay: number,
 ): (...args: Parameters<T>) => void {
-  let lastCall = 0
-  let timeoutId: number | null = null
+  let lastCall = 0;
+  let timeoutId: number | null = null;
 
   return (...args: Parameters<T>) => {
-    const now = Date.now()
+    const now = Date.now();
     if (now - lastCall >= delay) {
-      lastCall = now
-      func(...args)
+      lastCall = now;
+      func(...args);
     } else if (!timeoutId) {
-      timeoutId = setTimeout(() => {
-        lastCall = Date.now()
-        func(...args)
-        timeoutId = null
-      }, delay - (now - lastCall)) as unknown as number
+      timeoutId = setTimeout(
+        () => {
+          lastCall = Date.now();
+          func(...args);
+          timeoutId = null;
+        },
+        delay - (now - lastCall),
+      ) as unknown as number;
     }
-  }
+  };
 }

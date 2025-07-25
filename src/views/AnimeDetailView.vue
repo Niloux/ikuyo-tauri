@@ -1,10 +1,5 @@
 <template>
   <div class="anime-detail">
-    <!-- 返回按钮 -->
-    <div class="navigation">
-      <button @click="goBack" class="back-btn">← 返回</button>
-    </div>
-
     <Skeleton :loading="loading" type="card" customClass="detail-skeleton" />
     <div v-if="!loading && subject" class="detail-container">
       <!-- 番剧基本信息 -->
@@ -175,11 +170,6 @@ onBeforeUnmount(() => {
     resourceStore.clear();
   }
 });
-
-// 返回上一页
-const goBack = () => {
-  router.go(-1);
-};
 
 // 格式化播出日期
 const formatAirDate = (dateStr: string): string => {

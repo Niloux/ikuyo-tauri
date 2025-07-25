@@ -1,6 +1,5 @@
 <template>
   <Button
-    :size="buttonSize"
     :disabled="subscriptionLoading"
     :title="isSubscribed ? '取消订阅' : '订阅'"
     @click.stop="handleSubscriptionToggle"
@@ -11,7 +10,7 @@
     </template>
     <template v-else>
       <Heart
-        :size="20"
+        :class="iconSize"
         color="#e50914"
         :fill="isSubscribed ? '#e50914' : 'none'"
         :stroke="'#e50914'"
@@ -45,14 +44,14 @@ const isSubscribed = computed(() =>
   subscriptionStore.isSubscribed(props.anime.id),
 );
 
-const buttonSize = computed(() => {
+const iconSize = computed(() => {
   switch (props.size) {
     case "small":
-      return "sm";
+      return "size-4";
     case "large":
-      return "lg";
+      return "size-6";
     default:
-      return "default";
+      return "size-5";
   }
 });
 

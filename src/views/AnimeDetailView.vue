@@ -9,8 +9,7 @@
           <SubscriptionButton
             v-if="calendarItem"
             :anime="calendarItem!"
-            size="large"
-            class="bg-background/90 hover:bg-background h-12 w-12 rounded-full shadow-sm backdrop-blur-sm transition-all duration-300 hover:scale-110 active:scale-95"
+            class="bg-background/90 hover:bg-background h-10 w-10 rounded-full shadow-sm backdrop-blur-sm transition-all duration-300 hover:scale-110 active:scale-95"
           />
         </div>
         <div class="anime-cover">

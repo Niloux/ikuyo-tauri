@@ -29,7 +29,7 @@
                 </div>
               </CardHeader>
               <CardContent>
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                <div class="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4">
                   <div v-for="m in 6" :key="`skeleton-card-${m}`" class="space-y-3">
                     <UiSkeleton class="aspect-[3/4] w-full rounded-lg" />
                     <div class="space-y-2">
@@ -64,7 +64,7 @@
                 </div>
               </CardHeader>
               <CardContent>
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                <div class="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4">
                   <AnimeCard
                     v-for="(anime, animeIndex) in day.items"
                     :key="anime.id"

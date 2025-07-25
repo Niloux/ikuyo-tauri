@@ -45,12 +45,12 @@
 
     <!-- 番剧信息 -->
     <CardContent class="flex-1 px-4 pb-4 pt-0 flex flex-col min-h-0">
-      <CardTitle class="line-clamp-1 h-6 text-base font-semibold mb-1 leading-tight">
+      <CardTitle class="line-clamp-2 text-base font-semibold mb-1 leading-tight">
         {{ props.anime.name_cn || props.anime.name }}
       </CardTitle>
       
       <CardDescription 
-        class="line-clamp-1 h-5 text-sm text-muted-foreground mb-3"
+        class="line-clamp-1 text-sm text-muted-foreground mb-3"
       >
         {{ (props.anime.name_cn && props.anime.name !== props.anime.name_cn) ? props.anime.name : '' }}
       </CardDescription>

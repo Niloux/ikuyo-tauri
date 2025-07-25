@@ -215,15 +215,3 @@ onMounted(() => {
 })
 </script>
 
-<style scoped>
-.home {
-  padding: 0; /* 移除内边距，因为AppLayout已经处理了 */
-}
-
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .home {
-    padding: 0;
-  }
-}
-</style>

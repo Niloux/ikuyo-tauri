@@ -8,7 +8,7 @@ export function createLazyObserver(
         entries.forEach(entry => {
             if (entry.isIntersecting) {
                 onEnter()
-                observer.disconnect()
+                observer.unobserve(el)
             }
         })
     }, options)

@@ -1,11 +1,11 @@
 <template>
   <Card 
-    class="group overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 active:scale-[0.98] cursor-pointer h-full flex flex-col p-0"
+    class="group overflow-hidden aspect-[1/1.618] transition-all duration-300 hover:shadow-lg hover:-translate-y-1 active:scale-[0.98] cursor-pointer flex flex-col p-0"
     @click="handleCardClick" 
     ref="cardRef"
   >
     <!-- 番剧封面 -->
-    <div class="relative aspect-[3/5] overflow-hidden bg-muted">
+    <div class="relative w-full h-full overflow-hidden bg-muted">
       <!-- 订阅按钮 -->
       <Button
         v-if="props.showSubscriptionButton"
@@ -44,16 +44,15 @@
     </div>
 
     <!-- 番剧信息 -->
-    <CardContent class="flex-1 p-4 flex flex-col">
-      <CardTitle class="line-clamp-2 text-base font-semibold mb-1 leading-tight">
+    <CardContent class="flex-1 p-4 flex flex-col min-h-28">
+      <CardTitle class="line-clamp-1 h-6 text-base font-semibold mb-1 leading-tight">
         {{ props.anime.name_cn || props.anime.name }}
       </CardTitle>
       
       <CardDescription 
-        v-if="props.anime.name_cn && props.anime.name !== props.anime.name_cn"
-        class="line-clamp-1 text-sm text-muted-foreground mb-3"
+        class="line-clamp-1 h-5 text-sm text-muted-foreground mb-3"
       >
-        {{ props.anime.name }}
+        {{ (props.anime.name_cn && props.anime.name !== props.anime.name_cn) ? props.anime.name : '' }}
       </CardDescription>
 
       <div class="mt-auto flex items-center justify-between text-sm text-muted-foreground">

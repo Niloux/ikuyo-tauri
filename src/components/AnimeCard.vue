@@ -1,11 +1,11 @@
 <template>
   <Card 
-    class="group overflow-hidden aspect-[1/1.618] transition-all duration-300 hover:shadow-lg hover:-translate-y-1 active:scale-[0.98] cursor-pointer flex flex-col p-0"
+    class="group overflow-hidden min-h-[280px] max-h-[400px] transition-all duration-300 hover:shadow-lg hover:-translate-y-1 active:scale-[0.98] cursor-pointer flex flex-col p-0"
     @click="handleCardClick" 
     ref="cardRef"
   >
     <!-- 番剧封面 -->
-    <div class="relative overflow-hidden bg-muted" style="height: 68.8%;">
+    <div class="relative overflow-hidden bg-muted h-[66.7%] max-h-[240px]">
       <!-- 订阅按钮 -->
       <Button
         v-if="props.showSubscriptionButton"
@@ -44,8 +44,8 @@
     </div>
 
     <!-- 番剧信息 -->
-    <CardContent class="flex-1 px-4 pb-4 pt-0 flex flex-col min-h-0">
-      <CardTitle class="line-clamp-2 text-base font-semibold mb-1 leading-tight">
+    <CardContent class="flex-1 px-4 pb-4 pt-3 flex flex-col min-h-[100px]">
+      <CardTitle class="line-clamp-2 text-base font-semibold mb-2 leading-tight">
         {{ props.anime.name_cn || props.anime.name }}
       </CardTitle>
       
@@ -195,8 +195,20 @@ onUnmounted(() => {
 
 /* 响应式调整 */
 @media (max-width: 768px) {
-  .aspect-\[3\/4\] {
-    min-height: 160px;
+  .min-h-\[280px\] {
+    min-height: 240px;
+  }
+  .max-h-\[400px\] {
+    max-h: 320px;
+  }
+}
+
+@media (max-width: 480px) {
+  .min-h-\[280px\] {
+    min-height: 200px;
+  }
+  .max-h-\[400px\] {
+    max-height: 280px;
   }
 }
 </style>
